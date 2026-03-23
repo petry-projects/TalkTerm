@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1440, initial-scale=1.0">
+<title>TalkTerm — Full Three-Zone Layout (Output Review)</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', sans-serif; background: #0D0D0D; width: 1440px; height: 900px; overflow: hidden; }
+  .window { width: 1440px; height: 900px; display: flex; flex-direction: column; }
+  .titlebar { background: #2A2A2A; padding: 10px 16px; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; }
+  .dot-r { background: #E0301E; } .dot-y { background: #FFB600; } .dot-g { background: #2E7D32; }
+  .titlebar span { flex: 1; text-align: center; font-size: 12px; color: #A0A0A0; }
+
+  .layout { flex: 1; display: flex; }
+
+  /* Left Panel */
+  .left-panel { width: 240px; background: #2A2A2A; border-right: 1px solid rgba(255,255,255,0.06); display: flex; flex-direction: column; flex-shrink: 0; }
+  .panel-header { padding: 14px 16px; font-size: 11px; color: #A0A0A0; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+  .panel-cards { flex: 1; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+
+  .action-card { background: white; border-radius: 8px; padding: 12px 14px; border: 2px solid #E0E0E0; cursor: pointer; position: relative; }
+  .action-card:hover { border-color: #EB8C00; }
+  .action-card.selected { border-color: #EB8C00; box-shadow: 0 0 0 1px #EB8C00; }
+  .badge { position: absolute; top: -6px; left: 10px; background: #EB8C00; color: #000; font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 3px; }
+  .action-card h4 { font-size: 12px; font-weight: 600; color: #1A1A1A; margin: 4px 0 2px; }
+  .action-card p { font-size: 10px; color: #6B6B6B; line-height: 1.3; }
+
+  /* Center Stage */
+  .center-stage { flex: 1; background: linear-gradient(180deg, #1A1A1A 0%, #0D0D0D 100%); display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 32px 32px 20px; min-width: 0; }
+
+  .avatar-area { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .avatar-circle { width: 130px; height: 130px; border-radius: 50%; background: linear-gradient(135deg, #D04A02, #EB8C00, #FFB600); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 24px rgba(235,140,0,0.1); }
+  .avatar-circle span { font-size: 40px; font-weight: 700; color: #000; }
+  .avatar-name { font-size: 13px; color: #FFB600; font-weight: 500; }
+  .status-pill { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 16px; font-size: 10px; font-weight: 500; background: rgba(46,125,50,0.15); color: #4CAF50; }
+  .status-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+
+  .caption-bar { background: rgba(0,0,0,0.6); padding: 10px 20px; border-radius: 8px; max-width: 380px; text-align: center; }
+  .caption-bar p { font-size: 13px; color: #F0F0F0; line-height: 1.5; }
+
+  .input-area { display: flex; align-items: center; gap: 10px; padding: 12px 18px; background: rgba(0,0,0,0.4); border-radius: 10px; width: 100%; max-width: 420px; }
+  .mic-btn { width: 40px; height: 40px; border-radius: 50%; background: #EB8C00; border: none; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .mic-btn svg { width: 18px; height: 18px; fill: #000; }
+  .text-input { flex: 1; padding: 10px 12px; border-radius: 7px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: #F0F0F0; font-family: 'Inter', sans-serif; font-size: 13px; }
+
+  /* Right Panel */
+  .right-panel { width: 400px; background: #FFFFFF; border-left: 1px solid #E0E0E0; display: flex; flex-direction: column; flex-shrink: 0; }
+  .right-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; border-bottom: 1px solid #E0E0E0; }
+  .right-header h3 { font-size: 15px; font-weight: 600; color: #1A1A1A; }
+  .right-header .tags { display: flex; gap: 6px; }
+  .tag { padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 500; }
+  .tag-amber { background: rgba(235,140,0,0.12); color: #D04A02; }
+  .tag-green { background: rgba(46,125,50,0.12); color: #2E7D32; }
+  .right-body { flex: 1; padding: 20px; overflow-y: auto; }
+
+  .output-section { margin-bottom: 20px; }
+  .output-section h4 { font-size: 13px; font-weight: 600; color: #D04A02; margin-bottom: 8px; }
+  .output-section ul { list-style: none; font-size: 12px; color: #6B6B6B; line-height: 1.6; }
+  .output-section li { padding-left: 14px; position: relative; margin-bottom: 2px; }
+  .output-section li::before { content: '→'; position: absolute; left: 0; color: #EB8C00; }
+  .output-card { background: #F5F5F5; border-radius: 8px; padding: 14px; }
+  .more-link { font-size: 11px; color: #EB8C00; margin-top: 4px; display: block; }
+
+  .close-btn { width: 28px; height: 28px; border-radius: 6px; border: 1px solid #E0E0E0; background: white; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 14px; color: #6B6B6B; }
+  .version-badge { position: fixed; bottom: 12px; right: 16px; font-size: 10px; color: #6B6B6B; font-weight: 500; letter-spacing: 0.3px; z-index: 10; }
+</style>
+<script src="https://mcp.figma.com/mcp/html-to-design/capture.js" async></script>
+</head>
+<body>
+<div class="window">
+  <div class="titlebar">
+    <div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div>
+    <span>TalkTerm — Mary, Business Analyst</span>
+  </div>
+  <div class="layout">
+    <!-- Left Panel: Completion Options -->
+    <div class="left-panel">
+      <div class="panel-header">Next Steps</div>
+      <div class="panel-cards">
+        <div class="action-card">
+          <div class="badge">A</div>
+          <h4>Save to File</h4>
+          <p>Write document to project folder</p>
+        </div>
+        <div class="action-card">
+          <div class="badge">B</div>
+          <h4>Keep Refining</h4>
+          <p>Continue developing these ideas</p>
+        </div>
+        <div class="action-card">
+          <div class="badge">C</div>
+          <h4>Start New</h4>
+          <p>Begin a different workflow</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Center Stage -->
+    <div class="center-stage">
+      <div class="avatar-area">
+        <div class="avatar-circle"><span>M</span></div>
+        <div class="avatar-name">Mary</div>
+        <div class="status-pill"><div class="status-dot"></div> Workflow Complete</div>
+      </div>
+      <div class="caption-bar">
+        <p>"We generated 24 ideas across 4 categories. Here's the organized summary — take a look!"</p>
+      </div>
+      <div class="input-area">
+        <button class="mic-btn"><svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5zm6 6c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg></button>
+        <input type="text" class="text-input" placeholder="Type or speak to Mary...">
+      </div>
+    </div>
+
+    <!-- Right Panel: Output -->
+    <div class="right-panel">
+      <div class="right-header">
+        <h3>Brainstorming: Onboarding</h3>
+        <div class="tags">
+          <span class="tag tag-green">24 ideas</span>
+          <span class="tag tag-amber">4 categories</span>
+        </div>
+      </div>
+      <div class="right-body">
+        <div class="output-section">
+          <div class="output-card">
+            <h4>User Onboarding (8 ideas)</h4>
+            <ul>
+              <li>Progressive disclosure tutorial</li>
+              <li>Avatar-guided first workflow</li>
+              <li>Template starter projects</li>
+              <li>Contextual tooltips on first use</li>
+              <li>Quick-win first task suggestion</li>
+              <span class="more-link">+ 3 more...</span>
+            </ul>
+          </div>
+        </div>
+        <div class="output-section">
+          <div class="output-card">
+            <h4>Retention Hooks (6 ideas)</h4>
+            <ul>
+              <li>Daily avatar greeting variation</li>
+              <li>Workflow streak tracking</li>
+              <li>Smart session suggestions</li>
+              <span class="more-link">+ 3 more...</span>
+            </ul>
+          </div>
+        </div>
+        <div class="output-section">
+          <div class="output-card">
+            <h4>Social Features (5 ideas)</h4>
+            <ul>
+              <li>Team workspace sharing</li>
+              <li>Collaborative brainstorming</li>
+              <li>Output sharing via link</li>
+              <span class="more-link">+ 2 more...</span>
+            </ul>
+          </div>
+        </div>
+        <div class="output-section">
+          <div class="output-card">
+            <h4>Personalization (5 ideas)</h4>
+            <ul>
+              <li>Adaptive workflow suggestions</li>
+              <li>User preference learning</li>
+              <li>Custom avatar personalities</li>
+              <span class="more-link">+ 2 more...</span>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="version-badge">v1.1 — 2026-03-22 12:00 UTC</div>
+</div>
+</body>
+</html>

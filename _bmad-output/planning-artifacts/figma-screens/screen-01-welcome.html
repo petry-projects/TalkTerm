@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1440, initial-scale=1.0">
+<title>TalkTerm — Welcome Screen</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', sans-serif; background: #0D0D0D; width: 1440px; height: 900px; overflow: hidden; }
+
+  .window { width: 1440px; height: 900px; background: linear-gradient(180deg, #1A1A1A 0%, #0D0D0D 100%); display: flex; flex-direction: column; }
+  .titlebar { background: #2A2A2A; padding: 10px 16px; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; }
+  .dot-r { background: #E0301E; } .dot-y { background: #FFB600; } .dot-g { background: #2E7D32; }
+  .titlebar span { flex: 1; text-align: center; font-size: 12px; color: #A0A0A0; }
+
+  .content { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 32px; }
+
+  .logo-area { text-align: center; }
+  .logo { font-size: 48px; font-weight: 700; color: #F0F0F0; letter-spacing: -1px; }
+  .logo span { color: #EB8C00; }
+  .tagline { font-size: 16px; color: #A0A0A0; margin-top: 8px; }
+
+  .avatar-silhouette { width: 160px; height: 160px; border-radius: 50%; background: linear-gradient(135deg, rgba(208,74,2,0.3), rgba(235,140,0,0.3), rgba(255,182,0,0.3)); display: flex; align-items: center; justify-content: center; position: relative; }
+  .avatar-silhouette::after { content: ''; position: absolute; inset: -6px; border-radius: 50%; border: 2px solid rgba(235,140,0,0.2); animation: pulse 2.5s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity: 0.2; transform: scale(1); } 50% { opacity: 0.5; transform: scale(1.04); } }
+  .avatar-silhouette svg { width: 64px; height: 64px; fill: rgba(235,140,0,0.4); }
+
+  .welcome-text { font-size: 20px; color: #F0F0F0; font-weight: 500; }
+  .version-badge { position: fixed; bottom: 12px; right: 16px; font-size: 10px; color: #6B6B6B; font-weight: 500; letter-spacing: 0.3px; }
+</style>
+<script src="https://mcp.figma.com/mcp/html-to-design/capture.js" async></script>
+</head>
+<body>
+<div class="window">
+  <div class="titlebar">
+    <div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div>
+    <span>TalkTerm</span>
+  </div>
+  <div class="content">
+    <div class="avatar-silhouette">
+      <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+    </div>
+    <div class="logo-area">
+      <div class="logo">Talk<span>Term</span></div>
+      <div class="tagline">Your virtual expert team</div>
+    </div>
+    <div class="welcome-text">Welcome</div>
+  </div>
+  <div class="version-badge">v1.1 — 2026-03-22 12:00 UTC</div>
+</div>
+</body>
+</html>

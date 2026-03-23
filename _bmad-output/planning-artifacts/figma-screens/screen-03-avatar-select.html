@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1440, initial-scale=1.0">
+<title>TalkTerm — Avatar Selection</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', sans-serif; background: #0D0D0D; width: 1440px; height: 900px; overflow: hidden; }
+  .window { width: 1440px; height: 900px; background: linear-gradient(180deg, #1A1A1A 0%, #0D0D0D 100%); display: flex; flex-direction: column; }
+  .titlebar { background: #2A2A2A; padding: 10px 16px; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; }
+  .dot-r { background: #E0301E; } .dot-y { background: #FFB600; } .dot-g { background: #2E7D32; }
+  .titlebar span { flex: 1; text-align: center; font-size: 12px; color: #A0A0A0; }
+
+  .content { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 32px; }
+
+  h2 { font-size: 22px; font-weight: 600; color: #F0F0F0; }
+  .subtitle { font-size: 14px; color: #A0A0A0; }
+
+  .avatar-grid { display: flex; gap: 24px; }
+
+  .avatar-card { background: rgba(42,42,42,0.8); border-radius: 16px; padding: 32px 28px; width: 260px; text-align: center; border: 2px solid rgba(255,255,255,0.06); cursor: pointer; transition: all 0.2s; }
+  .avatar-card:hover { border-color: #EB8C00; transform: translateY(-4px); box-shadow: 0 8px 32px rgba(235,140,0,0.15); }
+  .avatar-card.selected { border-color: #EB8C00; box-shadow: 0 0 0 1px #EB8C00, 0 8px 32px rgba(235,140,0,0.2); }
+
+  .avatar-circle { width: 120px; height: 120px; border-radius: 50%; margin: 0 auto 16px; display: flex; align-items: center; justify-content: center; position: relative; }
+  .avatar-circle.mary { background: linear-gradient(135deg, #D04A02, #EB8C00, #FFB600); }
+  .avatar-circle.winston { background: linear-gradient(135deg, #1565C0, #1976D2, #42A5F5); opacity: 0.4; }
+  .avatar-circle.alex { background: linear-gradient(135deg, #2E7D32, #43A047, #66BB6A); opacity: 0.4; }
+  .avatar-circle span { font-size: 36px; font-weight: 700; color: #000; }
+
+  .avatar-name { font-size: 18px; font-weight: 600; color: #F0F0F0; margin-bottom: 4px; }
+  .avatar-role { font-size: 13px; color: #EB8C00; margin-bottom: 12px; }
+  .avatar-desc { font-size: 12px; color: #A0A0A0; line-height: 1.5; }
+
+  .phase-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; background: rgba(255,255,255,0.06); color: #6B6B6B; margin-bottom: 12px; }
+
+  .btn-select { margin-top: 16px; padding: 10px 32px; border-radius: 8px; border: none; background: #EB8C00; color: #000; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .btn-select.disabled { background: #6B6B6B; cursor: not-allowed; }
+  .version-badge { position: fixed; bottom: 12px; right: 16px; font-size: 10px; color: #6B6B6B; font-weight: 500; letter-spacing: 0.3px; }
+</style>
+<script src="https://mcp.figma.com/mcp/html-to-design/capture.js" async></script>
+</head>
+<body>
+<div class="window">
+  <div class="titlebar">
+    <div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div>
+    <span>TalkTerm</span>
+  </div>
+  <div class="content">
+    <h2>Choose Your Team Member</h2>
+    <p class="subtitle">Select a specialist to work with</p>
+    <div class="avatar-grid">
+      <div class="avatar-card selected">
+        <div class="avatar-circle mary"><span>M</span></div>
+        <div class="avatar-name">Mary</div>
+        <div class="avatar-role">Business Analyst</div>
+        <div class="avatar-desc">Research, brainstorming, product analysis, and strategic planning</div>
+        <button class="btn-select">Select Mary</button>
+      </div>
+      <div class="avatar-card" style="opacity: 0.5; pointer-events: none;">
+        <div class="phase-badge">Coming Soon</div>
+        <div class="avatar-circle winston"><span>W</span></div>
+        <div class="avatar-name">Winston</div>
+        <div class="avatar-role">Architect</div>
+        <div class="avatar-desc">Technical architecture, system design, and code review</div>
+        <button class="btn-select disabled">Phase 2</button>
+      </div>
+      <div class="avatar-card" style="opacity: 0.5; pointer-events: none;">
+        <div class="phase-badge">Coming Soon</div>
+        <div class="avatar-circle alex"><span>A</span></div>
+        <div class="avatar-name">Alex</div>
+        <div class="avatar-role">UX Designer</div>
+        <div class="avatar-desc">User experience design, wireframes, and interaction patterns</div>
+        <button class="btn-select disabled">Phase 2</button>
+      </div>
+    </div>
+  </div>
+  <div class="version-badge">v1.1 — 2026-03-22 12:00 UTC</div>
+</div>
+</body>
+</html>

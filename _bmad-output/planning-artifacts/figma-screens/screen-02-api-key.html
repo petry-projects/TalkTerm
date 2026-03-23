@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1440, initial-scale=1.0">
+<title>TalkTerm — API Key Setup</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', sans-serif; background: #0D0D0D; width: 1440px; height: 900px; overflow: hidden; }
+  .window { width: 1440px; height: 900px; background: linear-gradient(180deg, #1A1A1A 0%, #0D0D0D 100%); display: flex; flex-direction: column; }
+  .titlebar { background: #2A2A2A; padding: 10px 16px; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; }
+  .dot-r { background: #E0301E; } .dot-y { background: #FFB600; } .dot-g { background: #2E7D32; }
+  .titlebar span { flex: 1; text-align: center; font-size: 12px; color: #A0A0A0; }
+
+  .content { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px; }
+
+  .setup-card { background: rgba(42,42,42,0.8); border-radius: 16px; padding: 40px; width: 420px; text-align: center; border: 1px solid rgba(255,255,255,0.06); }
+  .setup-card h2 { font-size: 22px; font-weight: 600; color: #F0F0F0; margin-bottom: 8px; }
+  .setup-card p { font-size: 14px; color: #A0A0A0; margin-bottom: 24px; line-height: 1.5; }
+
+  .input-group { text-align: left; margin-bottom: 16px; }
+  .input-group label { font-size: 12px; color: #A0A0A0; font-weight: 500; display: block; margin-bottom: 6px; }
+  .input-field { width: 100%; padding: 12px 16px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: #F0F0F0; font-family: 'Inter', sans-serif; font-size: 14px; outline: none; }
+  .input-field:focus { border-color: #EB8C00; }
+  .input-field::placeholder { color: #6B6B6B; }
+
+  .help-link { font-size: 12px; color: #EB8C00; text-decoration: none; display: inline-block; margin-bottom: 24px; }
+
+  .btn-primary { width: 100%; padding: 12px; border-radius: 8px; border: none; background: #EB8C00; color: #000; font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; }
+
+  .logo-small { font-size: 16px; font-weight: 700; color: #F0F0F0; margin-bottom: 32px; }
+  .logo-small span { color: #EB8C00; }
+  .version-badge { position: fixed; bottom: 12px; right: 16px; font-size: 10px; color: #6B6B6B; font-weight: 500; letter-spacing: 0.3px; }
+</style>
+<script src="https://mcp.figma.com/mcp/html-to-design/capture.js" async></script>
+</head>
+<body>
+<div class="window">
+  <div class="titlebar">
+    <div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div>
+    <span>TalkTerm</span>
+  </div>
+  <div class="content">
+    <div class="logo-small">Talk<span>Term</span></div>
+    <div class="setup-card">
+      <h2>Get Started</h2>
+      <p>Enter your Anthropic API key to connect TalkTerm to Claude.</p>
+      <div class="input-group">
+        <label>API Key</label>
+        <input type="text" class="input-field" placeholder="sk-ant-api03-...">
+      </div>
+      <a href="#" class="help-link">How do I get an API key? →</a>
+      <button class="btn-primary">Continue</button>
+    </div>
+  </div>
+  <div class="version-badge">v1.1 — 2026-03-22 12:00 UTC</div>
+</div>
+</body>
+</html>

@@ -9,13 +9,19 @@ documentCounts:
   brainstorming: 1
   projectDocs: 0
 classification:
-  projectType: mobile_app
+  projectType: desktop_app
   domain: general
   complexity: medium
   projectContext: greenfield
 revisionHistory:
   - date: '2026-03-20'
     revision: 'v1.1 — Multi-agent review enhancement: fixed 15/20-min contradiction, added FR16 (file upload), FR36 (user identity), FR37 (barge-in), FR38 (network recovery); hardened 10 FR measurability specs; hardened 8 NFR measurement specs; decomposed latency NFR; added conversation privacy NFR16; removed implementation leakage (FR11, NFR13, NFR14); fixed store compliance gate; annotated Journey 2 Phase 2 references; added API key model; quantified business success metrics'
+  - date: '2026-03-21'
+    revision: 'v2.0 — Desktop pivot: changed from mobile-first to desktop-first architecture. Claude Code runs as local subprocess with full MCP/file system/network access. Replaced mobile platform requirements with desktop (macOS/Windows/Linux). Removed app store compliance gate. Updated all user journeys, FRs, and NFRs for desktop context. Mobile moved to Phase 3 as enhancement.'
+  - date: '2026-03-22'
+    revision: 'v2.1 — Added FR39 (admin privilege check on every launch), FR40 (guided API key setup with live validation), FR41 (API key state management), FR42 (combined launch state assessment), FR43 (live task progress display), FR44 (plan preview with confirm-plan integration), FR45 (multi-mode rich content rendering). Updated MVP scope to macOS + Windows. Added admin privilege requirement to platform requirements.'
+  - date: '2026-03-23'
+    revision: 'v2.2 — Strengthened FR8 (text input must support paste, multi-line, and be visually co-equal with voice). Added FR48 (external system writeback via MCP after workflow output), FR49 (connected system discovery and target picker), FR50 (writeback confirmation with confirm-plan pattern). Added FR51 (preference memory via context-scribe — tracks interaction patterns, surfaces learned defaults per agent type and workspace). Driven by UX review feedback.'
 ---
 
 # Product Requirements Document - TalkTerm
@@ -25,7 +31,7 @@ revisionHistory:
 
 ## Executive Summary
 
-TalkTerm is a mobile-first AI agent interface that makes the full power of CLI-based agentic workflows — tool execution, API calls, MCP integration, and system control — accessible to non-technical users through voice-enabled animated avatars. While tools like Claude Code and GitHub Copilot have proven that natural-language-driven agents can perform complex tasks autonomously, these tools remain locked behind terminal interfaces that exclude product managers, designers, analysts, and other knowledge workers. TalkTerm replaces the terminal with a personal, conversational companion that users select, speak to, and delegate work to — with zero learning curve.
+TalkTerm is a desktop AI agent interface that makes the full power of CLI-based agentic workflows — tool execution, API calls, MCP integration, and system control — accessible to non-technical users through voice-enabled animated avatars. While tools like Claude Code and GitHub Copilot have proven that natural-language-driven agents can perform complex tasks autonomously, these tools remain locked behind terminal interfaces that exclude product managers, designers, analysts, and other knowledge workers. TalkTerm replaces the terminal with a personal, conversational companion that users select, speak to, and delegate work to — with zero learning curve. The Claude Agent SDK runs in-process, giving TalkTerm full access to the local file system, MCP tools, shell execution, and network services — without requiring Claude Code CLI to be installed.
 
 The agent backend is commodity infrastructure. The relationship layer is the product. ChatGPT and Claude.ai can converse but cannot execute — they lack permissions to run tools, call APIs, use MCP, or control the user's system. CLI agents can execute but exclude anyone uncomfortable with a terminal. TalkTerm is the first product that combines real agent capability with an embodied, personal interface. Users pick an avatar, start talking, and get work done.
 
@@ -52,7 +58,7 @@ The interaction model follows game-dialog UX — the avatar speaks context, grap
 - Avatar acknowledges user input within 1 second of speech completion (conversational responsiveness)
 - First spoken response segment begins within 3 seconds for standard conversational turns (via streaming TTS)
 - Voice input accurately captured and transcribed with intent intact for natural speech patterns
-- Avatar renders smoothly on supported mobile devices without causing thermal throttling or >20% battery drain per hour
+- Avatar renders smoothly on supported desktop systems without frame drops during standard conversation
 - Full traceability logging of all agent actions with audit trail accessible in-session
 - AI agent backend abstraction layer isolates UI from backend implementation — backend is swappable without UI changes
 
@@ -75,11 +81,11 @@ The interaction model follows game-dialog UX — the avatar speaks context, grap
 **Persona:** Sarah, Product Manager at a mid-size startup
 **Situation:** Sarah manages a product roadmap but relies on her engineering lead to run any structured workflow — brainstorming, competitive analysis, sprint planning. She's heard about AI agents but every tool she's tried is either a chatbot that can't do anything or a terminal tool she can't use.
 
-**Opening Scene:** Sarah downloads TalkTerm on her iPhone during her commute. The app opens to a simple screen: "Choose your assistant." She sees a friendly animated character — Mary, the Business Analyst — and taps her.
+**Opening Scene:** Sarah installs TalkTerm on her MacBook. The app opens to a simple screen: "Choose your assistant." She sees a friendly animated character — Mary, the Business Analyst — and clicks her.
 
-**Rising Action:** Mary greets her by voice: "Hi Sarah, I'm Mary. I specialize in research, brainstorming, and product analysis. What are you working on today?" Sarah says, "I need to brainstorm features for our new onboarding flow." Mary walks her through a structured brainstorming session — asking questions, presenting technique options as tappable overlay cards, building on Sarah's ideas. Sarah speaks naturally. Mary responds conversationally.
+**Rising Action:** Mary greets her by voice: "Hi Sarah, I'm Mary. I specialize in research, brainstorming, and product analysis. What are you working on today?" Sarah says, "I need to brainstorm features for our new onboarding flow." Mary walks her through a structured brainstorming session — asking questions, presenting technique options as clickable overlay cards, building on Sarah's ideas. Sarah speaks naturally. Mary responds conversationally.
 
-**Climax:** Twenty minutes in, Mary says: "We've generated 24 ideas across 4 categories. Here's the organized summary." A visual overlay shows clustered ideas with priority tags. Sarah taps to expand each cluster. She says "This is exactly what I needed" — she's produced a structured brainstorming artifact without writing a single command or asking engineering for help.
+**Climax:** Twenty minutes in, Mary says: "We've generated 24 ideas across 4 categories. Here's the organized summary." A visual overlay shows clustered ideas with priority tags. Sarah clicks to expand each cluster. She says "This is exactly what I needed" — she's produced a structured brainstorming artifact without writing a single command or asking engineering for help.
 
 **Resolution:** Sarah shares the output document with her team. She opens TalkTerm the next morning and Mary greets her: "Morning, Sarah. Want to continue developing those onboarding ideas, or start something new?" Sarah is a daily user.
 
@@ -88,15 +94,15 @@ The interaction model follows game-dialog UX — the avatar speaks context, grap
 **Persona:** Marcus, Full-Stack Developer
 **Situation:** Marcus uses Claude Code daily in his terminal. He's productive, but some tasks — brainstorming with his PM, reviewing architecture options, sprint planning — feel clunky in a text-only interface. He also can't easily share agent sessions with non-technical teammates.
 
-**Opening Scene:** Marcus downloads TalkTerm to try running a BMAD architecture session on his phone while waiting for a build. He picks the available avatar — a technical-focused persona.
+**Opening Scene:** Marcus opens TalkTerm on his laptop to try running a BMAD architecture session while waiting for a build. He picks the available avatar — a technical-focused persona.
 
-**Rising Action:** Marcus says "I need to evaluate three approaches for our auth migration." The avatar presents a structured comparison framework via overlay cards. Marcus speaks his constraints — "We need OAuth2, can't break existing sessions, and have a two-week window." The avatar synthesizes options and presents trade-offs visually.
+**Rising Action:** Marcus says "I need to evaluate three approaches for our auth migration." The avatar presents a structured comparison framework via overlay cards. Marcus speaks his constraints — "We need OAuth2, can't break existing sessions, and have a two-week window." The avatar synthesizes options and presents trade-offs visually. The agent examines his project's codebase and existing auth configuration directly — Claude Code is running locally with full access to the repo.
 
-**Climax:** The avatar presents a decision matrix as a graphical overlay — three approaches scored across six criteria. Marcus taps each to drill into details. He picks an approach and the avatar generates an architecture decision record. Marcus realizes this was faster and clearer than the same workflow in his terminal.
+**Climax:** The avatar presents a decision matrix as a graphical overlay — three approaches scored across six criteria. Marcus clicks each to drill into details. He picks an approach and the avatar generates an architecture decision record, writing it directly to his project's docs folder.
 
-**Resolution:** Marcus shares the architecture doc (via device file system) with Sarah (the PM) and his team. He starts using TalkTerm for structured agent workflows where the output needs to be shared, while keeping his terminal for code-focused tasks.
+**Resolution:** Marcus shares the architecture doc with Sarah (the PM) and his team. He starts using TalkTerm for structured agent workflows where the visual output is clearer than terminal text, while keeping his terminal for code-focused tasks.
 
-*Scope notes: Named specialist avatars (e.g., Winston the Architect) are Phase 2 — this journey illustrates the architecture workflow interaction model, achievable with a single avatar in MVP. Output sharing/export is Phase 2; manual file access is available in MVP.*
+*Scope notes: Named specialist avatars (e.g., Winston the Architect) are Phase 2 — this journey illustrates the architecture workflow interaction model, achievable with a single avatar in MVP.*
 
 ### Journey 3: The Non-Technical User — Error Recovery
 
@@ -107,7 +113,7 @@ The interaction model follows game-dialog UX — the avatar speaks context, grap
 
 **Rising Action:** Mary encounters an issue — one PDF is image-based and can't be parsed. Instead of a stack trace or cryptic error, Mary says: "I was able to read two of the three documents, but 'Competitor_C_pricing.pdf' is a scanned image I can't read directly. Would you like me to proceed with the two I have, or can you provide a text version of the third?"
 
-**Climax:** Sarah says "Go ahead with the two." Mary presents the analysis as an overlay — a comparison table with key findings. Sarah taps to expand each section.
+**Climax:** Sarah says "Go ahead with the two." Mary presents the analysis as an overlay — a comparison table with key findings. Sarah clicks to expand each section.
 
 **Resolution:** Sarah is never confused or scared. The error was handled conversationally. She trusts TalkTerm more because it explained what happened and gave her clear options instead of failing silently or dumping technical output.
 
@@ -116,7 +122,7 @@ The interaction model follows game-dialog UX — the avatar speaks context, grap
 | Journey | Key Capabilities Revealed |
 |---|---|
 | Sarah: First Workflow | Avatar selection, voice I/O, agent workflow execution, overlay-based options, structured output generation, onboarding-by-doing |
-| Marcus: Terminal Replacement | Complex agent workflows, visual decision frameworks, output sharing, mobile agent access |
+| Marcus: Terminal Replacement | Complex agent workflows, visual decision frameworks, local codebase access via Claude Code subprocess, output sharing |
 | Sarah: Error Recovery | Graceful error handling via avatar conversation, partial completion, clear user options, trust-building through transparency |
 
 ## Competitive Landscape & Validation
@@ -134,39 +140,43 @@ The interaction model follows game-dialog UX — the avatar speaks context, grap
 - Measure: can a non-technical user complete a BMAD workflow independently via TalkTerm?
 - Compare time-to-completion and user satisfaction vs terminal-based agent workflows
 
-## Mobile App Specific Requirements
+## Desktop App Specific Requirements
 
 ### Platform Requirements
 
 - Cross-platform single codebase — specific framework deferred to architecture phase
-- Must support path to desktop without full rewrite
-- Mobile-first design — all UX optimized for phone screen constraints
-- Internet connectivity required — no offline mode
-- Required device permissions: microphone (voice input), file system read/write (document I/O), network access (agent backend), push notifications (Phase 2 — task completion alerts)
-- Minimum supported OS: iOS 16+ / Android 12+ (or equivalent — to be confirmed in architecture phase)
+- Target platforms: macOS, Windows, Linux
+- Must support path to mobile without full rewrite (mobile is a Phase 3 enhancement)
+- Internet connectivity required for AI agent backend API calls
+- Required system permissions: administrator/elevated privileges (agent SDK needs full file system and shell access), microphone (voice input), file system read/write (document I/O and Claude Code workspace access), network access (agent backend API)
+- Application must verify admin privileges on every launch and display a blocking error with platform-specific relaunch instructions if not running as admin
+- Claude Agent SDK (`@anthropic-ai/claude-agent-sdk`) is bundled with TalkTerm — no separate Claude Code CLI installation required
+- Minimum supported OS: macOS 12+ / Windows 10+ / Ubuntu 22.04+ (or equivalent — to be confirmed in architecture phase)
 
-### Push Notification Strategy
+### System Notification Strategy
 
-- Notify when long-running agent tasks complete
+- Notify via OS system notifications when long-running agent tasks complete
 - Prompt to continue unfinished workflows (e.g., "Mary is waiting — you left your brainstorming session mid-way")
 - Notification tone/style should match the active avatar's personality
+- System tray / menu bar presence for background task monitoring
 
-### Store Compliance Considerations
+### Distribution Strategy
 
-- **Risk:** AI agent performing system-level actions may trigger App Store / Play Store review scrutiny under guideline 1.2 (User-Generated Content) and 5.1.1 (Data Collection)
-- **Risk:** AI-generated content policies may apply to avatar interactions and agent outputs
-- **Mitigation:** Strong user-facing warnings and disclosures about AI-generated content and agent actions
-- **Mitigation:** Clear permission prompts before any system-level operations
-- **Gate (not deferred):** App Store and Play Store AI policy compliance review must be completed before UX design begins — store rejection risk is existential to the mobile-first strategy and cannot be discovered at submission time
+- Direct download from project website / GitHub Releases
+- Package manager distribution: Homebrew (macOS/Linux), winget / Chocolatey (Windows)
+- No app store gatekeeping — direct distribution avoids AI policy compliance risk entirely
+- Auto-update mechanism for new versions
 
 ### Implementation Considerations
 
-- Avatar rendering must be performant on mid-range mobile devices (3-year-old flagship equivalent or newer) — no high-end GPU dependency
-- Voice pipeline must handle background noise typical of mobile usage (commute, office, coffee shop)
+- Avatar rendering must be performant on any desktop system with a GPU manufactured in the last 5 years — no high-end GPU dependency
+- Voice pipeline must handle background noise typical of desktop usage (office, home office, coffee shop)
 - Latency strategy: acknowledgement (≤1s) via immediate avatar animation state change; first response (≤3s) via streaming TTS, with avatar speaking before full response is generated. Long-running agent steps show progress animation with no response-time SLA; the user is never shown a blank or frozen state.
-- Overlay UI must work within mobile screen constraints — no desktop-sized panels
-- Session state must persist to durable storage before any app suspension (backgrounding or OS termination) — backgrounding is not termination; iOS/Android may kill processes without warning
+- Claude Agent SDK runs in-process in the Electron main process — no subprocess management needed. SDK handles its own agent loop lifecycle (start, resume, cancel).
+- Agent has full access to the local file system (via SDK's built-in Read/Edit/Write tools), shell execution (via Bash tool), MCP tools, and local network services
+- Session state must persist to durable local storage on graceful and unexpected shutdown
 - Speech-to-text and TTS services must be configurable via abstraction layer — swappable without app-level code changes (architecture constraint; not an NFR)
+- Window must support resizing with responsive layout; overlay panels can use full desktop screen real estate
 
 ## Product Scope & Phased Development
 
@@ -183,6 +193,9 @@ The interaction model follows game-dialog UX — the avatar speaks context, grap
 **Core User Journey:** Sarah completes first BMAD brainstorming workflow → structured output artifact
 
 **Must-Have Capabilities:**
+- Admin privilege check on every launch with blocking error screen if not running as admin
+- Guided API key setup with live validation against Anthropic API, secure OS credential store storage, and inline error feedback
+- Combined launch state assessment (API key + profile + avatar) to route users to the correct entry point
 - Single animated avatar with voice (2D if needed to meet latency budget)
 - Voice input with speech-to-text
 - Text-to-speech avatar responses
@@ -191,46 +204,53 @@ The interaction model follows game-dialog UX — the avatar speaks context, grap
 - Confirm plan pattern before agent execution
 - Structured output document generation
 - Action traceability logging
-- Mobile app (single platform OK for MVP — expand post-validation)
+- Rich display panel with multiple modes: live task progress, plan preview, rendered documents, comparison tables, clustered cards
+- Cross-session memory — avatar remembers context, decisions, and user preferences across sessions via Claude Agent SDK session persistence; references past work naturally and builds progressively richer understanding of user's work context
+- Desktop app (macOS + Windows for MVP — expand to Linux post-validation)
 - BMAD workflow support (minimum: brainstorming agent)
 
 **Explicitly NOT in MVP:**
 - Multiple avatars
-- Desktop support
+- Mobile support
 - Multi-backend support
-- Push notifications
+- System notifications for background tasks
 - Avatar customization or wardrobe variation
 - Offline capability
-- Output sharing/export (manual file access OK)
+- Output sharing/export beyond local file access
 
 ### Phase 2: Growth
 
 - Multiple avatar personas mapped to BMAD agent roster (Mary the Analyst, Alex the Designer, Winston the Architect)
-- Push notifications for long-running tasks and session continuity
+- System notifications for long-running tasks and session continuity
 - Additional BMAD workflows (PRD creation, architecture, sprint planning)
-- Desktop platform support
+- Windows and Linux platform support
 - Output sharing and export
 - Avatar memory — learns user preferences, projects, vocabulary over time
 
 ### Phase 3: Expansion
 
+- **Mobile support:** Mobile companion app connecting to Claude Code on user's desktop/server via relay server; Android-local execution via Termux as advanced option
 - **Multi-backend:** Additional AI agent backends (Copilot, Gemini) and multi-agent handoff within workflows
 - **Avatar aliveness:** Daily cosmetic variation (wardrobe, accessories, expressions) and user-customizable avatar creation
 - **Community:** Marketplace for agent personas and workflows
 - **Enterprise:** Team dashboards, shared configs, advanced audit reporting
+
+### Enhancement Ideas (Post-MVP, from Competitive Research)
+
+- **Effort modes:** User-selectable cost/capability tiers per session (Economy/Power/Turbo) — inspired by Replit Agent. Economy uses smaller/cheaper models with turn limits for quick tasks; Power is the default balanced mode; Turbo uses the most capable model with extended context and higher turn/budget limits for complex workflows. Surfaces estimated cost before session start. Lets users trade cost vs. capability based on task complexity, supporting the BYOK model where users pay their own API costs.
 
 ### Risk Mitigation
 
 **Technical Risks:**
 - *Response latency has multiple pipeline sources.* **Mitigation:** See Implementation Considerations latency strategy (acknowledgement/first-response split with streaming TTS). Downscale avatar to 2D if rendering budget requires it.
 - *Single developer bottleneck.* **Mitigation:** Framework choice (deferred to architecture phase) must prioritize developer velocity and existing ecosystem. Avoid custom solutions where off-the-shelf exists.
+- *Claude Agent SDK cost/runaway risk.* **Mitigation:** SDK supports `maxTurns` and `maxBudgetUsd` limits. Permission callbacks enforce user confirmation before destructive actions (FR20).
 
 **Market Risks:**
 - *Non-technical users may not seek out an "agent" tool.* **Mitigation:** Position as "personal AI assistant" not "agent interface." BMAD community provides warm initial audience.
-- *App store compliance uncertainty.* **Mitigation:** Strong AI content warnings. Legal review before submission.
 
 **Resource Risks:**
-- *Solo developer scope creep.* **Mitigation:** MVP is ruthlessly scoped — one avatar, one backend, one workflow, one platform. Everything else is Phase 2+. No exceptions.
+- *Solo developer scope creep.* **Mitigation:** MVP is ruthlessly scoped — one avatar, one backend, one workflow, one platform (macOS). Everything else is Phase 2+. No exceptions.
 
 ## Functional Requirements
 
@@ -246,7 +266,7 @@ The interaction model follows game-dialog UX — the avatar speaks context, grap
 
 - FR6: User can speak to the avatar using device microphone
 - FR7: System begins transcribing user speech within 500ms of silence detection; transcription completes within 1 second for utterances under 15 seconds
-- FR8: User can input text as a full-featured alternative to voice — all workflow interactions available via text input
+- FR8: User can input text as a full-featured alternative to voice — all workflow interactions available via text input; the text input field must support paste (Ctrl/Cmd+V), multi-line entry (Shift+Enter for newlines), and be visually co-equal with the voice input button — not a secondary or diminished input mode
 - FR9: System displays a distinct visual indicator (e.g., animated microphone icon) while actively capturing voice input
 
 ### Agent Workflow Execution
@@ -257,13 +277,13 @@ The interaction model follows game-dialog UX — the avatar speaks context, grap
 - FR13: Agent can read, create, and modify files on behalf of the user
 - FR14: Agent can invoke tools and integrations via MCP
 - FR15: System maintains conversation context throughout a workflow session
-- FR16: User can provide input documents (PDF, TXT, DOCX files) to the agent for use in workflow processing, via device file picker or share-sheet
+- FR16: User can provide input documents (PDF, TXT, DOCX files) to the agent for use in workflow processing, via system file dialog or drag-and-drop
 - FR17: System provides visual feedback while the agent is working (avatar animation, progress indication)
 
 ### Decision Presentation & Confirmation
 
 - FR18: System presents agent options and decisions as graphical overlay cards
-- FR19: User can select options by tapping overlay cards or speaking a choice
+- FR19: User can select options by clicking overlay cards or speaking a choice
 - FR20: System presents a confirmation prompt before any agent action that creates, modifies, or deletes files, invokes external APIs, or performs any operation that is not reversible
 - FR21: User can approve, modify, or reject a proposed agent plan; the modified plan is re-presented for confirmation before execution
 - FR22: System hides agent intermediate thinking and only surfaces final results and decision points
@@ -272,7 +292,7 @@ The interaction model follows game-dialog UX — the avatar speaks context, grap
 
 - FR23: System generates structured output documents from completed workflows
 - FR24: User can view completed output artifacts within the app
-- FR25: User can access output files on the device file system
+- FR25: User can access output files on the local file system
 - FR26: Avatar verbally summarizes completed workflow output in 2–4 sentences before transitioning to the output display overlay
 
 ### Traceability & Logging
@@ -285,9 +305,9 @@ The interaction model follows game-dialog UX — the avatar speaks context, grap
 
 - FR30: User can start a new workflow session
 - FR31: User can resume an incomplete workflow session based on an agent-provided list of resumable sessions
-- FR32: Session state is persisted to durable local storage before any app suspension event (backgrounding, device sleep, or OS-initiated process termination)
+- FR32: Session state is persisted to durable local storage on application close, crash, or unexpected termination
 - FR33: Avatar greets returning users by name (from local profile) and offers to continue the most recent incomplete session or start a new one
-- FR36: System identifies and persists a user profile locally on-device (no account or login required for MVP); profile stores: user name, avatar preference, and session history references
+- FR36: System identifies and persists a user profile locally on the user's machine (no account or login required for MVP); profile stores: user name, avatar preference, and session history references
 
 ### Error Handling
 
@@ -299,6 +319,40 @@ The interaction model follows game-dialog UX — the avatar speaks context, grap
 - FR37: When the user speaks during avatar audio playback, system stops playback and captures the new user input (barge-in support)
 - FR38: When network connectivity is lost mid-session, system pauses the active workflow, displays a connectivity error via text overlay, and resumes the session automatically when connectivity is restored without requiring the user to restart
 
+### System Prerequisites
+
+- FR39: On every launch, TalkTerm must verify that the application is running with administrator/elevated privileges (macOS: root or admin group; Windows: Run as Administrator). If the app is not running as admin, it must display a blocking error screen with platform-specific instructions to relaunch as admin. The app must not proceed past this check until admin privileges are confirmed.
+
+### API Key Management
+
+- FR40: System must provide a guided API key entry experience that: (a) accepts an Anthropic API key via a single text input field, (b) validates the key against the Anthropic API before accepting it, (c) stores the validated key securely in the OS credential store via safeStorage, (d) displays inline validation feedback (success or specific error reason), and (e) provides a help link explaining how to obtain an API key
+- FR41: System must detect and handle three API key states on every launch: (a) no key stored — route to API key entry, (b) key stored and valid — proceed to next setup step, (c) key stored but expired/revoked — route to API key entry with a clear message explaining the key is no longer valid and must be replaced
+
+### Launch State Assessment
+
+- FR42: On every launch, after the admin privilege check passes, the system must simultaneously assess the combined state of API key validity, user profile completeness, and avatar selection to determine the correct entry point. The system must not check these states sequentially — all three are evaluated together to route the user directly to the first incomplete step
+
+### Cross-Session Memory
+
+- FR46: System must persist conversation context, user decisions, project vocabulary, and workflow outcomes across sessions using Claude Agent SDK session persistence; on session resume, the avatar must have access to the full history of prior sessions for the active workspace
+- FR47: Avatar must reference past work naturally in conversation (e.g., "Last week you chose the incremental migration approach — want to check how that's going?") when contextually relevant, without requiring the user to remind it of prior decisions or context
+
+### Preference Memory
+
+- FR51: System must track user interaction patterns — including frequently chosen workflow options, preferred brainstorming techniques, default output destinations (local path or external system), avatar persona preferences, and workflow-specific settings — and persist them across sessions using context-scribe (https://github.com/Joaolfelicio/context-scribe) as the preference memory engine. Learned preferences must be surfaced as prioritized defaults or pre-selected options in future sessions without requiring explicit user configuration. Preferences must be scoped per agent type (e.g., Mary may have different defaults than Winston) and per workspace. The user must be able to override any learned preference at any time by simply choosing a different option — the system must adapt to the new pattern without requiring a reset.
+
+### Rich Display
+
+- FR43: During multi-step agent workflows, the system must display a live task progress view showing each workflow step with status (pending/in-progress/completed/failed), a visual progress indicator, elapsed time per step, and live counters for workflow-specific metrics (e.g., "18 ideas generated"); progress updates must be driven by the SDK message stream in real time
+- FR44: Before executing a multi-step workflow, the system must present a plan preview showing numbered steps with descriptions, estimated scope, and approach summary; the plan must be presented as part of the confirm-plan pattern (FR20) with options to approve, modify, or choose a different approach; on approval, the plan preview must transition to the task progress view automatically
+- FR45: The output display panel must support multiple display modes that auto-select based on content type: task progress (live workflow tracking), plan preview (proposed approach), document (rendered markdown), comparison table (scored matrix with color coding and expandable rows), clustered cards (categorized ideas with expandable groups), and activity feed (streaming agent action log, hidden by default)
+
+### External System Writeback
+
+- FR48: After a workflow produces an output artifact, the system must present a "Send to..." option alongside the local file save option, allowing the user to write the artifact back to a connected external system (e.g., Azure DevOps work item, GitHub issue/PR, Confluence page) via MCP tool integrations
+- FR49: The writeback flow must present the user with: (a) a list of available connected systems detected via MCP, (b) a target location picker appropriate to the selected system (e.g., project/board/work item type for Azure DevOps, repo/path for GitHub), and (c) a preview of the content that will be written before confirmation
+- FR50: Writeback actions must follow the confirm-plan pattern (FR20) — the user must approve the target system, location, and content before execution; the avatar must verbally describe what will be written and where before presenting the confirmation overlay
+
 ## Non-Functional Requirements
 
 ### Performance
@@ -306,14 +360,14 @@ The interaction model follows game-dialog UX — the avatar speaks context, grap
 - NFR1a: Avatar input acknowledgement (animation state change to "listening") must occur within 1 second of speech completion for 95th percentile of interactions, as measured by in-app telemetry
 - NFR1b: First spoken response segment must begin within 3 seconds of speech completion for standard conversational turns (non-tool-call responses), achieved via streaming TTS, for 95th percentile of interactions
 - NFR1c: Long-running agent steps (multi-tool-call sequences) must show continuous progress animation with no response-time SLA — user is never shown a blank or frozen state
-- NFR2: Avatar animation must render at minimum 30fps on devices equivalent to or newer than a 3-year-old flagship (e.g., iPhone 12 / Samsung Galaxy S21 class) as measured by frame timing during standard conversation
+- NFR2: Avatar animation must render at minimum 30fps on desktop systems with a GPU manufactured within the last 5 years, as measured by frame timing during standard conversation
 - NFR3: Speech-to-text transcription must begin processing within 500ms of user finishing speech, measured from silence detection
-- NFR4: App launch to avatar-ready state (avatar visible and responsive) must complete within 3 seconds on 95th percentile of supported devices, measured from cold launch
-- NFR5: Agent workflow progress feedback (avatar animation change or overlay indicator) must appear within 1 second of user input confirmation, measured from tap/voice confirmation event
+- NFR4: App launch to avatar-ready state (avatar visible and responsive) must complete within 3 seconds on supported desktop systems, measured from cold launch
+- NFR5: Agent workflow progress feedback (avatar animation change or overlay indicator) must appear within 1 second of user input confirmation, measured from click/voice confirmation event
 
 ### Security
 
-- NFR6: Agent backend API keys must be stored in the device OS keychain (iOS Keychain / Android Keystore); must never be stored in plaintext, exposed in client-side code, or included in logs
+- NFR6: Agent backend API keys must be stored in the OS credential store (macOS Keychain / Windows Credential Manager / Linux Secret Service via libsecret); must never be stored in plaintext, exposed in client-side code, or included in logs
 - NFR7: Raw voice audio must not be stored beyond the active transcription session unless user explicitly opts in; this opt-in must be a separate, clearly labeled consent action
 - NFR8: File system access must be scoped to user-approved directories only; agent may not access directories outside user-granted scope
 - NFR9: All communication with agent backends and third-party services must use TLS 1.2 or higher
@@ -322,7 +376,7 @@ The interaction model follows game-dialog UX — the avatar speaks context, grap
 ### Accessibility
 
 - NFR10: Text input must be a full-featured alternative to voice — no voice-only functionality
-- NFR11: Overlay cards must meet minimum touch target sizes: 44×44pt on iOS (per Apple HIG) and 48×48dp on Android (per Material Design guidelines)
+- NFR11: Overlay cards must meet minimum click target sizes of 32×32px and provide clear hover/focus states for keyboard and mouse interaction
 - NFR12: Avatar speech must be accompanied by on-screen text captions
 
 ### Integration
