@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1440, initial-scale=1.0">
+<title>TalkTerm — Workspace Selection</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', sans-serif; background: #0D0D0D; width: 1440px; height: 900px; overflow: hidden; }
+  .window { width: 1440px; height: 900px; background: linear-gradient(180deg, #1A1A1A 0%, #0D0D0D 100%); display: flex; flex-direction: column; }
+  .titlebar { background: #2A2A2A; padding: 10px 16px; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; }
+  .dot-r { background: #E0301E; } .dot-y { background: #FFB600; } .dot-g { background: #2E7D32; }
+  .titlebar span { flex: 1; text-align: center; font-size: 12px; color: #A0A0A0; }
+
+  .content { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px; }
+
+  .logo-small { font-size: 16px; font-weight: 700; color: #F0F0F0; }
+  .logo-small span { color: #EB8C00; }
+
+  .setup-card { background: rgba(42,42,42,0.8); border-radius: 16px; padding: 40px; width: 520px; text-align: center; border: 1px solid rgba(255,255,255,0.06); }
+  .setup-card h2 { font-size: 22px; font-weight: 600; color: #F0F0F0; margin-bottom: 4px; }
+  .setup-card .desc { font-size: 14px; color: #A0A0A0; margin-bottom: 20px; line-height: 1.5; }
+
+  .section-label { font-size: 11px; color: #A0A0A0; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; font-weight: 500; text-align: left; }
+
+  .browse-box { display: flex; gap: 8px; align-items: center; }
+  .browse-target { flex: 1; padding: 12px 16px; border-radius: 8px; border: 2px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: #6B6B6B; font-size: 13px; text-align: left; cursor: pointer; transition: border-color 0.15s; display: flex; align-items: center; gap: 8px; }
+  .browse-target:hover { border-color: #EB8C00; }
+
+  .git-hint { margin-top: 8px; font-size: 11px; color: #6B6B6B; line-height: 1.4; text-align: left; }
+  .git-row { margin-top: 4px; display: flex; gap: 8px; }
+
+  .input-field { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: #F0F0F0; font-family: 'Inter', sans-serif; font-size: 12px; outline: none; }
+  .input-field:focus { border-color: #EB8C00; }
+  .input-field::placeholder { color: #6B6B6B; }
+
+  .btn-ghost { padding: 8px 16px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: transparent; color: #A0A0A0; font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 500; cursor: pointer; white-space: nowrap; }
+  .btn-ghost:hover { border-color: #EB8C00; color: #EB8C00; }
+
+  .divider { display: flex; align-items: center; gap: 12px; margin: 20px 0; }
+  .divider-line { flex: 1; height: 1px; background: rgba(255,255,255,0.1); }
+  .divider-text { font-size: 11px; color: #6B6B6B; font-weight: 500; }
+
+  .skip-box { padding: 14px 16px; border-radius: 8px; border: 2px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.03); cursor: pointer; transition: border-color 0.15s; text-align: left; }
+  .skip-box:hover { border-color: #EB8C00; }
+  .skip-title { font-size: 13px; color: #F0F0F0; font-weight: 500; margin-bottom: 4px; }
+  .skip-desc { font-size: 11px; color: #6B6B6B; line-height: 1.4; }
+  .skip-badge { margin-top: 6px; display: flex; align-items: center; gap: 4px; }
+  .skip-badge svg { width: 12px; height: 12px; fill: #EB8C00; }
+  .skip-badge span { font-size: 10px; color: #EB8C00; }
+
+  .version-badge { position: fixed; bottom: 12px; right: 16px; font-size: 10px; color: #6B6B6B; font-weight: 500; letter-spacing: 0.3px; }
+</style>
+</head>
+<body>
+<div class="window">
+  <div class="titlebar">
+    <div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div>
+    <span>TalkTerm</span>
+  </div>
+  <div class="content">
+    <div class="logo-small">Talk<span>Term</span></div>
+    <div class="setup-card">
+      <h2>Project Workspace</h2>
+      <p class="desc">Point Mary at a project repo so she has full context for your workflows — or skip to start fresh with BMAD defaults.</p>
+
+      <!-- Option A -->
+      <div style="text-align:left;margin-bottom:16px;">
+        <div class="section-label">Option A — Use your project</div>
+        <div class="browse-box">
+          <div class="browse-target">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="#6B6B6B"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+            <span>Browse for a project folder...</span>
+          </div>
+        </div>
+        <div class="git-hint">Or paste a Git URL:</div>
+        <div class="git-row">
+          <input type="text" class="input-field" placeholder="https://github.com/org/repo.git">
+          <button class="btn-ghost">Clone & Use</button>
+        </div>
+      </div>
+
+      <!-- Divider -->
+      <div class="divider">
+        <div class="divider-line"></div>
+        <span class="divider-text">OR</span>
+        <div class="divider-line"></div>
+      </div>
+
+      <!-- Option B -->
+      <div style="text-align:left;margin-bottom:20px;">
+        <div class="section-label">Option B — Start fresh</div>
+        <div class="skip-box">
+          <div class="skip-title">Skip — use BMAD defaults</div>
+          <div class="skip-desc">Mary will work with standard BMAD workflows and templates. You can connect a project later.</div>
+          <div class="skip-badge">
+            <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+            <span>BMAD-method repo cloned silently in background</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="version-badge">v1.4 — 2026-03-24 12:00 UTC</div>
+</div>
+</body>
+</html>

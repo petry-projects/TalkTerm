@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TalkTerm — Design Direction Mockups</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --primary: #EB8C00;
+    --primary-light: #FFB600;
+    --primary-dark: #D04A02;
+    --accent: #DB536A;
+    --danger: #E0301E;
+    --success: #2E7D32;
+    --info: #1565C0;
+    --stage-bg: #1A1A1A;
+    --stage-deep: #0D0D0D;
+    --surface: #FFFFFF;
+    --surface-elevated: #F5F5F5;
+    --surface-muted: #2A2A2A;
+    --text-primary: #1A1A1A;
+    --text-secondary: #6B6B6B;
+    --text-on-dark: #F0F0F0;
+    --text-muted-dark: #A0A0A0;
+    --border: #E0E0E0;
+    --border-active: #EB8C00;
+  }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: #0D0D0D;
+    color: var(--text-on-dark);
+    min-height: 100vh;
+  }
+
+  /* Navigation */
+  .nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    background: rgba(13,13,13,0.95);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(235,140,0,0.2);
+    padding: 12px 32px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .nav h1 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--primary);
+    margin-right: 24px;
+  }
+  .nav-btn {
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: transparent;
+    color: var(--text-muted-dark);
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .nav-btn:hover, .nav-btn.active {
+    background: var(--primary);
+    color: #000;
+    border-color: var(--primary);
+  }
+
+  /* Section container */
+  .direction {
+    display: none;
+    padding-top: 60px;
+    min-height: 100vh;
+  }
+  .direction.active { display: block; }
+
+  .direction-header {
+    padding: 32px 48px 24px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .direction-header h2 {
+    font-size: 22px;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .direction-header p {
+    color: var(--text-muted-dark);
+    font-size: 14px;
+    line-height: 1.5;
+    max-width: 700px;
+  }
+
+  /* Mockup frame */
+  .mockup-frame {
+    margin: 32px 48px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.08);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  }
+  .mockup-titlebar {
+    background: #2A2A2A;
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .mockup-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #555;
+  }
+  .mockup-dot.red { background: #E0301E; }
+  .mockup-dot.yellow { background: #FFB600; }
+  .mockup-dot.green { background: #2E7D32; }
+  .mockup-titlebar span {
+    flex: 1;
+    text-align: center;
+    font-size: 12px;
+    color: var(--text-muted-dark);
+  }
+
+  .mockup-content {
+    background: var(--stage-bg);
+    min-height: 600px;
+    position: relative;
+  }
+
+  /* Avatar placeholder */
+  .avatar-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+  .avatar-circle {
+    width: 160px;
+    height: 160px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary-dark), var(--primary), var(--primary-light));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+  .avatar-circle::after {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border-radius: 50%;
+    border: 2px solid rgba(235,140,0,0.3);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 0.3; transform: scale(1); }
+    50% { opacity: 0.7; transform: scale(1.03); }
+  }
+  .avatar-circle span {
+    font-size: 48px;
+    color: #000;
+    font-weight: 700;
+  }
+  .avatar-name {
+    font-size: 14px;
+    color: var(--primary-light);
+    font-weight: 500;
+  }
+  .avatar-role {
+    font-size: 12px;
+    color: var(--text-muted-dark);
+  }
+
+  /* Caption bar */
+  .caption-bar {
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(8px);
+    padding: 12px 24px;
+    border-radius: 8px;
+    max-width: 500px;
+    text-align: center;
+  }
+  .caption-bar p {
+    font-size: 14px;
+    color: var(--text-on-dark);
+    line-height: 1.5;
+  }
+
+  /* Overlay cards */
+  .overlay-card {
+    background: var(--surface);
+    border-radius: 10px;
+    padding: 20px;
+    color: var(--text-primary);
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  }
+  .overlay-card:hover {
+    border-color: var(--primary);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(235,140,0,0.15);
+  }
+  .overlay-card h4 {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .overlay-card p {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.4;
+  }
+  .overlay-card.selected {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 1px var(--primary), 0 8px 24px rgba(235,140,0,0.2);
+  }
+
+  /* Input area */
+  .input-area {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 24px;
+    background: rgba(0,0,0,0.4);
+    border-radius: 12px;
+  }
+  .mic-btn {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--primary);
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+  .mic-btn:hover {
+    background: var(--primary-light);
+    transform: scale(1.05);
+  }
+  .mic-btn svg {
+    width: 22px;
+    height: 22px;
+    fill: #000;
+  }
+  .text-input {
+    flex: 1;
+    padding: 12px 16px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.05);
+    color: var(--text-on-dark);
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .text-input:focus {
+    border-color: var(--primary);
+  }
+  .text-input::placeholder {
+    color: var(--text-muted-dark);
+  }
+
+  /* Status indicator */
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .status-pill.listening {
+    background: rgba(235,140,0,0.15);
+    color: var(--primary-light);
+  }
+  .status-pill.thinking {
+    background: rgba(235,140,0,0.1);
+    color: var(--primary);
+  }
+  .status-pill .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    animation: blink 1.2s ease-in-out infinite;
+  }
+  @keyframes blink {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 1; }
+  }
+
+  /* Output panel */
+  .output-panel {
+    background: var(--surface);
+    border-radius: 12px 12px 0 0;
+    color: var(--text-primary);
+    box-shadow: 0 -4px 24px rgba(0,0,0,0.3);
+  }
+  .output-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+  }
+  .output-panel-header h3 {
+    font-size: 16px;
+    font-weight: 600;
+  }
+  .output-panel-body {
+    padding: 24px;
+  }
+
+  /* Confirmation bar */
+  .confirm-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 24px;
+    background: rgba(42,42,42,0.9);
+    border-radius: 10px;
+    border: 1px solid rgba(235,140,0,0.3);
+  }
+  .confirm-bar p {
+    flex: 1;
+    font-size: 14px;
+    color: var(--text-on-dark);
+  }
+  .confirm-btn {
+    padding: 8px 20px;
+    border-radius: 6px;
+    border: none;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .confirm-btn.approve {
+    background: var(--primary);
+    color: #000;
+  }
+  .confirm-btn.approve:hover {
+    background: var(--primary-light);
+  }
+  .confirm-btn.reject {
+    background: transparent;
+    color: var(--text-muted-dark);
+    border: 1px solid rgba(255,255,255,0.15);
+  }
+  .confirm-btn.reject:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* Direction-specific layouts */
+
+  /* Direction 1: Centered Stage */
+  .d1-layout {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 600px;
+    padding: 48px 48px 24px;
+    background: linear-gradient(180deg, var(--stage-bg) 0%, var(--stage-deep) 100%);
+  }
+  .d1-cards {
+    display: flex;
+    gap: 16px;
+    width: 100%;
+    max-width: 700px;
+  }
+  .d1-cards .overlay-card { flex: 1; }
+  .d1-input { width: 100%; max-width: 700px; }
+
+  /* Direction 2: Theater Wide */
+  .d2-layout {
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr auto auto auto;
+    min-height: 600px;
+    background: linear-gradient(180deg, var(--stage-bg) 0%, var(--stage-deep) 100%);
+  }
+  .d2-stage {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32px;
+  }
+  .d2-caption {
+    display: flex;
+    justify-content: center;
+    padding: 0 48px 16px;
+  }
+  .d2-cards {
+    display: flex;
+    gap: 12px;
+    padding: 0 48px 16px;
+    overflow-x: auto;
+  }
+  .d2-cards .overlay-card {
+    min-width: 200px;
+    flex: 1;
+  }
+  .d2-input {
+    padding: 16px 48px 24px;
+  }
+
+  /* Direction 3: Side Panel */
+  .d3-layout {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    min-height: 600px;
+    background: var(--stage-bg);
+  }
+  .d3-stage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 32px;
+    background: linear-gradient(180deg, var(--stage-bg) 0%, var(--stage-deep) 100%);
+  }
+  .d3-panel {
+    background: var(--surface-muted);
+    border-left: 1px solid rgba(255,255,255,0.06);
+    display: flex;
+    flex-direction: column;
+  }
+  .d3-panel-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    font-size: 13px;
+    color: var(--text-muted-dark);
+    font-weight: 500;
+  }
+  .d3-panel-cards {
+    flex: 1;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow-y: auto;
+  }
+  .d3-panel-input {
+    padding: 16px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+  }
+
+  /* Direction 4: Immersive */
+  .d4-layout {
+    min-height: 600px;
+    background: radial-gradient(ellipse at center 30%, rgba(235,140,0,0.06) 0%, var(--stage-deep) 70%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+  }
+  .d4-stage {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding-top: 24px;
+  }
+  .d4-avatar-circle {
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary-dark), var(--primary), var(--primary-light));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    box-shadow: 0 0 60px rgba(235,140,0,0.2);
+  }
+  .d4-avatar-circle span { font-size: 56px; color: #000; font-weight: 700; }
+  .d4-bottom {
+    width: 100%;
+    padding: 0 48px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .d4-cards {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+  }
+  .d4-cards .overlay-card {
+    max-width: 220px;
+    flex: 1;
+    background: rgba(255,255,255,0.95);
+    backdrop-filter: blur(12px);
+  }
+  .d4-input {
+    max-width: 600px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  /* Direction 5: Compact Professional */
+  .d5-layout {
+    min-height: 600px;
+    background: var(--stage-bg);
+    display: grid;
+    grid-template-rows: auto 1fr auto auto;
+  }
+  .d5-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 24px;
+    background: var(--surface-muted);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .d5-topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .d5-mini-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 700;
+    color: #000;
+  }
+  .d5-stage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 24px;
+    background: linear-gradient(180deg, var(--stage-bg), var(--stage-deep));
+  }
+  .d5-cards {
+    display: flex;
+    gap: 12px;
+    padding: 16px 24px;
+  }
+  .d5-cards .overlay-card { flex: 1; }
+  .d5-input { padding: 12px 24px 16px; }
+
+  /* Direction 6: Output-Focused */
+  .d6-layout {
+    min-height: 600px;
+    background: var(--stage-bg);
+    display: grid;
+    grid-template-rows: 35% 1fr auto;
+  }
+  .d6-stage {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    padding: 24px 48px;
+    background: linear-gradient(180deg, var(--stage-bg), rgba(26,26,26,0.95));
+  }
+  .d6-stage .avatar-circle { width: 120px; height: 120px; }
+  .d6-stage .avatar-circle span { font-size: 36px; }
+  .d6-stage-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .d6-output {
+    padding: 0;
+  }
+  .d6-input {
+    padding: 16px 48px 24px;
+    background: rgba(0,0,0,0.3);
+  }
+
+  /* Direction 7: Floating Cards */
+  .d7-layout {
+    min-height: 600px;
+    background: linear-gradient(180deg, var(--stage-bg) 0%, var(--stage-deep) 100%);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .d7-stage {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 32px;
+  }
+  .d7-floating {
+    position: absolute;
+    bottom: 100px;
+    left: 48px;
+    right: 48px;
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    perspective: 800px;
+  }
+  .d7-floating .overlay-card {
+    transform: rotateX(2deg);
+    max-width: 240px;
+    flex: 1;
+  }
+  .d7-floating .overlay-card:hover {
+    transform: rotateX(0deg) translateY(-4px);
+  }
+  .d7-input {
+    width: 100%;
+    padding: 16px 48px 24px;
+  }
+
+  /* Tags */
+  .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .tag.phase { background: rgba(235,140,0,0.15); color: var(--primary-light); }
+  .tag.new { background: rgba(46,125,50,0.15); color: #4CAF50; }
+
+  /* Evaluation section */
+  .eval-section {
+    padding: 48px;
+  }
+  .eval-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 24px;
+    margin-top: 24px;
+  }
+  .eval-card {
+    background: var(--surface-muted);
+    border-radius: 10px;
+    padding: 24px;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .eval-card h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--primary-light);
+    margin-bottom: 12px;
+  }
+  .eval-card ul {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .eval-card li {
+    font-size: 13px;
+    color: var(--text-muted-dark);
+    line-height: 1.5;
+    padding-left: 16px;
+    position: relative;
+  }
+  .eval-card li::before {
+    content: '→';
+    position: absolute;
+    left: 0;
+    color: var(--primary);
+  }
+
+  /* SVG mic icon inline */
+  .mic-svg {
+    width: 22px;
+    height: 22px;
+  }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <h1>TalkTerm Design Directions</h1>
+  <button class="nav-btn active" onclick="showDirection(event,'d1')">1. Centered Stage</button>
+  <button class="nav-btn" onclick="showDirection(event,'d2')">2. Theater Wide</button>
+  <button class="nav-btn" onclick="showDirection(event,'d3')">3. Side Panel</button>
+  <button class="nav-btn" onclick="showDirection(event,'d4')">4. Immersive</button>
+  <button class="nav-btn" onclick="showDirection(event,'d5')">5. Compact Pro</button>
+  <button class="nav-btn" onclick="showDirection(event,'d6')">6. Output Focus</button>
+  <button class="nav-btn" onclick="showDirection(event,'d7')">7. Floating Cards</button>
+  <button class="nav-btn" onclick="showDirection(event,'eval')">Compare</button>
+</nav>
+
+<!-- Direction 1: Centered Stage -->
+<section id="d1" class="direction active">
+  <div class="direction-header">
+    <h2>Direction 1: Centered Stage <span class="tag phase">Recommended for MVP</span></h2>
+    <p>Classic theater layout. Avatar dominates the center, overlay cards appear below, input anchored at bottom. Clean vertical flow that maps directly to the game-dialog mental model. The simplest layout — and often the best.</p>
+  </div>
+  <div class="mockup-frame">
+    <div class="mockup-titlebar">
+      <div class="mockup-dot red"></div>
+      <div class="mockup-dot yellow"></div>
+      <div class="mockup-dot green"></div>
+      <span>TalkTerm — Mary, Business Analyst</span>
+    </div>
+    <div class="mockup-content d1-layout">
+      <div class="avatar-placeholder">
+        <div class="avatar-circle"><span>M</span></div>
+        <div class="avatar-name">Mary</div>
+        <div class="avatar-role">Business Analyst</div>
+        <div class="status-pill listening"><span class="dot"></span> Listening</div>
+      </div>
+      <div class="caption-bar">
+        <p>"I've organized your ideas into 4 categories. Which approach would you like to explore first?"</p>
+      </div>
+      <div class="d1-cards">
+        <div class="overlay-card">
+          <h4>User Onboarding</h4>
+          <p>8 ideas focused on reducing time-to-value for new users</p>
+        </div>
+        <div class="overlay-card selected">
+          <h4>Retention Hooks</h4>
+          <p>6 ideas for increasing daily active usage patterns</p>
+        </div>
+        <div class="overlay-card">
+          <h4>Social Features</h4>
+          <p>5 ideas leveraging team collaboration dynamics</p>
+        </div>
+      </div>
+      <div class="d1-input">
+        <div class="input-area">
+          <button class="mic-btn">
+            <svg class="mic-svg" viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5zm6 6c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+          </button>
+          <input type="text" class="text-input" placeholder="Type or speak to Mary...">
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Direction 2: Theater Wide -->
+<section id="d2" class="direction">
+  <div class="direction-header">
+    <h2>Direction 2: Theater Wide</h2>
+    <p>Full-width stage with horizontal card rail. Cards scroll horizontally when more than 4 options. Maximizes avatar presence and feels cinematic. Good for workflows with many options.</p>
+  </div>
+  <div class="mockup-frame">
+    <div class="mockup-titlebar">
+      <div class="mockup-dot red"></div>
+      <div class="mockup-dot yellow"></div>
+      <div class="mockup-dot green"></div>
+      <span>TalkTerm — Mary, Business Analyst</span>
+    </div>
+    <div class="mockup-content d2-layout">
+      <div class="d2-stage">
+        <div class="avatar-placeholder">
+          <div class="avatar-circle"><span>M</span></div>
+          <div class="avatar-name">Mary</div>
+          <div class="avatar-role">Business Analyst</div>
+          <div class="status-pill thinking"><span class="dot"></span> Analyzing your ideas...</div>
+        </div>
+      </div>
+      <div class="d2-caption">
+        <div class="caption-bar">
+          <p>"I've identified 5 brainstorming techniques that would work well here. Pick one to start."</p>
+        </div>
+      </div>
+      <div class="d2-cards">
+        <div class="overlay-card">
+          <h4>Mind Mapping</h4>
+          <p>Visual connections between concepts</p>
+        </div>
+        <div class="overlay-card selected">
+          <h4>Six Hats</h4>
+          <p>Structured multi-perspective analysis</p>
+        </div>
+        <div class="overlay-card">
+          <h4>SCAMPER</h4>
+          <p>Systematic idea modification</p>
+        </div>
+        <div class="overlay-card">
+          <h4>Reverse Brainstorm</h4>
+          <p>Invert the problem to find solutions</p>
+        </div>
+        <div class="overlay-card">
+          <h4>First Principles</h4>
+          <p>Break down to fundamental truths</p>
+        </div>
+      </div>
+      <div class="d2-input">
+        <div class="input-area">
+          <button class="mic-btn">
+            <svg class="mic-svg" viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5zm6 6c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+          </button>
+          <input type="text" class="text-input" placeholder="Type or speak to Mary...">
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Direction 3: Side Panel -->
+<section id="d3" class="direction">
+  <div class="direction-header">
+    <h2>Direction 3: Side Panel</h2>
+    <p>Avatar stage on the left, persistent panel on the right for cards and output. Keeps the avatar visible at all times while giving more vertical space for content-heavy overlays. Good for output-heavy workflows.</p>
+  </div>
+  <div class="mockup-frame">
+    <div class="mockup-titlebar">
+      <div class="mockup-dot red"></div>
+      <div class="mockup-dot yellow"></div>
+      <div class="mockup-dot green"></div>
+      <span>TalkTerm — Mary, Business Analyst</span>
+    </div>
+    <div class="mockup-content d3-layout">
+      <div class="d3-stage">
+        <div class="avatar-placeholder">
+          <div class="avatar-circle"><span>M</span></div>
+          <div class="avatar-name">Mary</div>
+          <div class="avatar-role">Business Analyst</div>
+        </div>
+        <div class="caption-bar">
+          <p>"Here's what I've found in your competitor analysis. Review each finding."</p>
+        </div>
+        <div class="status-pill listening"><span class="dot"></span> Listening</div>
+        <div style="flex:1"></div>
+        <div class="input-area" style="width: 100%; max-width: 500px;">
+          <button class="mic-btn">
+            <svg class="mic-svg" viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5zm6 6c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+          </button>
+          <input type="text" class="text-input" placeholder="Type or speak to Mary...">
+        </div>
+      </div>
+      <div class="d3-panel">
+        <div class="d3-panel-header">Findings — Competitor Pricing</div>
+        <div class="d3-panel-cards">
+          <div class="overlay-card">
+            <h4>Competitor A — Freemium</h4>
+            <p>Free tier with 100 actions/month. Pro at $29/mo. Enterprise custom.</p>
+          </div>
+          <div class="overlay-card">
+            <h4>Competitor B — Usage Based</h4>
+            <p>$0.05 per action. No free tier. Volume discounts at 10K+ actions.</p>
+          </div>
+          <div class="overlay-card selected">
+            <h4>Competitor C — Flat Rate</h4>
+            <p>$49/mo unlimited actions. Team tier at $199/mo for 10 seats.</p>
+          </div>
+          <div class="overlay-card">
+            <h4>Market Gap Identified</h4>
+            <p style="color: var(--primary-dark); font-weight: 500;">No competitor offers BYOK pricing — potential differentiator.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Direction 4: Immersive -->
+<section id="d4" class="direction">
+  <div class="direction-header">
+    <h2>Direction 4: Immersive</h2>
+    <p>Larger avatar with ambient glow effect. Creates a more dramatic, cinematic feel. Cards are semi-transparent, floating over the stage. Maximum emotional impact — the avatar truly feels like a presence in the room.</p>
+  </div>
+  <div class="mockup-frame">
+    <div class="mockup-titlebar">
+      <div class="mockup-dot red"></div>
+      <div class="mockup-dot yellow"></div>
+      <div class="mockup-dot green"></div>
+      <span>TalkTerm — Mary, Business Analyst</span>
+    </div>
+    <div class="mockup-content d4-layout">
+      <div class="d4-stage">
+        <div class="d4-avatar-circle"><span>M</span></div>
+        <div class="avatar-name" style="font-size: 16px;">Mary</div>
+        <div class="avatar-role">Business Analyst</div>
+        <div class="caption-bar" style="max-width: 550px;">
+          <p>"Let's start with what excites you most about this product. Don't hold back — we'll organize later."</p>
+        </div>
+      </div>
+      <div class="d4-bottom">
+        <div class="d4-cards">
+          <div class="overlay-card">
+            <h4>Free Association</h4>
+            <p>Say anything — I'll capture and organize</p>
+          </div>
+          <div class="overlay-card">
+            <h4>Guided Questions</h4>
+            <p>I'll ask targeted questions to draw out ideas</p>
+          </div>
+          <div class="overlay-card">
+            <h4>Show Me Examples</h4>
+            <p>See what others have brainstormed for similar products</p>
+          </div>
+        </div>
+        <div class="d4-input">
+          <div class="input-area">
+            <button class="mic-btn">
+              <svg class="mic-svg" viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5zm6 6c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+            </button>
+            <input type="text" class="text-input" placeholder="Type or speak to Mary...">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Direction 5: Compact Professional -->
+<section id="d5" class="direction">
+  <div class="direction-header">
+    <h2>Direction 5: Compact Professional</h2>
+    <p>Small avatar in a top bar with name/role, large stage area for content. More utilitarian — prioritizes information density over avatar presence. Good for technical users who want to see more output, less theater.</p>
+  </div>
+  <div class="mockup-frame">
+    <div class="mockup-titlebar">
+      <div class="mockup-dot red"></div>
+      <div class="mockup-dot yellow"></div>
+      <div class="mockup-dot green"></div>
+      <span>TalkTerm</span>
+    </div>
+    <div class="mockup-content d5-layout">
+      <div class="d5-topbar">
+        <div class="d5-topbar-left">
+          <div class="d5-mini-avatar">M</div>
+          <div>
+            <div style="font-size: 13px; font-weight: 600;">Mary</div>
+            <div style="font-size: 11px; color: var(--text-muted-dark);">Business Analyst</div>
+          </div>
+          <div class="status-pill listening"><span class="dot"></span> Listening</div>
+        </div>
+        <div style="font-size: 12px; color: var(--text-muted-dark);">Session: Onboarding Brainstorm • 12 min</div>
+      </div>
+      <div class="d5-stage">
+        <div class="avatar-placeholder">
+          <div class="avatar-circle"><span>M</span></div>
+        </div>
+        <div class="caption-bar" style="max-width: 600px;">
+          <p>"I'm ready to write the brainstorming summary to your project folder. Here's what I'll create:"</p>
+        </div>
+      </div>
+      <div class="d5-cards">
+        <div class="overlay-card" style="flex: 1;">
+          <div class="confirm-bar" style="background: transparent; border: none; padding: 0; flex-direction: column; align-items: flex-start; gap: 8px;">
+            <p style="font-size: 13px; color: var(--text-primary);"><strong>Create file:</strong> _bmad-output/brainstorming/onboarding-brainstorm.md</p>
+            <p style="font-size: 12px; color: var(--text-secondary);">24 ideas • 4 categories • Priority rankings included</p>
+            <div style="display: flex; gap: 8px; margin-top: 4px;">
+              <button class="confirm-btn approve">Approve & Write</button>
+              <button class="confirm-btn reject">Modify Plan</button>
+              <button class="confirm-btn reject">Cancel</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="d5-input">
+        <div class="input-area">
+          <button class="mic-btn">
+            <svg class="mic-svg" viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5zm6 6c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+          </button>
+          <input type="text" class="text-input" placeholder="Type or speak to Mary...">
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Direction 6: Output-Focused -->
+<section id="d6" class="direction">
+  <div class="direction-header">
+    <h2>Direction 6: Output Focus</h2>
+    <p>Smaller avatar area at top, large output panel below. Optimized for the moment after work is done — reviewing and exploring structured output. Avatar stays present but yields screen real estate to the deliverable.</p>
+  </div>
+  <div class="mockup-frame">
+    <div class="mockup-titlebar">
+      <div class="mockup-dot red"></div>
+      <div class="mockup-dot yellow"></div>
+      <div class="mockup-dot green"></div>
+      <span>TalkTerm — Mary, Business Analyst</span>
+    </div>
+    <div class="mockup-content d6-layout">
+      <div class="d6-stage">
+        <div class="avatar-placeholder">
+          <div class="avatar-circle" style="width:120px;height:120px;"><span style="font-size:36px;">M</span></div>
+          <div class="avatar-name">Mary</div>
+        </div>
+        <div class="d6-stage-info">
+          <div class="caption-bar" style="text-align: left;">
+            <p>"Here's your completed brainstorming document. 24 ideas organized into 4 categories with priority rankings."</p>
+          </div>
+          <div class="status-pill" style="background: rgba(46,125,50,0.15); color: #4CAF50; align-self: flex-start;"><span class="dot" style="animation: none; opacity: 1;"></span> Workflow Complete</div>
+        </div>
+      </div>
+      <div class="d6-output">
+        <div class="output-panel">
+          <div class="output-panel-header">
+            <h3>Brainstorming: Onboarding Features</h3>
+            <div style="display:flex; gap:8px;">
+              <span class="tag new">24 ideas</span>
+              <span class="tag phase">4 categories</span>
+            </div>
+          </div>
+          <div class="output-panel-body">
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px;">
+              <div style="padding:16px; background:var(--surface-elevated); border-radius:8px;">
+                <h4 style="font-size:14px; margin-bottom:8px; color:var(--primary-dark);">User Onboarding (8 ideas)</h4>
+                <ul style="list-style:none; font-size:13px; color:var(--text-secondary); display:flex; flex-direction:column; gap:4px;">
+                  <li>→ Progressive disclosure tutorial</li>
+                  <li>→ Avatar-guided first workflow</li>
+                  <li>→ Template starter projects</li>
+                  <li style="color:var(--text-muted-dark);">+ 5 more...</li>
+                </ul>
+              </div>
+              <div style="padding:16px; background:var(--surface-elevated); border-radius:8px;">
+                <h4 style="font-size:14px; margin-bottom:8px; color:var(--primary-dark);">Retention Hooks (6 ideas)</h4>
+                <ul style="list-style:none; font-size:13px; color:var(--text-secondary); display:flex; flex-direction:column; gap:4px;">
+                  <li>→ Daily avatar greeting variation</li>
+                  <li>→ Workflow streak tracking</li>
+                  <li>→ Smart session suggestions</li>
+                  <li style="color:var(--text-muted-dark);">+ 3 more...</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="d6-input">
+        <div class="input-area">
+          <button class="mic-btn">
+            <svg class="mic-svg" viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5zm6 6c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+          </button>
+          <input type="text" class="text-input" placeholder="Type or speak to Mary...">
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Direction 7: Floating Cards -->
+<section id="d7" class="direction">
+  <div class="direction-header">
+    <h2>Direction 7: Floating Cards</h2>
+    <p>Cards float over the stage with subtle 3D perspective tilt. Creates a more dynamic, game-like feel while keeping the layout simple. The perspective adds depth and makes card selection feel more physical and tactile.</p>
+  </div>
+  <div class="mockup-frame">
+    <div class="mockup-titlebar">
+      <div class="mockup-dot red"></div>
+      <div class="mockup-dot yellow"></div>
+      <div class="mockup-dot green"></div>
+      <span>TalkTerm — Mary, Business Analyst</span>
+    </div>
+    <div class="mockup-content d7-layout">
+      <div class="d7-stage">
+        <div class="avatar-placeholder">
+          <div class="avatar-circle"><span>M</span></div>
+          <div class="avatar-name">Mary</div>
+          <div class="avatar-role">Business Analyst</div>
+        </div>
+        <div class="caption-bar">
+          <p>"Great session! Here are three ways we can wrap up. What feels right?"</p>
+        </div>
+      </div>
+      <div class="d7-floating">
+        <div class="overlay-card">
+          <h4>Save & Continue Later</h4>
+          <p>I'll save your progress. We can pick up anytime.</p>
+        </div>
+        <div class="overlay-card selected">
+          <h4>Generate Summary</h4>
+          <p>Create the brainstorming document with all our ideas organized.</p>
+        </div>
+        <div class="overlay-card">
+          <h4>Keep Going</h4>
+          <p>We're on a roll — let's explore more ideas.</p>
+        </div>
+      </div>
+      <div class="d7-input">
+        <div class="input-area" style="max-width:600px; margin:0 auto;">
+          <button class="mic-btn">
+            <svg class="mic-svg" viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5zm6 6c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+          </button>
+          <input type="text" class="text-input" placeholder="Type or speak to Mary...">
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Evaluation -->
+<section id="eval" class="direction">
+  <div class="direction-header">
+    <h2>Compare Design Directions</h2>
+    <p>Evaluate each direction against TalkTerm's core experience principles and emotional goals.</p>
+  </div>
+  <div class="eval-section">
+    <div class="eval-grid">
+      <div class="eval-card">
+        <h4>1. Centered Stage</h4>
+        <ul>
+          <li>Simplest layout — maps directly to game-dialog mental model</li>
+          <li>Avatar is the clear focal point</li>
+          <li>Vertical flow: avatar → caption → cards → input</li>
+          <li>Easy to implement and maintain for solo developer</li>
+          <li>Cards limited to horizontal row (3-4 max visible)</li>
+        </ul>
+      </div>
+      <div class="eval-card">
+        <h4>2. Theater Wide</h4>
+        <ul>
+          <li>Horizontal card rail supports 5+ options with scroll</li>
+          <li>Full-width stage creates cinematic presence</li>
+          <li>Good for workflows with many technique/option choices</li>
+          <li>Cards may feel small on narrow windows</li>
+          <li>Slightly more complex responsive behavior</li>
+        </ul>
+      </div>
+      <div class="eval-card">
+        <h4>3. Side Panel</h4>
+        <ul>
+          <li>Avatar always fully visible — never obscured by content</li>
+          <li>Panel gives vertical space for content-heavy cards</li>
+          <li>Natural for output review (scrollable panel)</li>
+          <li>Breaks the centered theater metaphor</li>
+          <li>Feels more like a productivity tool than a companion</li>
+        </ul>
+      </div>
+      <div class="eval-card">
+        <h4>4. Immersive</h4>
+        <ul>
+          <li>Maximum emotional impact — avatar with ambient glow</li>
+          <li>Semi-transparent cards create depth</li>
+          <li>Strongest "wow factor" for first impression</li>
+          <li>May feel heavy for extended work sessions</li>
+          <li>Glow effects need careful performance tuning</li>
+        </ul>
+      </div>
+      <div class="eval-card">
+        <h4>5. Compact Professional</h4>
+        <ul>
+          <li>Top bar with mini avatar maximizes content area</li>
+          <li>Session info visible at all times</li>
+          <li>Best for technical users (Marcus persona)</li>
+          <li>Reduces avatar emotional presence significantly</li>
+          <li>Feels more like a tool than a companion</li>
+        </ul>
+      </div>
+      <div class="eval-card">
+        <h4>6. Output Focus</h4>
+        <ul>
+          <li>Optimized for deliverable review moment</li>
+          <li>Large output panel with structured content</li>
+          <li>Avatar present but secondary to output</li>
+          <li>Great for the "completion" phase of workflows</li>
+          <li>Less suitable for the conversation/decision phases</li>
+        </ul>
+      </div>
+      <div class="eval-card">
+        <h4>7. Floating Cards</h4>
+        <ul>
+          <li>3D perspective tilt adds tactile, game-like feel</li>
+          <li>Cards feel physical — supports gamified decisions</li>
+          <li>Clean centered layout with added visual depth</li>
+          <li>Perspective effects need GPU — matches Rive requirement</li>
+          <li>Most aligned with "gamified decisions" principle</li>
+        </ul>
+      </div>
+      <div class="eval-card" style="border: 1px solid var(--primary); background: rgba(235,140,0,0.05);">
+        <h4 style="color: var(--primary);">Recommendation</h4>
+        <ul>
+          <li><strong>Primary layout: Direction 1 (Centered Stage)</strong> — for conversation and decision phases</li>
+          <li><strong>With elements from D7 (Floating Cards)</strong> — subtle perspective tilt on card hover for gamified feel</li>
+          <li><strong>And D6 (Output Focus)</strong> — avatar shrinks when output panel expands for deliverable review</li>
+          <li>This hybrid adapts layout to the current phase of the workflow while keeping the centered stage as home base</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+function showDirection(e, id) {
+  document.querySelectorAll('.direction').forEach(d => d.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  e.target.classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+</script>
+
+</body>
+</html>
