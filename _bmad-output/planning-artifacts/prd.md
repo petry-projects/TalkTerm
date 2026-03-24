@@ -21,7 +21,7 @@ revisionHistory:
   - date: '2026-03-22'
     revision: 'v2.1 — Added FR39 (admin privilege check on every launch), FR40 (guided API key setup with live validation), FR41 (API key state management), FR42 (combined launch state assessment), FR43 (live task progress display), FR44 (plan preview with confirm-plan integration), FR45 (multi-mode rich content rendering). Updated MVP scope to macOS + Windows. Added admin privilege requirement to platform requirements.'
   - date: '2026-03-23'
-    revision: 'v2.2 — Strengthened FR8 (text input must support paste, multi-line, and be visually co-equal with voice). Added FR48 (external system writeback via MCP after workflow output), FR49 (connected system discovery and target picker), FR50 (writeback confirmation with confirm-plan pattern). Added FR51 (preference memory via context-scribe — tracks interaction patterns, surfaces learned defaults per agent type and workspace). Driven by UX review feedback.'
+    revision: 'v2.2 — Strengthened FR8 (text input co-equal with voice). Added FR48-50 (external system writeback via MCP). Added FR51 (preference memory via context-scribe). Added FR52-53 (workspace selection). Added FR54 (contextual writeback: ADO→ADO, repo→PR, local→file based on session origin), FR55 (PR flow), FR56 (ADO writeback flow). Updated FR42 to include workspace in launch state assessment. Driven by UX review feedback.'
 ---
 
 # Product Requirements Document - TalkTerm
@@ -330,7 +330,12 @@ The interaction model follows game-dialog UX — the avatar speaks context, grap
 
 ### Launch State Assessment
 
-- FR42: On every launch, after the admin privilege check passes, the system must simultaneously assess the combined state of API key validity, user profile completeness, and avatar selection to determine the correct entry point. The system must not check these states sequentially — all three are evaluated together to route the user directly to the first incomplete step
+- FR42: On every launch, after the admin privilege check passes, the system must simultaneously assess the combined state of API key validity, user profile completeness, avatar selection, and workspace selection to determine the correct entry point. The system must not check these states sequentially — all four are evaluated together to route the user directly to the first incomplete step
+
+### Workspace Selection
+
+- FR52: After avatar selection and before the first conversation, the system must present a workspace selection screen offering two paths: (a) the user selects a local project folder or provides a Git repository URL to clone — giving the agent full project context for workflows, or (b) the user skips workspace selection, in which case the system silently clones the BMAD-method repository (https://github.com/bmadcode/BMAD-METHOD) as the default workspace so that BMAD agent workflows have a valid working context. The selected or default workspace must be persisted across sessions.
+- FR53: When the user skips workspace selection, the BMAD-method repo clone must happen silently in the background with no user-visible progress or confirmation — the avatar proceeds directly to the greeting. The user may connect a project repo later through conversation ("use my project at /path" or "clone this repo").
 
 ### Cross-Session Memory
 
@@ -352,6 +357,12 @@ The interaction model follows game-dialog UX — the avatar speaks context, grap
 - FR48: After a workflow produces an output artifact, the system must present a "Send to..." option alongside the local file save option, allowing the user to write the artifact back to a connected external system (e.g., Azure DevOps work item, GitHub issue/PR, Confluence page) via MCP tool integrations
 - FR49: The writeback flow must present the user with: (a) a list of available connected systems detected via MCP, (b) a target location picker appropriate to the selected system (e.g., project/board/work item type for Azure DevOps, repo/path for GitHub), and (c) a preview of the content that will be written before confirmation
 - FR50: Writeback actions must follow the confirm-plan pattern (FR20) — the user must approve the target system, location, and content before execution; the avatar must verbally describe what will be written and where before presenting the confirmation overlay
+
+### Repository-Aware Save Behavior
+
+- FR54: The writeback method presented at workflow completion must be contextual based on how the session originated. The system must detect the session context and present the appropriate default writeback: (a) if the session originated from or references an Azure DevOps work item — default to writing back to that ADO work item/wiki; (b) if the session is working within a Git repo workspace — default to committing and offering a Pull Request; (c) if the session is working with local files or BMAD defaults — default to local file save. All three writeback paths remain available as alternatives regardless of the detected context, but the contextually appropriate option must be presented first and pre-selected.
+- FR55: When the user selects "Open Pull Request" (repo context), the system must: (a) create a feature branch with a descriptive name derived from the workflow (e.g., `brainstorming/onboarding-features`), (b) commit the artifact to that branch, (c) push the branch, and (d) create a pull request with a title and description summarizing the workflow output. The PR link must be displayed in the right panel confirmation view.
+- FR56: When the user selects writeback to Azure DevOps (ADO context), the system must: (a) identify the originating work item or wiki page from the session context, (b) present the target pre-filled with the source item details, (c) show a preview of the content formatted for ADO, and (d) write the artifact back to the source item (e.g., update work item description, add attachment, or create linked wiki page) via MCP. The confirmation must show a link to the updated ADO item.
 
 ## Non-Functional Requirements
 
