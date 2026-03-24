@@ -15,9 +15,9 @@ inputDocuments:
 
 # UX Design Specification TalkTerm
 
-**Version:** 1.3
+**Version:** 1.5
 **Author:** Root
-**Date:** 2026-03-23
+**Date:** 2026-03-24
 **Original Date:** 2026-03-21
 
 ---
@@ -595,7 +595,7 @@ Interactive mockups generated at `_bmad-output/planning-artifacts/ux-design-dire
 
 **Layout state:** Center stage only (no panels) — setup is intimate, focused, personal.
 
-**This journey follows the combined state assessment defined in Journey 4.** On every launch, an admin privilege check runs first (FR39). On first launch, all three setup states (`apiKeyValid`, `profileComplete`, `avatarSelected`) are `false`, so the user proceeds through all three steps. On subsequent launches, the state assessment skips any completed steps — see Journey 4 for the full state matrix and flow diagram.
+**This journey follows the combined state assessment defined in Journey 4.** On every launch, an admin privilege check runs first (FR39). On first launch, all four setup states (`apiKeyValid`, `profileComplete`, `avatarSelected`, `workspaceSelected`) are `false`, so the user proceeds through all four steps. On subsequent launches, the state assessment skips any completed steps — see Journey 4 for the full state matrix and flow diagram.
 
 **First-time user path (all states = false):**
 
@@ -606,12 +606,23 @@ Interactive mockups generated at `_bmad-output/planning-artifacts/ux-design-dire
 | Step 1: API Key | Key input + validation + help link (see API Key Setup design) | Hidden | Hidden | User-paced |
 | Step 2: Profile | Name input ("What should I call you?") | Hidden | Hidden | 5s |
 | Step 3: Avatar Pick | Avatar card(s) with preview | Hidden | Hidden | User-paced |
+| Step 3.5: Workspace | Project folder browse, Git URL clone, or "Skip — use BMAD defaults" | Hidden | Hidden | User-paced |
 | First Greeting | Avatar animates + speaks | Hidden | Hidden | Avatar speaks ~5s |
 
+**Step 3.5 — Workspace Selection (FR52/FR53):**
+
+The workspace screen offers two paths:
+- **Option A — Use your project:** User browses for a local project folder or pastes a Git repository URL to clone. The agent gets full project context (codebase, existing docs, configuration) for workflows.
+- **Option B — Skip (BMAD defaults):** User skips workspace selection. The system silently clones the BMAD-method repository (`github.com/bmadcode/BMAD-METHOD`) in the background as the default workspace. BMAD agent workflows have a valid working context with templates, agent configs, and workflow definitions. No user-visible progress or confirmation — the avatar proceeds directly to the greeting.
+
+The user can connect a project repo later at any time through conversation ("use my project at /path" or "clone this repo for context").
+
 **Key UX decisions:**
-- No account creation, no email, no password — just API key and name
+- No account creation, no email, no password — just API key, name, and optional workspace
 - **Combined state assessment** after API key validation determines which setup steps to show (see Journey 4 state matrix)
 - Avatar selection screen shows even with one avatar in MVP — establishes the "team" mental model ("choose your team member" implies there will be more)
+- **Workspace is optional but valuable** — the skip path ensures zero-friction onboarding while the project path gives the agent richer context
+- **Silent BMAD clone** — when the user skips, the BMAD-method repo is cloned silently so agent workflows (brainstorming, PRD, architecture) work out of the box with real templates
 - The avatar's first words are the onboarding — no tutorial, no feature tour
 - Setup screens use center stage only — no panels until the user is in a workflow
 - Each step persists its result immediately — if the app crashes mid-setup, next launch resumes from the last incomplete step
@@ -824,7 +835,46 @@ flowchart TD
 
 **FR47: Natural Memory References** — Avatar MUST reference past work naturally in conversation when contextually relevant (e.g., "Last week you chose the incremental migration approach — want to check how that's going?"), without requiring the user to remind it of prior decisions or context. This strengthens the "colleague" mental model — a team member who remembers what you've worked on together.
 
+**FR52: Workspace Selection** — After avatar selection and before first conversation, system MUST present a workspace screen with two paths: (a) user selects a local folder or provides a Git URL to clone, or (b) user skips, and the system silently clones the BMAD-method repo as the default workspace. Persisted across sessions.
+
+**FR53: Silent BMAD Clone** — When user skips workspace selection, the BMAD-method repo clone MUST happen silently in the background with no user-visible progress. The avatar proceeds directly to greeting. User can connect a project repo later via conversation.
+
 **FR51: Preference Memory** — System MUST track user interaction patterns (frequently chosen options, preferred techniques, default output destinations, workflow-specific settings) and persist them across sessions using context-scribe as the preference engine. Learned preferences surface as prioritized defaults or pre-selected options. Preferences are scoped per agent type and per workspace. Users override any learned preference by simply choosing differently — the system adapts without requiring a reset.
+
+**FR54: Contextual Writeback** — The writeback method at workflow completion MUST be contextual based on session origin: (a) ADO work item session → default to ADO writeback; (b) Git repo workspace → default to commit + PR; (c) local files/BMAD defaults → default to local file save. All three paths available as alternatives, but the contextual default is pre-selected.
+
+**FR55: Pull Request Flow** — When user selects "Open Pull Request", system creates a feature branch (e.g., `brainstorming/onboarding-features`), commits the artifact, pushes, and opens a PR with a generated title and description. The PR link is displayed in the right panel confirmation view.
+
+**FR56: ADO Writeback Flow** — When user selects ADO writeback, system identifies the originating work item, pre-fills the target, previews content formatted for ADO, and writes back via MCP. Confirmation shows link to updated ADO item.
+
+---
+
+### Confirm Action — Contextual Writeback (FR54/FR55/FR56)
+
+The confirm action screen (screen 08) adapts its default based on how the session originated:
+
+| Session Context | Default Action | Avatar Says | Confirm Card Default |
+|---|---|---|---|
+| **ADO work item** | Write back to source ADO item | "I'll update the work item you started from. Want me to write it back, or save somewhere else?" | "Update Work Item" (primary) |
+| **Git repo workspace** | Commit & offer PR | "I'll commit this to your repo. Push directly, or open a pull request?" | "Open Pull Request" (primary) |
+| **Local files / BMAD** | Save file locally | "I'll save this to your project folder. Ready?" | "Save to File" (primary) |
+
+**All three writeback paths are always available** — the context determines which is presented first and pre-selected, but the user can always switch:
+
+**ADO context confirm card:**
+- Pre-filled: source work item ID, project, target (description update / attachment / linked wiki page)
+- Buttons: **"Update Work Item"** (Primary) → **"Open PR instead"** (Blue) → **"Save locally"** (Ghost)
+- After writeback: right panel shows link to updated ADO item
+
+**Repo context confirm card:**
+- Shows: file path in repo, auto-generated commit message
+- Buttons: **"Open Pull Request"** (Primary) → **"Commit & Push"** (accent) → **"Save locally"** (Ghost)
+- After PR: right panel shows PR link, branch name, summary
+
+**Local context confirm card:**
+- Shows: file path, file size
+- Buttons: **"Save to File"** (Primary) → **"Send to..."** (Blue, routes to writeback screen) → **"Cancel"** (Ghost)
+- Standard behavior — no git operations
 
 ---
 
