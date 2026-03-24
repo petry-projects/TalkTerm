@@ -65,9 +65,9 @@ describe('WebSpeechStt', () => {
     const onError = vi.fn();
     stt.onError = onError;
     stt.start();
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- vitest expect matcher
-    expect(onError).toHaveBeenCalledWith(
-      expect.objectContaining({ message: expect.stringContaining('not supported') }),
-    );
+
+    expect(onError).toHaveBeenCalledTimes(1);
+    const errorArg = onError.mock.calls[0]?.[0] as Error;
+    expect(errorArg.message).toContain('not supported');
   });
 });
