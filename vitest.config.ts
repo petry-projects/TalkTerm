@@ -5,6 +5,7 @@ export default defineConfig({
     globals: true,
     include: ['src/**/*.test.{ts,tsx}'],
     environment: 'node',
+    setupFiles: ['./test/setup-renderer.ts'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
