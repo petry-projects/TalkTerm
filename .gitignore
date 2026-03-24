@@ -1,0 +1,8 @@
+node_modules/
+.vite/
+out/
+dist/
+*.tsbuildinfo
+coverage/
+.stryker-tmp/
+reports/
