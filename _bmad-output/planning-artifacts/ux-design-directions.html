@@ -704,14 +704,14 @@
 
 <nav class="nav">
   <h1>TalkTerm Design Directions</h1>
-  <button class="nav-btn active" onclick="showDirection('d1')">1. Centered Stage</button>
-  <button class="nav-btn" onclick="showDirection('d2')">2. Theater Wide</button>
-  <button class="nav-btn" onclick="showDirection('d3')">3. Side Panel</button>
-  <button class="nav-btn" onclick="showDirection('d4')">4. Immersive</button>
-  <button class="nav-btn" onclick="showDirection('d5')">5. Compact Pro</button>
-  <button class="nav-btn" onclick="showDirection('d6')">6. Output Focus</button>
-  <button class="nav-btn" onclick="showDirection('d7')">7. Floating Cards</button>
-  <button class="nav-btn" onclick="showDirection('eval')">Compare</button>
+  <button class="nav-btn active" onclick="showDirection(event,'d1')">1. Centered Stage</button>
+  <button class="nav-btn" onclick="showDirection(event,'d2')">2. Theater Wide</button>
+  <button class="nav-btn" onclick="showDirection(event,'d3')">3. Side Panel</button>
+  <button class="nav-btn" onclick="showDirection(event,'d4')">4. Immersive</button>
+  <button class="nav-btn" onclick="showDirection(event,'d5')">5. Compact Pro</button>
+  <button class="nav-btn" onclick="showDirection(event,'d6')">6. Output Focus</button>
+  <button class="nav-btn" onclick="showDirection(event,'d7')">7. Floating Cards</button>
+  <button class="nav-btn" onclick="showDirection(event,'eval')">Compare</button>
 </nav>
 
 <!-- Direction 1: Centered Stage -->
@@ -1202,11 +1202,11 @@
 </section>
 
 <script>
-function showDirection(id) {
+function showDirection(e, id) {
   document.querySelectorAll('.direction').forEach(d => d.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById(id).classList.add('active');
-  event.target.classList.add('active');
+  e.target.classList.add('active');
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 </script>
