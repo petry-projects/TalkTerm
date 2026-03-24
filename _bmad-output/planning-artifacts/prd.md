@@ -96,7 +96,7 @@ The interaction model follows game-dialog UX — the avatar speaks context, grap
 
 **Opening Scene:** Marcus opens TalkTerm on his laptop to try running a BMAD architecture session while waiting for a build. He picks the available avatar — a technical-focused persona.
 
-**Rising Action:** Marcus says "I need to evaluate three approaches for our auth migration." The avatar presents a structured comparison framework via overlay cards. Marcus speaks his constraints — "We need OAuth2, can't break existing sessions, and have a two-week window." The avatar synthesizes options and presents trade-offs visually. The agent examines his project's codebase and existing auth configuration directly — Claude Code is running locally with full access to the repo.
+**Rising Action:** Marcus says "I need to evaluate three approaches for our auth migration." The avatar presents a structured comparison framework via overlay cards. Marcus speaks his constraints — "We need OAuth2, can't break existing sessions, and have a two-week window." The avatar synthesizes options and presents trade-offs visually. The agent examines his project's codebase and existing auth configuration directly via the in-process Claude Agent SDK, with full access to the repo.
 
 **Climax:** The avatar presents a decision matrix as a graphical overlay — three approaches scored across six criteria. Marcus clicks each to drill into details. He picks an approach and the avatar generates an architecture decision record, writing it directly to his project's docs folder.
 
@@ -250,7 +250,7 @@ The interaction model follows game-dialog UX — the avatar speaks context, grap
 - *Non-technical users may not seek out an "agent" tool.* **Mitigation:** Position as "personal AI assistant" not "agent interface." BMAD community provides warm initial audience.
 
 **Resource Risks:**
-- *Solo developer scope creep.* **Mitigation:** MVP is ruthlessly scoped — one avatar, one backend, one workflow, one platform (macOS). Everything else is Phase 2+. No exceptions.
+- *Solo developer scope creep.* **Mitigation:** MVP is ruthlessly scoped — one avatar, one backend, one workflow, two desktop platforms only (macOS + Windows). No mobile, web, or additional OS in Phase 1. Everything else is Phase 2+. No exceptions.
 
 ## Functional Requirements
 
