@@ -33,18 +33,24 @@ _This document builds collaboratively through step-by-step discovery. Sections a
 - API Key Management (FR40-FR41): Guided API key entry with live Anthropic API validation, three-state key management (none/valid/expired)
 - Launch State Assessment (FR42): Combined assessment of API key + profile + avatar state to determine entry point
 - Rich Display (FR43-FR45): Live task progress view, plan preview with confirm-plan integration, multi-mode right panel (document, comparison table, clustered cards, activity feed)
-- Cross-Session Memory (FR46-FR47): Persistent conversation context and decision history across sessions via SDK session persistence; avatar references past work naturally
+- Cross-Session Memory (FR46-FR47): Persistent, privacy-preserving conversation memory via structured summaries and decision metadata (not full verbatim transcripts) stored through SDK session persistence; avatar references past work using these summaries
+- Preference Memory (FR51): User interaction pattern tracking via context-scribe, per agent type and workspace
+- Workspace Selection (FR52-FR53): User repo or silent BMAD-method clone as default workspace
+- External System Writeback (FR48-FR50): Write output artifacts to connected external systems (Azure DevOps, GitHub) via MCP
+- Contextual Writeback (FR54-FR56): Writeback method adapts to session origin (ADO→ADO, repo→PR, local→file)
+
+**Total Functional Requirements:** 56 (FR1–FR56)
 
 **Non-Functional Requirements (critical to architecture):**
 - Performance: ≤1s acknowledgement (p95), ≤3s first response segment via streaming TTS (p95), ≥30fps avatar animation on 5yo desktop GPU, ≤500ms STT start, ≤3s cold launch
-- Security: OS credential store for API keys, no raw audio persistence, scoped file access, TLS 1.2+, no cross-session transcript storage
+- Security: OS credential store for API keys, no raw audio persistence, scoped file access, TLS 1.2+, no full cross-session verbatim transcript storage (only structured memory summaries and decision/plan metadata per FR46–FR47)
 - Accessibility: Full text alternative to voice, 32×32px min click targets with hover/focus states, avatar speech captions
 - Integration: 3x retry with exponential backoff, MCP protocol compliance, 10s timeout → user-facing error
 
 **Scale & Complexity:**
 
-- Primary domain: Cross-platform desktop, local-first, real-time media pipeline with local Claude Code subprocess
-- Complexity level: Medium (desktop simplifies OS lifecycle, rendering budget, and subprocess management vs mobile)
+- Primary domain: Cross-platform desktop, local-first, real-time media pipeline with in-process Claude Agent SDK
+- Complexity level: Medium (desktop simplifies OS lifecycle and rendering budget vs mobile)
 - Estimated architectural components: ~7 (Voice Pipeline, Avatar Renderer, Agent SDK Integration, IPC Message Bridge, Session State Manager, Overlay UI System, Audit Logger)
 
 ### Technical Constraints & Dependencies
