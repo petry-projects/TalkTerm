@@ -1,12 +1,12 @@
 import path from 'node:path';
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, safeStorage } from 'electron';
 import { AgentMessageRouter } from './agent/agent-message-router';
 import { ClaudeSdkBackend } from './agent/claude-sdk-backend';
 import { SessionIPCHandler } from './ipc/session-ipc-handler';
 import { SettingsIPCHandler } from './ipc/settings-ipc-handler';
 import { checkAdminPrivileges } from './security/admin-check';
 import { SafeStorageKeyManager } from './security/safe-storage-key-manager';
-import { initializeDatabase, type Database } from './storage/database-initializer';
+import { initializeDatabase } from './storage/database-initializer';
 import { InMemoryConfigStore } from './storage/electron-config-store';
 import { MemoryIndexStore } from './storage/memory-index-store';
 import { SqliteAuditRepository } from './storage/sqlite-audit-repository';
@@ -27,50 +27,27 @@ declare const MAIN_WINDOW_VITE_NAME: string;
 
 let mainWindow: BrowserWindow | null = null;
 
-function createDatabaseStub(): Database {
-  // Stub until better-sqlite3 is installed.
-  // In production: const db = new BetterSqlite3(dbPath); return db;
-  const data = new Map<string, unknown[]>();
-  return {
-    exec(_sql: string): void {
-      // Schema execution — no-op in stub
-    },
-    prepare(sql: string) {
-      return {
-        run(..._params: unknown[]) {
-          return { changes: 1, lastInsertRowid: 1 };
-        },
-        get(..._params: unknown[]): unknown {
-          return undefined;
-        },
-        all(..._params: unknown[]): unknown[] {
-          return data.get(sql) ?? [];
-        },
-      };
-    },
-    close(): void {
-      // no-op
-    },
-  };
-}
-
 function bootstrap(): void {
   // 1. Admin privilege check
   const adminResult = checkAdminPrivileges();
 
-  // 2. Initialize persistence
-  const db = createDatabaseStub();
+  // 2. Initialize persistence with real better-sqlite3
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- native module
+  const BetterSqlite3 = require('better-sqlite3') as typeof import('better-sqlite3');
+  const dbPath = path.join(app.getPath('userData'), 'talkterm.db');
+  const db = new BetterSqlite3(dbPath);
+  db.pragma('journal_mode = WAL');
   initializeDatabase(db);
   const sessionRepo = new SqliteSessionRepository(db);
   const auditRepo = new SqliteAuditRepository(db);
   const _memoryStore = new MemoryIndexStore(db);
   const configStore = new InMemoryConfigStore();
 
-  // 3. Security
+  // 3. Security — use Electron's safeStorage for API key encryption
   const keyManager = new SafeStorageKeyManager({
-    isEncryptionAvailable: () => typeof app.isPackaged === 'boolean',
-    encryptString: (text: string) => Buffer.from(text),
-    decryptString: (buf: Buffer) => buf.toString(),
+    isEncryptionAvailable: () => safeStorage.isEncryptionAvailable(),
+    encryptString: (text: string) => safeStorage.encryptString(text),
+    decryptString: (buf: Buffer) => safeStorage.decryptString(buf),
   });
 
   // 4. Agent backend
