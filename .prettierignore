@@ -3,3 +3,6 @@ node_modules
 out
 dist
 *.md
+_bmad
+_bmad-output
+.claude/skills
