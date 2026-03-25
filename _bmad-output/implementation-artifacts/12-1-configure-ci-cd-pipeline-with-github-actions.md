@@ -17,7 +17,7 @@ Scenario: Push or PR triggers CI workflow
 Scenario: Version tag triggers release workflow
   Given a version tag (e.g., v1.0.0) is pushed
   When the release workflow runs
-  Then platform-specific packages are built (.dmg for macOS, .exe/NSIS for Windows)
+  Then platform-specific packages are built (.dmg for macOS, .exe for Windows via Squirrel)
   And macOS package is code-signed and notarized
   And Windows package is signed with Authenticode
   And all artifacts are published to GitHub Releases
@@ -43,9 +43,9 @@ Scenario: Version tag triggers release workflow
    - Build platform packages using Electron Forge
    - Upload artifacts to GitHub Releases
 
-4. **Configure Electron Forge makers for .dmg and NSIS** (AC: 2)
+4. **Configure Electron Forge makers for .dmg and Squirrel** (AC: 2)
    - `@electron-forge/maker-dmg` for macOS .dmg packages
-   - `@electron-forge/maker-squirrel` for Windows NSIS installer
+   - `@electron-forge/maker-squirrel` for Windows .exe installer
    - Configure maker options: app name, icon, signing identity references
 
 5. **Configure code signing secrets** (AC: 2)
