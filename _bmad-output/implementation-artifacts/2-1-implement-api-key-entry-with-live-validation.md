@@ -84,5 +84,5 @@ src/main/ipc/
 
 - Architecture: `_bmad-output/planning-artifacts/architecture.md`
 - UX Design: `_bmad-output/planning-artifacts/ux-design-specification.md` (UX-DR11)
-- PRD: `_bmad-output/planning-artifacts/prd.md` — FR2 (API key entry), NFR6 (key security)
+- PRD: `_bmad-output/planning-artifacts/prd.md` — FR40/FR41/FR42 (API key entry), NFR6 (key security)
 - Epics & Stories: `_bmad-output/planning-artifacts/epics.md` — Epic 2, Story 2.1
