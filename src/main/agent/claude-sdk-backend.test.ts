@@ -28,24 +28,14 @@ describe('ClaudeSdkBackend', () => {
     expect(events[0]?.type).toBe('error');
   });
 
-  it('yields demo mode text when SDK not installed', async () => {
+  it('yields text events when starting a session with API key', async () => {
     const backend = new ClaudeSdkBackend(createMockAuditRepo(), () => 'sk-ant-test');
     const events = await collectEvents(
       backend.startSession({ workspacePath: '/tmp', apiKey: 'sk-ant-test' }),
     );
-    // SDK import will fail since it's not installed — should get demo mode events
     expect(events.length).toBeGreaterThanOrEqual(1);
     const hasText = events.some((e) => e.type === 'text');
     expect(hasText).toBe(true);
-  });
-
-  it('demo mode yields complete event after text', async () => {
-    const backend = new ClaudeSdkBackend(createMockAuditRepo(), () => 'sk-ant-test');
-    const events = await collectEvents(
-      backend.startSession({ workspacePath: '/tmp', apiKey: 'sk-ant-test' }),
-    );
-    const lastEvent = events[events.length - 1];
-    expect(lastEvent?.type).toBe('complete');
   });
 
   it('sends message and logs audit entry', async () => {

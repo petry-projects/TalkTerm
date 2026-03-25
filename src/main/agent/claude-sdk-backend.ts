@@ -33,7 +33,6 @@ export class ClaudeSdkBackend implements AgentBackend {
     // Attempt to load SDK dynamically
     let sdk: unknown;
     try {
-      // @ts-expect-error -- SDK may not be installed yet
       sdk = await import('@anthropic-ai/claude-agent-sdk');
     } catch {
       yield {
