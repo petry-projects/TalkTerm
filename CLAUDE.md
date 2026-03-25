@@ -543,5 +543,5 @@ npm run build     → electron-forge make
 - **PRD:** `_bmad-output/planning-artifacts/prd.md` (v2.2)
 - **Architecture:** `_bmad-output/planning-artifacts/architecture.md`
 - **UX Design:** `_bmad-output/planning-artifacts/ux-design-specification.md` (v1.5)
-- **Epics & Stories:** `_bmad-output/planning-artifacts/epics.md` (12 epics, 42 stories)
+- **Epics & Stories:** `_bmad-output/planning-artifacts/epics.md` (12 epics, 45 stories)
 - **Readiness Report:** `_bmad-output/planning-artifacts/implementation-readiness-report-2026-03-24.md`

@@ -83,5 +83,5 @@ src/main/ipc/
 
 - Architecture: `_bmad-output/planning-artifacts/architecture.md`
 - UX Design: `_bmad-output/planning-artifacts/ux-design-specification.md` (UX-DR10)
-- PRD: `_bmad-output/planning-artifacts/prd.md` — NFR3 (security), FR1 (admin check)
+- PRD: `_bmad-output/planning-artifacts/prd.md` — FR39 (admin check), NFR4 (launch time), NFR9 (TLS)
 - Epics & Stories: `_bmad-output/planning-artifacts/epics.md` — Epic 1, Story 1.2
