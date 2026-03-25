@@ -1,0 +1,71 @@
+import { useEffect, useRef, type ReactElement } from 'react';
+import type { AvatarAnimationState } from '../../hooks/useAvatarState';
+
+interface AvatarCanvasProps {
+  state: AvatarAnimationState;
+  riveAssetPath?: string;
+}
+
+/**
+ * AvatarCanvas renders the Rive animated avatar character.
+ *
+ * When the .riv asset is available, it uses @rive-app/react-webgl2 to render
+ * the state machine with inputs: isListening, isThinking, isSpeaking.
+ *
+ * Fallback: renders a simple CSS-animated placeholder avatar.
+ */
+export function AvatarCanvas({ state, riveAssetPath }: AvatarCanvasProps): ReactElement {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    // When Rive asset is available, initialize the state machine here.
+    // For now, the placeholder renders based on state prop.
+    if (riveAssetPath !== undefined && canvasRef.current !== null) {
+      // Future: new Rive({ canvas: canvasRef.current, src: riveAssetPath, ... })
+    }
+  }, [riveAssetPath]);
+
+  // Placeholder avatar — will be replaced by Rive canvas
+  const stateColors: Record<AvatarAnimationState, string> = {
+    ready: 'bg-primary/20',
+    listening: 'bg-primary/60',
+    thinking: 'bg-primary/40',
+    speaking: 'bg-primary-light/60',
+  };
+
+  const stateAnimations: Record<AvatarAnimationState, string> = {
+    ready: '',
+    listening: 'animate-pulse',
+    thinking: 'animate-bounce',
+    speaking: 'animate-pulse',
+  };
+
+  if (riveAssetPath !== undefined) {
+    return (
+      <canvas
+        ref={canvasRef}
+        data-testid="avatar-canvas"
+        className="h-[300px] w-[300px]"
+        aria-label={`Avatar is ${state}`}
+      />
+    );
+  }
+
+  return (
+    <div
+      data-testid="avatar-placeholder"
+      aria-label={`Avatar is ${state}`}
+      className={`flex h-[200px] w-[200px] items-center justify-center rounded-full ${stateColors[state]} ${stateAnimations[state]} transition-all duration-300`}
+    >
+      <span className="text-[64px]">
+        {state === 'ready'
+          ? '😊'
+          : state === 'listening'
+            ? '👂'
+            : state === 'thinking'
+              ? '🤔'
+              : '🗣️'}
+      </span>
+    </div>
+  );
+}
