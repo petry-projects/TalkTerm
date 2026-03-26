@@ -43,13 +43,19 @@ describe('ApiKeySetup', () => {
     const input = screen.getByPlaceholderText('sk-ant-api03-...');
     await user.type(input, 'sk-ant-api03-test-key{Enter}');
 
-    await waitFor(() => {
-      expect(screen.getByText(/key verified/i)).toBeInTheDocument();
-    }, { timeout: 3000 });
+    await waitFor(
+      () => {
+        expect(screen.getByText(/key verified/i)).toBeInTheDocument();
+      },
+      { timeout: 3000 },
+    );
 
-    await waitFor(() => {
-      expect(onValidated).toHaveBeenCalledWith('sk-ant-api03-test-key');
-    }, { timeout: 3000 });
+    await waitFor(
+      () => {
+        expect(onValidated).toHaveBeenCalledWith('sk-ant-api03-test-key');
+      },
+      { timeout: 3000 },
+    );
   }, 10000);
 
   it('shows link to create API key', () => {
@@ -103,15 +109,21 @@ describe('ApiKeySetup', () => {
     await user.type(input, 'sk-ant-api03-test-key');
     await user.click(screen.getByRole('button', { name: /validate api key/i }));
 
-    await waitFor(() => {
-      expect(screen.getByText(/key verified/i)).toBeInTheDocument();
-    }, { timeout: 3000 });
+    await waitFor(
+      () => {
+        expect(screen.getByText(/key verified/i)).toBeInTheDocument();
+      },
+      { timeout: 3000 },
+    );
 
     expect(screen.getByText(/continuing/i)).toBeInTheDocument();
 
-    await waitFor(() => {
-      expect(onValidated).toHaveBeenCalledWith('sk-ant-api03-test-key');
-    }, { timeout: 3000 });
+    await waitFor(
+      () => {
+        expect(onValidated).toHaveBeenCalledWith('sk-ant-api03-test-key');
+      },
+      { timeout: 3000 },
+    );
   }, 10000);
 
   it('does not auto-advance for invalid keys', async () => {
@@ -123,9 +135,12 @@ describe('ApiKeySetup', () => {
     await user.type(input, 'invalid-key');
     await user.click(screen.getByRole('button', { name: /validate api key/i }));
 
-    await waitFor(() => {
-      expect(screen.getByText(/didn't work/i)).toBeInTheDocument();
-    }, { timeout: 3000 });
+    await waitFor(
+      () => {
+        expect(screen.getByText(/didn't work/i)).toBeInTheDocument();
+      },
+      { timeout: 3000 },
+    );
 
     expect(onValidated).not.toHaveBeenCalled();
   }, 10000);
@@ -138,9 +153,12 @@ describe('ApiKeySetup', () => {
     await user.type(input, 'invalid-key');
     await user.click(screen.getByRole('button', { name: /validate api key/i }));
 
-    await waitFor(() => {
-      expect(screen.getByText(/didn't work/i)).toBeInTheDocument();
-    }, { timeout: 3000 });
+    await waitFor(
+      () => {
+        expect(screen.getByText(/didn't work/i)).toBeInTheDocument();
+      },
+      { timeout: 3000 },
+    );
 
     const btn = screen.getByRole('button', { name: /validate api key/i });
     expect(btn).toBeEnabled();

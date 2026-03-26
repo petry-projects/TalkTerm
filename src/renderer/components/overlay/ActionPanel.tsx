@@ -39,8 +39,7 @@ export function ActionPanel({
 
       if (e.key === 'ArrowDown') {
         e.preventDefault();
-        const nextPos =
-          currentEnabledPos < 0 ? 0 : (currentEnabledPos + 1) % enabledIndices.length;
+        const nextPos = currentEnabledPos < 0 ? 0 : (currentEnabledPos + 1) % enabledIndices.length;
         nextIndex = enabledIndices[nextPos];
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();

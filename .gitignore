@@ -6,3 +6,4 @@ dist/
 coverage/
 .stryker-tmp/
 reports/
+test-results/
