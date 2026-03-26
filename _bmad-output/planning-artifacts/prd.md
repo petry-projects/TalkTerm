@@ -325,7 +325,7 @@ The interaction model follows game-dialog UX — the avatar speaks context, grap
 
 ### API Key Management
 
-- FR40: System must provide a guided API key entry experience that: (a) accepts an Anthropic API key via a single text input field, (b) validates the key against the Anthropic API before accepting it, (c) stores the validated key securely in the OS credential store via safeStorage, (d) displays inline validation feedback (success or specific error reason), and (e) provides a help link explaining how to obtain an API key
+- FR40: System must provide a guided API key entry experience that: (a) accepts an Anthropic API key via a single text input field, (b) presents a "Validate API Key" button that is visible but disabled until the user enters input, and triggers validation on click, (c) validates the key against the Anthropic API before accepting it, (d) stores the validated key securely in the OS credential store via safeStorage, (e) displays inline validation feedback (success or specific error reason) and on success auto-advances to the next setup step after a brief success indicator (~1 s) without requiring an additional click, and (f) provides a help link explaining how to obtain an API key
 - FR41: System must detect and handle three API key states on every launch: (a) no key stored — route to API key entry, (b) key stored and valid — proceed to next setup step, (c) key stored but expired/revoked — route to API key entry with a clear message explaining the key is no longer valid and must be replaced
 
 ### Launch State Assessment
@@ -388,6 +388,7 @@ The interaction model follows game-dialog UX — the avatar speaks context, grap
 
 - NFR10: Text input must be a full-featured alternative to voice — no voice-only functionality
 - NFR11: Overlay cards must meet minimum click target sizes of 32×32px and provide clear hover/focus states for keyboard and mouse interaction
+- NFR16: All setup screens must support keyboard-driven interaction: text inputs must auto-focus on mount, and pressing Enter must trigger the screen's primary action (equivalent to clicking the primary button). Screens with a single primary button must allow Enter to activate it when the button is enabled
 - NFR12: Avatar speech must be accompanied by on-screen text captions
 
 ### Integration

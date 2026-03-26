@@ -1,0 +1,88 @@
+/* eslint-disable @typescript-eslint/unbound-method -- vi.fn() mocks */
+import os from 'node:os';
+import path from 'node:path';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { IPC_CHANNELS } from '../../shared/types/domain/ipc-channels';
+import type { SessionRepository } from '../../shared/types/ports/session-repository';
+import { InMemoryConfigStore } from '../storage/electron-config-store';
+import type { IPCMain } from './ipc-registrar';
+import { SessionIPCHandler } from './session-ipc-handler';
+
+function createMockSessionRepo(): SessionRepository {
+  return {
+    save: vi.fn(),
+    findById: vi.fn().mockReturnValue(null),
+    findByStatus: vi.fn().mockReturnValue([]),
+    findByWorkspace: vi.fn().mockReturnValue([]),
+    findIncomplete: vi.fn().mockReturnValue([]),
+    updateStatus: vi.fn(),
+    updateSdkSessionId: vi.fn(),
+  };
+}
+
+describe('SessionIPCHandler', () => {
+  let handlers: Map<string, (...args: unknown[]) => unknown>;
+  let ipcMain: IPCMain;
+
+  beforeEach(() => {
+    handlers = new Map();
+    ipcMain = {
+      handle: vi.fn((channel: string, handler: (...args: unknown[]) => unknown) => {
+        handlers.set(channel, handler);
+      }),
+      on: vi.fn(),
+    };
+  });
+
+  it('registers session channels', () => {
+    new SessionIPCHandler(createMockSessionRepo(), new InMemoryConfigStore()).register(ipcMain);
+    expect(handlers.has(IPC_CHANNELS.SESSION_START)).toBe(true);
+    expect(handlers.has(IPC_CHANNELS.SESSION_RESUME)).toBe(true);
+    expect(handlers.has(IPC_CHANNELS.LAUNCH_ASSESS_STATE)).toBe(true);
+  });
+
+  it('starts a new session', () => {
+    const repo = createMockSessionRepo();
+    const store = new InMemoryConfigStore();
+    store.set('userProfile', {
+      name: 'Root',
+      avatarPersonaId: 'mary',
+      createdAt: '',
+      updatedAt: '',
+    });
+    new SessionIPCHandler(repo, store).register(ipcMain);
+    const start = handlers.get(IPC_CHANNELS.SESSION_START);
+    const id = start?.({}, path.join(os.tmpdir(), 'talkterm-test-project')) as string;
+    expect(typeof id).toBe('string');
+    expect(repo.save).toHaveBeenCalled();
+  });
+
+  it('assesses launch state', () => {
+    const store = new InMemoryConfigStore();
+    new SessionIPCHandler(createMockSessionRepo(), store).register(ipcMain);
+    const assess = handlers.get(IPC_CHANNELS.LAUNCH_ASSESS_STATE);
+    const state = assess?.({}) as { profileComplete: boolean };
+    expect(state.profileComplete).toBe(false); // No profile set
+  });
+
+  it('assesses complete state when profile exists', () => {
+    const store = new InMemoryConfigStore();
+    store.set('userProfile', {
+      name: 'Root',
+      avatarPersonaId: 'mary',
+      createdAt: '',
+      updatedAt: '',
+    });
+    store.set('workspacePath', path.join(os.tmpdir(), 'talkterm-test-workspace'));
+    new SessionIPCHandler(createMockSessionRepo(), store).register(ipcMain);
+    const assess = handlers.get(IPC_CHANNELS.LAUNCH_ASSESS_STATE);
+    const state = assess?.({}) as {
+      profileComplete: boolean;
+      avatarSelected: boolean;
+      workspaceSelected: boolean;
+    };
+    expect(state.profileComplete).toBe(true);
+    expect(state.avatarSelected).toBe(true);
+    expect(state.workspaceSelected).toBe(true);
+  });
+});
