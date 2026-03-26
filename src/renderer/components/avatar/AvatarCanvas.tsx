@@ -55,9 +55,9 @@ export function AvatarCanvas({ state, riveAssetPath }: AvatarCanvasProps): React
     <div
       data-testid="avatar-placeholder"
       aria-label={`Avatar is ${state}`}
-      className={`flex h-[200px] w-[200px] items-center justify-center rounded-full ${stateColors[state]} ${stateAnimations[state]} transition-all duration-300`}
+      className={`flex h-[250px] w-[250px] items-center justify-center rounded-full shadow-[0_0_40px_rgba(99,102,241,0.3)] ring-2 ring-primary/30 ${stateColors[state]} ${stateAnimations[state]} transition-all duration-300`}
     >
-      <span className="text-[64px]">
+      <span className="text-[80px]">
         {state === 'ready'
           ? '😊'
           : state === 'listening'

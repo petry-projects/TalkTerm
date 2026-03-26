@@ -6,6 +6,8 @@ interface TextInputProps {
   onMicClick: () => void;
   isListening: boolean;
   disabled?: boolean;
+  value?: string;
+  onValueChange?: (value: string) => void;
 }
 
 export function TextInput({
@@ -14,8 +16,13 @@ export function TextInput({
   onMicClick,
   isListening,
   disabled,
+  value,
+  onValueChange,
 }: TextInputProps): ReactElement {
-  const [text, setText] = useState('');
+  const [internalText, setInternalText] = useState('');
+  const isControlled = value !== undefined;
+  const text = isControlled ? value : internalText;
+  const setText = isControlled ? (onValueChange ?? setInternalText) : setInternalText;
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleSend = useCallback((): void => {
@@ -26,7 +33,7 @@ export function TextInput({
     if (textareaRef.current !== null) {
       textareaRef.current.style.height = 'auto';
     }
-  }, [text, onSend]);
+  }, [text, onSend, setText]);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>): void => {
