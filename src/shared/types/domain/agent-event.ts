@@ -1,3 +1,5 @@
+import type { RecoveryOption } from './agent-error';
+
 export type AgentEvent =
   | { type: 'text'; content: string }
   | { type: 'tool-call'; toolName: string; toolInput: Record<string, unknown> }
@@ -7,8 +9,4 @@ export type AgentEvent =
   | { type: 'complete'; summary: string }
   | { type: 'progress'; step: string; status: 'pending' | 'in-progress' | 'completed' | 'failed' };
 
-export interface RecoveryOption {
-  label: string;
-  action: string;
-  description: string;
-}
+export type { RecoveryOption } from './agent-error';

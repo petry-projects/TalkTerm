@@ -30,8 +30,10 @@ export function classifyError(error: unknown): ErrorCategory {
       return 'auth-error';
     if (msg.includes('429') || msg.includes('rate limit')) return 'rate-limit';
     if (msg.includes('permission') || msg.includes('eacces')) return 'file-permission';
-    if (msg.includes('speech') || msg.includes('recognition')) return 'stt-error';
-    if (msg.includes('synthesis') || msg.includes('tts')) return 'tts-error';
+    if (msg.includes('synthesis') || msg.includes('voice') || msg.includes('speak'))
+      return 'tts-error';
+    if (msg.includes('recognition') || msg.includes('speech') || msg.includes('microphone') || msg.includes('listen'))
+      return 'stt-error';
     if (msg.includes('sdk') || msg.includes('agent')) return 'sdk-error';
   }
   return 'unknown';

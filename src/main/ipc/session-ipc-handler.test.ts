@@ -1,4 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method -- vi.fn() mocks */
+import os from 'node:os';
+import path from 'node:path';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { IPC_CHANNELS } from '../../shared/types/domain/ipc-channels';
 import type { SessionRepository } from '../../shared/types/ports/session-repository';
@@ -50,7 +52,7 @@ describe('SessionIPCHandler', () => {
     });
     new SessionIPCHandler(repo, store).register(ipcMain);
     const start = handlers.get(IPC_CHANNELS.SESSION_START);
-    const id = start?.({}, '/tmp/project') as string;
+    const id = start?.({}, path.join(os.tmpdir(), 'talkterm-test-project')) as string;
     expect(typeof id).toBe('string');
     expect(repo.save).toHaveBeenCalled();
   });
@@ -71,7 +73,7 @@ describe('SessionIPCHandler', () => {
       createdAt: '',
       updatedAt: '',
     });
-    store.set('workspacePath', '/tmp');
+    store.set('workspacePath', path.join(os.tmpdir(), 'talkterm-test-workspace'));
     new SessionIPCHandler(createMockSessionRepo(), store).register(ipcMain);
     const assess = handlers.get(IPC_CHANNELS.LAUNCH_ASSESS_STATE);
     const state = assess?.({}) as {

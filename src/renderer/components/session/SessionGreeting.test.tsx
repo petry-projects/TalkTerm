@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
 import { SessionGreeting } from './SessionGreeting';
@@ -18,6 +18,21 @@ describe('SessionGreeting', () => {
     expect(screen.getByText('What are you working on today?')).toBeInTheDocument();
   });
 
+  it('auto-advances to conversation when no incomplete sessions', async () => {
+    const onStartNew = vi.fn();
+    render(
+      <SessionGreeting
+        userName="Root"
+        incompleteSessions={[]}
+        onResume={vi.fn()}
+        onStartNew={onStartNew}
+      />,
+    );
+    await waitFor(() => {
+      expect(onStartNew).toHaveBeenCalledOnce();
+    }, { timeout: 3000 });
+  });
+
   it('shows resume option with one session', () => {
     const sessions = [{ id: 's1', workspacePath: '/project', updatedAt: '2026-03-24' }];
     render(
@@ -30,6 +45,22 @@ describe('SessionGreeting', () => {
     );
     expect(screen.getByText('Welcome back, Root!')).toBeInTheDocument();
     expect(screen.getByText(/pick up where you left off/)).toBeInTheDocument();
+  });
+
+  it('does not auto-advance when there are incomplete sessions', async () => {
+    const onStartNew = vi.fn();
+    const sessions = [{ id: 's1', workspacePath: '/project', updatedAt: '2026-03-24' }];
+    render(
+      <SessionGreeting
+        userName="Root"
+        incompleteSessions={sessions}
+        onResume={vi.fn()}
+        onStartNew={onStartNew}
+      />,
+    );
+    // Wait a bit to ensure it doesn't fire
+    await new Promise((r) => setTimeout(r, 100));
+    expect(onStartNew).not.toHaveBeenCalled();
   });
 
   it('shows multiple sessions', () => {

@@ -31,7 +31,7 @@ describe('initializeDatabase', () => {
     const tableNames = [
       ...SCHEMA.matchAll(/(?:TABLE|INDEX)\s+(?:IF\s+NOT\s+EXISTS\s+)?(\w+)/gi),
     ].map((m) => m[1]);
-    const columnNames = [...SCHEMA.matchAll(/^\s+(\w+)\s+(?:TEXT|INTEGER|AUTOINCREMENT)/gm)].map(
+    const columnNames = [...SCHEMA.matchAll(/^ {2,8}(\w+)\s+(?:TEXT|INTEGER|AUTOINCREMENT)/gm)].map(
       (m) => m[1],
     );
     const allIdentifiers = [...tableNames, ...columnNames];

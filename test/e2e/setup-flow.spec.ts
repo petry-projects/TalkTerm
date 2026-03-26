@@ -7,10 +7,11 @@ test.describe('Setup Flow', () => {
     await expect(page.getByPlaceholder('sk-ant-api03-...')).toBeVisible();
   });
 
-  test('Continue button is disabled without valid key', async ({ page }) => {
+  test('Validate API Key button is visible but disabled without input', async ({ page }) => {
     await page.goto('/');
-    const continueButton = page.getByRole('button', { name: /continue/i });
-    await expect(continueButton).toBeDisabled();
+    const validateBtn = page.getByRole('button', { name: /validate api key/i });
+    await expect(validateBtn).toBeVisible();
+    await expect(validateBtn).toBeDisabled();
   });
 
   test('help link is present', async ({ page }) => {
