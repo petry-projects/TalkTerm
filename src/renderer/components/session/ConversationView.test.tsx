@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { SpeechToTextResult } from '../../../shared/types/ports/speech-to-text';
 import { ConversationView } from './ConversationView';
 
@@ -55,7 +55,22 @@ vi.mock('../../speech/web-speech-tts', () => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.useFakeTimers({ shouldAdvanceTime: true });
+  // Mock speechSynthesis for jsdom (not available natively)
+  Object.defineProperty(window, 'speechSynthesis', {
+    value: {
+      getVoices: vi.fn().mockReturnValue([]),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      speak: vi.fn(),
+      cancel: vi.fn(),
+    },
+    writable: true,
+    configurable: true,
+  });
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe('ConversationView', () => {
@@ -69,9 +84,9 @@ describe('ConversationView', () => {
     expect(screen.getByPlaceholderText(/speak to Mary/i)).toBeInTheDocument();
   });
 
-  it('shows initial greeting in caption', () => {
+  it('shows initial greeting with BMAD analyst identity', () => {
     render(<ConversationView userName="DJ" avatarName="Mary" />);
-    expect(screen.getByText(/Hey DJ/i)).toBeInTheDocument();
+    expect(screen.getByText(/Hey DJ.*Mary.*BMAD Analyst/i)).toBeInTheDocument();
   });
 
   it('shows mic button', () => {
@@ -80,7 +95,6 @@ describe('ConversationView', () => {
   });
 
   it('transitions to thinking state when user sends message', async () => {
-    vi.useRealTimers();
     const user = userEvent.setup();
     render(<ConversationView userName="DJ" avatarName="Mary" />);
     const input = screen.getByPlaceholderText(/speak to Mary/i);
@@ -89,7 +103,6 @@ describe('ConversationView', () => {
   });
 
   it('transitions to speaking state after thinking and calls TTS', async () => {
-    vi.useRealTimers();
     const user = userEvent.setup();
     render(<ConversationView userName="DJ" avatarName="Mary" />);
     const input = screen.getByPlaceholderText(/speak to Mary/i);
@@ -97,31 +110,27 @@ describe('ConversationView', () => {
 
     await waitFor(
       () => {
-        expect(screen.getByLabelText(/avatar is speaking/i)).toBeInTheDocument();
+        expect(mockTtsSpeak).toHaveBeenCalled();
       },
       { timeout: 3000 },
     );
-
-    expect(mockTtsSpeak).toHaveBeenCalled();
   });
 
-  it('shows a demo response instead of hardcoded text', async () => {
-    vi.useRealTimers();
+  it('shows BMAD analyst response for brainstorming requests', async () => {
     const user = userEvent.setup();
     render(<ConversationView userName="DJ" avatarName="Mary" />);
     const input = screen.getByPlaceholderText(/speak to Mary/i);
-    await user.type(input, 'Hello{Enter}');
+    await user.type(input, 'help me brainstorm{Enter}');
 
     await waitFor(
       () => {
-        expect(screen.getByText(/full version/i)).toBeInTheDocument();
+        expect(screen.getByText(/brainstorm with you/i)).toBeInTheDocument();
       },
       { timeout: 3000 },
     );
   });
 
-  it('starts STT when mic button is clicked', async () => {
-    vi.useRealTimers();
+  it('starts STT when mic button is clicked (live mode)', async () => {
     const user = userEvent.setup();
     render(<ConversationView userName="DJ" avatarName="Mary" />);
     await user.click(screen.getByRole('button', { name: /start recording/i }));
@@ -129,45 +138,48 @@ describe('ConversationView', () => {
   });
 
   it('sets avatar to listening when mic is clicked', async () => {
-    vi.useRealTimers();
     const user = userEvent.setup();
     render(<ConversationView userName="DJ" avatarName="Mary" />);
     await user.click(screen.getByRole('button', { name: /start recording/i }));
     expect(screen.getByLabelText(/avatar is listening/i)).toBeInTheDocument();
   });
 
-  it('stops STT when mic button is clicked while listening', async () => {
-    vi.useRealTimers();
+  it('shows live mode indicator when mic is active', async () => {
+    const user = userEvent.setup();
+    render(<ConversationView userName="DJ" avatarName="Mary" />);
+    await user.click(screen.getByRole('button', { name: /start recording/i }));
+    expect(screen.getByText(/live mode/i)).toBeInTheDocument();
+  });
+
+  it('stops live mode when mic button is clicked again', async () => {
     const user = userEvent.setup();
     render(<ConversationView userName="DJ" avatarName="Mary" />);
 
-    // Start listening
+    // Start live mode
     await user.click(screen.getByRole('button', { name: /start recording/i }));
-    // Simulate that STT is now listening
     mockSttInstance.isListening = true;
-    // Stop listening
+
+    // Stop live mode
     await user.click(screen.getByRole('button', { name: /stop recording/i }));
     expect(mockSttStop).toHaveBeenCalled();
   });
 
-  it('populates input with final STT result', async () => {
-    vi.useRealTimers();
+  it('auto-sends final STT result (no Enter required)', async () => {
     const user = userEvent.setup();
     render(<ConversationView userName="DJ" avatarName="Mary" />);
 
     await user.click(screen.getByRole('button', { name: /start recording/i }));
 
-    // Simulate final STT result
+    // Simulate final STT result — should auto-send and go to thinking
     act(() => {
       mockSttInstance.onResult?.({ transcript: 'hello world', isFinal: true });
     });
 
-    const input = screen.getByPlaceholderText(/speak to Mary/i);
-    expect(input).toHaveValue('hello world');
+    // Should transition to thinking (auto-sent)
+    expect(screen.getByLabelText(/avatar is thinking/i)).toBeInTheDocument();
   });
 
   it('shows interim STT result in caption', async () => {
-    vi.useRealTimers();
     const user = userEvent.setup();
     render(<ConversationView userName="DJ" avatarName="Mary" />);
 
@@ -181,7 +193,6 @@ describe('ConversationView', () => {
   });
 
   it('shows friendly error when STT fails', async () => {
-    vi.useRealTimers();
     const user = userEvent.setup();
     render(<ConversationView userName="DJ" avatarName="Mary" />);
 
@@ -195,7 +206,6 @@ describe('ConversationView', () => {
   });
 
   it('returns avatar to ready when TTS finishes', async () => {
-    vi.useRealTimers();
     const user = userEvent.setup();
     render(<ConversationView userName="DJ" avatarName="Mary" />);
     const input = screen.getByPlaceholderText(/speak to Mary/i);
@@ -208,7 +218,6 @@ describe('ConversationView', () => {
       { timeout: 3000 },
     );
 
-    // Simulate TTS finishing
     act(() => {
       mockTtsInstance.onEnd?.();
     });

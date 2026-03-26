@@ -22,7 +22,7 @@ export class WebSpeechStt implements SpeechToText {
       return;
     }
     this.recognition = new SpeechRecognitionClass();
-    this.recognition.continuous = false;
+    this.recognition.continuous = true;
     this.recognition.interimResults = true;
     this.recognition.lang = 'en-US';
 
