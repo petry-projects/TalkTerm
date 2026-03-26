@@ -15,6 +15,11 @@ describe('ProfileSetup', () => {
     expect(screen.getByPlaceholderText(/your name/i)).toBeInTheDocument();
   });
 
+  it('auto-focuses the name input on mount', () => {
+    render(<ProfileSetup onComplete={vi.fn()} />);
+    expect(screen.getByPlaceholderText(/your name/i)).toHaveFocus();
+  });
+
   it('Continue button disabled when name is empty', () => {
     render(<ProfileSetup onComplete={vi.fn()} />);
     expect(screen.getByRole('button', { name: /continue/i })).toBeDisabled();
@@ -34,5 +39,21 @@ describe('ProfileSetup', () => {
     await user.type(screen.getByPlaceholderText(/your name/i), 'Root');
     await user.click(screen.getByRole('button', { name: /continue/i }));
     expect(onComplete).toHaveBeenCalledWith('Root');
+  });
+
+  it('calls onComplete with name on Enter key', async () => {
+    const onComplete = vi.fn();
+    const user = userEvent.setup();
+    render(<ProfileSetup onComplete={onComplete} />);
+    await user.type(screen.getByPlaceholderText(/your name/i), 'DJ{Enter}');
+    expect(onComplete).toHaveBeenCalledWith('DJ');
+  });
+
+  it('does not call onComplete on Enter when name is empty', async () => {
+    const onComplete = vi.fn();
+    const user = userEvent.setup();
+    render(<ProfileSetup onComplete={onComplete} />);
+    await user.keyboard('{Enter}');
+    expect(onComplete).not.toHaveBeenCalled();
   });
 });

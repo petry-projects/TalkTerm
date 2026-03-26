@@ -34,8 +34,11 @@ export class SessionIPCHandler implements IPCRegistrar {
       const profile = this.configStore.get('userProfile') as
         | { name: string; avatarPersonaId: string | null }
         | undefined;
+      // Check for API key: stored key OR ANTHROPIC_API_KEY env var
+      const hasEnvKey = process.env['ANTHROPIC_API_KEY'] !== undefined && process.env['ANTHROPIC_API_KEY'] !== '';
       return {
-        apiKeyValid: false, // Will be wired to KeyManager
+        apiKeyValid: hasEnvKey,
+        envKeyDetected: hasEnvKey,
         profileComplete: profile !== undefined && profile.name !== '',
         avatarSelected: profile?.avatarPersonaId !== null && profile?.avatarPersonaId !== undefined,
         workspaceSelected: this.configStore.has('workspacePath'),

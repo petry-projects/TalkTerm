@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react';
+import { useEffect, useRef, type ReactElement } from 'react';
 
 interface WorkspaceSelectionProps {
   onSelectFolder: () => void;
@@ -9,6 +9,13 @@ export function WorkspaceSelection({
   onSelectFolder,
   onSkip,
 }: WorkspaceSelectionProps): ReactElement {
+  const primaryRef = useRef<HTMLButtonElement>(null);
+
+  // Auto-focus primary button on mount so Enter works immediately
+  useEffect(() => {
+    primaryRef.current?.focus();
+  }, []);
+
   return (
     <div className="flex h-screen w-screen items-center justify-center bg-stage-bg">
       <div className="flex w-full max-w-md flex-col gap-6 rounded-2xl bg-surface-muted/80 p-10">
@@ -19,9 +26,10 @@ export function WorkspaceSelection({
         </p>
         <div className="flex flex-col gap-3">
           <button
+            ref={primaryRef}
             type="button"
             onClick={onSelectFolder}
-            className="w-full rounded-lg bg-primary py-3 text-body font-semibold text-white transition-colors hover:bg-primary-dark"
+            className="w-full rounded-lg bg-primary py-3 text-body font-semibold text-white transition-colors hover:bg-primary-dark focus:ring-2 focus:ring-primary/50 focus:outline-none"
           >
             Browse Folder
           </button>

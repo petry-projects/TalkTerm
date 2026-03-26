@@ -8,4 +8,9 @@ describe('App', () => {
     render(<App />);
     expect(screen.getByText('Get Started')).toBeInTheDocument();
   });
+
+  it('shows Validate API Key button on initial load', () => {
+    render(<App />);
+    expect(screen.getByRole('button', { name: /validate api key/i })).toBeInTheDocument();
+  });
 });

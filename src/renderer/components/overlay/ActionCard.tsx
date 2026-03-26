@@ -12,9 +12,10 @@ interface ActionCardProps {
   card: ActionCardData;
   selected: boolean;
   onSelect: (label: string) => void;
+  tabIndex?: number;
 }
 
-export function ActionCard({ card, selected, onSelect }: ActionCardProps): ReactElement {
+export function ActionCard({ card, selected, onSelect, tabIndex }: ActionCardProps): ReactElement {
   const isDisabled = card.disabled === true;
   return (
     <button
@@ -23,6 +24,7 @@ export function ActionCard({ card, selected, onSelect }: ActionCardProps): React
       aria-label={`${card.label}: ${card.title} — ${card.description}`}
       aria-selected={selected}
       disabled={isDisabled}
+      tabIndex={tabIndex}
       onClick={() => {
         onSelect(card.label);
       }}

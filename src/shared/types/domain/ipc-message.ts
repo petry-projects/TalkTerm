@@ -1,10 +1,12 @@
+import type { IPCChannel } from './ipc-channels';
+
 export interface IPCMessage<T> {
-  channel: string;
+  channel: IPCChannel;
   payload: T;
   timestamp: number;
 }
 
-export function createIPCMessage<T>(channel: string, payload: T): IPCMessage<T> {
+export function createIPCMessage<T>(channel: IPCChannel, payload: T): IPCMessage<T> {
   return {
     channel,
     payload,

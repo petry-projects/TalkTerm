@@ -1004,16 +1004,16 @@ The confirm action screen (screen 08) adapts its default based on how the sessio
 
 **Validation states:**
 
-| State | Input Border | Message | Continue Button |
+| State | Input Border | Message | Action Button |
 |---|---|---|---|
-| Empty | Default (rgba white 0.1) | None | Disabled |
-| Typing | Focus (#EB8C00) | None | Disabled |
+| Empty | Default (rgba white 0.1) | None | "Validate API Key" — visible but disabled |
+| Typing | Focus (#EB8C00) | None | "Validate API Key" — enabled |
 | Validating | Focus (#EB8C00) | "Validating..." (info color) | Disabled, shows "Validating..." |
-| Valid | Success (#2E7D32) | Checkmark + "Key verified" | Enabled |
-| Invalid format | Danger (#E0301E) | "That doesn't look like an API key" | Disabled |
-| Invalid key | Danger (#E0301E) | "That key didn't work — check for typos" | Disabled |
-| Expired/revoked | Danger (#E0301E) | "This key has been revoked — generate a new one" | Disabled |
-| Network error | Warning (#EB8C00) | "Can't reach the API — check your connection" | Disabled |
+| Valid | Success (#2E7D32) | Checkmark + "Key verified" | Auto-advances after ~1 s success indicator (no click required) |
+| Invalid format | Danger (#E0301E) | "That doesn't look like an API key" | "Validate API Key" — enabled (retry) |
+| Invalid key | Danger (#E0301E) | "That key didn't work — check for typos" | "Validate API Key" — enabled (retry) |
+| Expired/revoked | Danger (#E0301E) | "This key has been revoked — generate a new one" | "Validate API Key" — enabled (retry) |
+| Network error | Warning (#EB8C00) | "Can't reach the API — check your connection" | "Validate API Key" — enabled (retry) |
 
 ---
 
@@ -1664,6 +1664,7 @@ flowchart TD
 - Avatar speech always accompanied by text captions (NFR12)
 
 **Keyboard Navigation:**
+- **Setup screens:** Text inputs auto-focus on mount. Enter key triggers the screen's primary action (equivalent to clicking the primary button). On screens with a single primary button, Enter activates it when enabled.
 - Tab order: input area → action cards (if visible) → output panel (if visible)
 - Arrow keys navigate between action cards in left panel
 - Enter/Space selects focused action card
