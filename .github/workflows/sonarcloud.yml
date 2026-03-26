@@ -1,26 +1,22 @@
 name: SonarCloud Analysis
-
+permissions:
+  contents: read
+  pull-requests: read
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
-
-permissions: {}
-
 jobs:
   sonarcloud:
     name: SonarCloud
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: read
     env:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 0
       - name: SonarCloud Scan
         if: ${{ env.SONAR_TOKEN != '' }}
-        uses: SonarSource/sonarqube-scan-action@713881670b6b3676cda39549040e2d88c70d582e # v8.2.0
+        uses: SonarSource/sonarqube-scan-action@fd88b7d7ccbaefd23d8f36f73b59db7a3d246602 # v6
