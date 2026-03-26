@@ -58,7 +58,7 @@ Test Quality Review - Resume Progress:
 
 1. Load Context (step-01-load-context)              [completed/pending]
 2. Discover Tests (step-02-discover-tests)           [completed/pending]
-3. Quality Evaluation + Aggregate (step-03f-aggregate-scores) [completed/pending]
+3. Quality Evaluation (step-03-quality-evaluation)   [completed/pending]
 4. Generate Report (step-04-generate-report)         [completed/pending]
 
 Last saved: {lastSaved}

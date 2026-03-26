@@ -2,7 +2,7 @@
 name: 'step-03a-subagent-determinism'
 description: 'Subagent: Check test determinism (no random/time dependencies)'
 subagent: true
-outputFile: '/tmp/tea-test-review-determinism-{{timestamp}}.json'
+outputFile: '{test_artifacts}/tmp/tea-test-review-determinism-{{timestamp}}.json'
 ---
 
 # Subagent 3A: Determinism Quality Check
@@ -86,7 +86,7 @@ if (testFileContent.includes('Date.now()') || testFileContent.includes('new Date
     severity: 'HIGH',
     category: 'time-dependency',
     description: 'Test uses Date.now() or new Date() without mocking',
-    suggestion: 'Mock system time with test.useFakeTimers() or use fixed timestamps',
+    suggestion: 'Mock system time using your test framework\'s fake timer utilities (e.g., vi.useFakeTimers() in Vitest, jest.useFakeTimers() in Jest) or use fixed timestamps',
   });
 }
 
