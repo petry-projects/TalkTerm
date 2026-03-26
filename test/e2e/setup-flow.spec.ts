@@ -183,8 +183,9 @@ test.describe('FR52/FR53: Workspace Selection', () => {
     await expect(page.getByRole('heading', { level: 1, name: /connect a project/i })).toBeVisible();
   });
 
-  test('Browse and Skip buttons are visible', async ({ page }) => {
-    await expect(page.getByRole('button', { name: /browse folder/i })).toBeVisible();
+  test('Path input and Skip buttons are visible', async ({ page }) => {
+    await expect(page.getByPlaceholder(/path\/to\/your\/project/i)).toBeVisible();
+    await expect(page.getByRole('button', { name: /select folder/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /skip/i })).toBeVisible();
   });
 
@@ -194,10 +195,13 @@ test.describe('FR52/FR53: Workspace Selection', () => {
     await expect(page.getByRole('heading', { level: 1, name: /hey/i })).toBeVisible();
   });
 
-  test('Browse Folder button proceeds to session greeting', async ({ page }) => {
-    await page.getByRole('button', { name: /browse folder/i }).click();
-    // In browser mode, onSelectFolder fires immediately (no Electron dialog)
-    await expect(page.getByRole('heading', { level: 1, name: /hey/i })).toBeVisible();
+  test('Entering a path and submitting proceeds to session greeting', async ({ page }) => {
+    await page.getByPlaceholder(/path\/to\/your\/project/i).fill('/home/user/my-project');
+    await page.getByRole('button', { name: /select folder/i }).click();
+    // Shows confirmation then advances
+    await expect(page.getByRole('heading', { level: 1, name: /hey/i })).toBeVisible({
+      timeout: 5000,
+    });
   });
 });
 
