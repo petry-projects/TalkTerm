@@ -14,7 +14,9 @@ describe('DocumentView', () => {
   });
   it('shows file path when provided', () => {
     render(<DocumentView markdown="content" filePath={testFilePath} />);
-    expect(screen.getByText(new RegExp(testFilePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))).toBeInTheDocument();
+    expect(
+      screen.getByText(new RegExp(testFilePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))),
+    ).toBeInTheDocument();
   });
   it('does not show file path when not provided', () => {
     render(<DocumentView markdown="content" />);

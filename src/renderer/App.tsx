@@ -81,10 +81,5 @@ export function App(): ReactElement {
   }
 
   // Conversation phase — main interaction
-  return (
-    <ConversationView
-      userName={userName || 'there'}
-      avatarName="Mary"
-    />
-  );
+  return <ConversationView userName={userName || 'there'} avatarName="Mary" />;
 }

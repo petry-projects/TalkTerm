@@ -32,7 +32,12 @@ export function classifyError(error: unknown): ErrorCategory {
     if (msg.includes('permission') || msg.includes('eacces')) return 'file-permission';
     if (msg.includes('synthesis') || msg.includes('voice') || msg.includes('speak'))
       return 'tts-error';
-    if (msg.includes('recognition') || msg.includes('speech') || msg.includes('microphone') || msg.includes('listen'))
+    if (
+      msg.includes('recognition') ||
+      msg.includes('speech') ||
+      msg.includes('microphone') ||
+      msg.includes('listen')
+    )
       return 'stt-error';
     if (msg.includes('sdk') || msg.includes('agent')) return 'sdk-error';
   }

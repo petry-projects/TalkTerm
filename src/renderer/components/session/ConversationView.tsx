@@ -10,10 +10,7 @@ interface ConversationViewProps {
   avatarName: string;
 }
 
-export function ConversationView({
-  userName,
-  avatarName,
-}: ConversationViewProps): ReactElement {
+export function ConversationView({ userName, avatarName }: ConversationViewProps): ReactElement {
   const [avatarState, setAvatarState] = useState<AvatarAnimationState>('ready');
   const [caption, setCaption] = useState<string | null>(
     `Hey ${userName}! What are you working on today?`,
