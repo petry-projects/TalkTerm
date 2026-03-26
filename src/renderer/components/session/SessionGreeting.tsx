@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react';
+import { useEffect, type ReactElement } from 'react';
 
 interface SessionGreetingProps {
   userName: string;
@@ -13,11 +13,25 @@ export function SessionGreeting({
   onResume,
   onStartNew,
 }: SessionGreetingProps): ReactElement {
+  // Auto-advance to conversation after brief greeting when no incomplete sessions
+  useEffect(() => {
+    if (incompleteSessions.length === 0) {
+      const timer = setTimeout(() => {
+        onStartNew();
+      }, 2000);
+      return () => {
+        clearTimeout(timer);
+      };
+    }
+    return undefined;
+  }, [incompleteSessions.length, onStartNew]);
+
   if (incompleteSessions.length === 0) {
     return (
       <div className="flex h-screen w-screen flex-col items-center justify-center bg-stage-bg gap-4">
         <h1 className="text-display text-text-on-dark">Hey {userName}!</h1>
         <p className="text-body text-text-muted-on-dark">What are you working on today?</p>
+        <p className="text-caption text-text-muted-on-dark animate-pulse">Loading conversation...</p>
       </div>
     );
   }

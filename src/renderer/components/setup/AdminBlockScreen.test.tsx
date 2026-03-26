@@ -1,10 +1,8 @@
+// @vitest-environment jsdom
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
 import { AdminBlockScreen } from './AdminBlockScreen';
-
-// Renderer tests need jsdom
-// @vitest-environment jsdom
 
 describe('AdminBlockScreen', () => {
   it('renders the title', () => {

@@ -1,9 +1,13 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
 import { checkAdminPrivileges, type AdminCheckResult } from './admin-check';
 
 describe('checkAdminPrivileges', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   describe('on macOS', () => {

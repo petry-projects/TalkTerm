@@ -1,62 +1,90 @@
-import type { ReactElement } from 'react';
+import { useState, type ReactElement } from 'react';
+import { ConversationView } from './components/session/ConversationView';
+import { SessionGreeting } from './components/session/SessionGreeting';
 import { ApiKeySetup } from './components/setup/ApiKeySetup';
 import { AvatarSelection } from './components/setup/AvatarSelection';
 import { ProfileSetup } from './components/setup/ProfileSetup';
 import { WorkspaceSelection } from './components/setup/WorkspaceSelection';
 import { useSetupRouter } from './hooks/useSetupRouter';
 
+type AppPhase = 'setup' | 'greeting' | 'conversation';
+
 export function App(): ReactElement {
   const { currentStep, completeCurrentStep } = useSetupRouter('needs-key');
+  const [userName, setUserName] = useState('');
+  const [phase, setPhase] = useState<AppPhase>('setup');
 
-  if (currentStep === 'needs-key') {
+  // Setup phase — walk through setup steps
+  if (phase === 'setup') {
+    if (currentStep === 'needs-key') {
+      return (
+        <ApiKeySetup
+          onValidated={() => {
+            completeCurrentStep();
+          }}
+        />
+      );
+    }
+
+    if (currentStep === 'needs-profile') {
+      return (
+        <ProfileSetup
+          onComplete={(name: string) => {
+            setUserName(name);
+            completeCurrentStep();
+          }}
+        />
+      );
+    }
+
+    if (currentStep === 'needs-avatar') {
+      return (
+        <AvatarSelection
+          onSelect={() => {
+            completeCurrentStep();
+          }}
+        />
+      );
+    }
+
+    if (currentStep === 'needs-workspace') {
+      return (
+        <WorkspaceSelection
+          onSelectFolder={() => {
+            completeCurrentStep();
+            setPhase('greeting');
+          }}
+          onSkip={() => {
+            completeCurrentStep();
+            setPhase('greeting');
+          }}
+        />
+      );
+    }
+
+    // ready step — transition to greeting
+    setPhase('greeting');
+  }
+
+  // Greeting phase — brief welcome, then conversation
+  if (phase === 'greeting') {
     return (
-      <ApiKeySetup
-        onValidated={() => {
-          completeCurrentStep();
+      <SessionGreeting
+        userName={userName || 'there'}
+        incompleteSessions={[]}
+        onResume={() => {}}
+        onStartNew={() => {
+          setPhase('conversation');
         }}
       />
     );
   }
 
-  if (currentStep === 'needs-profile') {
-    return (
-      <ProfileSetup
-        onComplete={() => {
-          completeCurrentStep();
-        }}
-      />
-    );
-  }
-
-  if (currentStep === 'needs-avatar') {
-    return (
-      <AvatarSelection
-        onSelect={() => {
-          completeCurrentStep();
-        }}
-      />
-    );
-  }
-
-  if (currentStep === 'needs-workspace') {
-    return (
-      <WorkspaceSelection
-        onSelectFolder={() => {
-          completeCurrentStep();
-        }}
-        onSkip={() => {
-          completeCurrentStep();
-        }}
-      />
-    );
-  }
-
-  // ready state — main conversation view
+  // Conversation phase — main interaction
   return (
-    <div className="flex h-screen w-screen flex-col bg-stage-bg">
-      <div className="flex flex-1 items-center justify-center">
-        <h1 className="text-display text-text-on-dark">TalkTerm</h1>
-      </div>
-    </div>
+    <ConversationView
+      userName={userName || 'there'}
+      avatarName="Mary"
+    />
   );
 }
