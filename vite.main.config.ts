@@ -5,4 +5,9 @@ export default defineConfig({
     conditions: ['node'],
     mainFields: ['module', 'jsnext:main', 'jsnext'],
   },
+  build: {
+    rollupOptions: {
+      external: ['electron-squirrel-startup', 'better-sqlite3'],
+    },
+  },
 });
