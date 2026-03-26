@@ -28,9 +28,12 @@ describe('SessionGreeting', () => {
         onStartNew={onStartNew}
       />,
     );
-    await waitFor(() => {
-      expect(onStartNew).toHaveBeenCalledOnce();
-    }, { timeout: 3000 });
+    await waitFor(
+      () => {
+        expect(onStartNew).toHaveBeenCalledOnce();
+      },
+      { timeout: 3000 },
+    );
   });
 
   it('shows resume option with one session', () => {

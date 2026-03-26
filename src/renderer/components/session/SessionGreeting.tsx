@@ -31,7 +31,9 @@ export function SessionGreeting({
       <div className="flex h-screen w-screen flex-col items-center justify-center bg-stage-bg gap-4">
         <h1 className="text-display text-text-on-dark">Hey {userName}!</h1>
         <p className="text-body text-text-muted-on-dark">What are you working on today?</p>
-        <p className="text-caption text-text-muted-on-dark animate-pulse">Loading conversation...</p>
+        <p className="text-caption text-text-muted-on-dark animate-pulse">
+          Loading conversation...
+        </p>
       </div>
     );
   }

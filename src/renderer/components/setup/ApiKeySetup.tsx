@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useRef, useState, type ReactElement, type SyntheticEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactElement,
+  type SyntheticEvent,
+} from 'react';
 
 interface ApiKeySetupProps {
   onValidated: (key: string) => void;
@@ -132,12 +139,10 @@ export function ApiKeySetup({
         <h1 className="text-center text-display text-text-on-dark">Get Started</h1>
 
         <p className="text-center text-body text-text-muted-on-dark">
-          TalkTerm connects to Claude through the Anthropic API.
-          {' '}
+          TalkTerm connects to Claude through the Anthropic API.{' '}
           <span className="text-text-on-dark">
             API keys are separate from Claude Pro/Max subscriptions
-          </span>
-          {' '}
+          </span>{' '}
           — you can create one for free at the Anthropic Console.
         </p>
 
@@ -174,8 +179,8 @@ export function ApiKeySetup({
             Create a free API key at console.anthropic.com →
           </a>
           <p className="text-caption text-text-muted-on-dark">
-            Have a Claude subscription? You still need an API key — they're separate.
-            The API has its own free tier with credits to get started.
+            Have a Claude subscription? You still need an API key — they're separate. The API has
+            its own free tier with credits to get started.
           </p>
         </div>
 

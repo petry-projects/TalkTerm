@@ -39,8 +39,11 @@ describe('ConversationView', () => {
     const input = screen.getByPlaceholderText(/speak to Mary/i);
     await user.type(input, 'Hello{Enter}');
 
-    await waitFor(() => {
-      expect(screen.getByLabelText(/avatar is speaking/i)).toBeInTheDocument();
-    }, { timeout: 3000 });
+    await waitFor(
+      () => {
+        expect(screen.getByLabelText(/avatar is speaking/i)).toBeInTheDocument();
+      },
+      { timeout: 3000 },
+    );
   });
 });
