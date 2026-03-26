@@ -1,4 +1,5 @@
 import { useEffect, type ReactElement } from 'react';
+import { AvatarCanvas } from '../avatar/AvatarCanvas';
 
 interface SessionGreetingProps {
   userName: string;
@@ -29,6 +30,7 @@ export function SessionGreeting({
   if (incompleteSessions.length === 0) {
     return (
       <div className="flex h-screen w-screen flex-col items-center justify-center bg-stage-bg gap-4">
+        <AvatarCanvas state="ready" />
         <h1 className="text-display text-text-on-dark">Hey {userName}!</h1>
         <p className="text-body text-text-muted-on-dark">What are you working on today?</p>
         <p className="text-caption text-text-muted-on-dark animate-pulse">
@@ -40,6 +42,7 @@ export function SessionGreeting({
 
   return (
     <div className="flex h-screen w-screen flex-col items-center justify-center bg-stage-bg gap-6">
+      <AvatarCanvas state="ready" />
       <h1 className="text-display text-text-on-dark">Welcome back, {userName}!</h1>
       <p className="text-body text-text-muted-on-dark">
         {incompleteSessions.length === 1

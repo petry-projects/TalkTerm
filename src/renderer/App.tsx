@@ -50,7 +50,7 @@ export function App(): ReactElement {
     if (currentStep === 'needs-workspace') {
       return (
         <WorkspaceSelection
-          onSelectFolder={() => {
+          onSelectFolder={(_path: string) => {
             completeCurrentStep();
             setPhase('greeting');
           }}
