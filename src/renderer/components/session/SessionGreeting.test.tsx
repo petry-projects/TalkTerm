@@ -5,6 +5,31 @@ import { describe, it, expect, vi } from 'vitest';
 import { SessionGreeting } from './SessionGreeting';
 
 describe('SessionGreeting', () => {
+  it('shows avatar on the greeting screen', () => {
+    render(
+      <SessionGreeting
+        userName="Root"
+        incompleteSessions={[]}
+        onResume={vi.fn()}
+        onStartNew={vi.fn()}
+      />,
+    );
+    expect(screen.getByTestId('avatar-placeholder')).toBeInTheDocument();
+  });
+
+  it('shows avatar on the welcome back screen', () => {
+    const sessions = [{ id: 's1', workspacePath: '/project', updatedAt: '2026-03-24' }];
+    render(
+      <SessionGreeting
+        userName="Root"
+        incompleteSessions={sessions}
+        onResume={vi.fn()}
+        onStartNew={vi.fn()}
+      />,
+    );
+    expect(screen.getByTestId('avatar-placeholder')).toBeInTheDocument();
+  });
+
   it('shows friendly greeting with no sessions', () => {
     render(
       <SessionGreeting
