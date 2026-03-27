@@ -1,16 +1,20 @@
 name: SonarCloud Analysis
-permissions:
-  contents: read
-  pull-requests: read
+
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
+
+permissions: read-all
+
 jobs:
   sonarcloud:
     name: SonarCloud
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
     env:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     steps:
