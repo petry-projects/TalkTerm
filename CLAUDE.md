@@ -1,10 +1,10 @@
 # TalkTerm — Project Context & Implementation Rules
 
-This file is the single source of truth for all implementation agents working on TalkTerm. It enforces SDLC best practices, coding standards, and architectural rules. Every story implementation, code review, and PR must comply with these rules.
+This file defines project-specific implementation rules and context for all agents working on TalkTerm. It extends the org-wide standards from the shared AGENTS.md linked below. Every story implementation, code review, and PR must comply with both this file and the org-wide standards.
 
-> **Organization standards:** This repo inherits shared standards from [petry-projects/.github/AGENTS.md](https://github.com/petry-projects/.github/blob/main/AGENTS.md). The sections below are project-specific.
+> **Organization standards:** This repo inherits and extends shared standards from [petry-projects/.github/AGENTS.md](https://github.com/petry-projects/.github/blob/main/AGENTS.md). The authoritative rules come from both this file (project-specific) and the org-wide AGENTS.md. The sections below add TalkTerm-specific context.
 
-**Enforcement rules are modularized in `.claude/rules/`** — those files are always loaded and contain the hard constraints. This file provides project context, architecture reference, and tooling configuration.
+**Enforcement rules are planned for `.claude/rules/`** — those files will contain hard constraints once created. This file provides project context, architecture reference, and tooling configuration.
 
 ---
 
@@ -21,7 +21,7 @@ TalkTerm is a desktop AI agent interface (Electron + React + TypeScript) that ma
 ## 1. Test-Driven Development (TDD)
 
 > **Extends org-wide TDD standards.** See [shared AGENTS.md](https://github.com/petry-projects/.github/blob/main/AGENTS.md) for mandatory TDD workflow, coverage rules, and prohibited patterns (`.skip()`, coverage-ignore).
-> **Workflow and checklist enforced in:** `.claude/rules/tdd-sequence.md`
+> **Workflow and checklist (planned):** `.claude/rules/tdd-sequence.md` *(not yet created)*
 
 ### Testing Framework & Configuration
 
@@ -107,7 +107,7 @@ src/
     └── preload.ts           Exposes main process ports to renderer
 ```
 
-> **Import rules enforced in:** `.claude/rules/architectural-boundaries.md`
+> **Import rules (planned):** `.claude/rules/architectural-boundaries.md` *(not yet created)*
 
 ---
 
@@ -163,7 +163,7 @@ Key rules: `no-floating-promises`, `strict-boolean-expressions`, `explicit-funct
 
 Plus: `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noImplicitOverride`
 
-> **Hard constraints enforced in:** `.claude/rules/no-shortcuts.md`
+> **Hard constraints (planned):** `.claude/rules/no-shortcuts.md` *(not yet created)*
 
 ---
 
@@ -199,20 +199,20 @@ Plus: `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noImplicitOverr
 | Domain events | `context:past-tense` | `session:created` |
 | Branded types | PascalCase | `SessionId`, `WorkspacePath` |
 
-> **IPC naming enforced in:** `.claude/rules/ipc-naming.md`
+> **IPC naming (planned):** `.claude/rules/ipc-naming.md` *(not yet created)*
 
 ---
 
 ## 9. Architectural Boundaries
 
-> **Full rules enforced in:** `.claude/rules/architectural-boundaries.md`
-> **Error pipeline enforced in:** `.claude/rules/error-pipeline.md`
+> **Full rules (planned):** `.claude/rules/architectural-boundaries.md` *(not yet created)*
+> **Error pipeline (planned):** `.claude/rules/error-pipeline.md` *(not yet created)*
 
 ---
 
 ## 10. Story Implementation Protocol
 
-> **Full workflow and checklist enforced in:** `.claude/rules/tdd-sequence.md`
+> **Full workflow and checklist (planned):** `.claude/rules/tdd-sequence.md` *(not yet created)*
 
 ---
 
