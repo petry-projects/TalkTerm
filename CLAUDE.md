@@ -2,6 +2,8 @@
 
 This file is the single source of truth for all implementation agents working on TalkTerm. It enforces SDLC best practices, coding standards, and architectural rules. Every story implementation, code review, and PR must comply with these rules.
 
+> **Organization standards:** This repo inherits shared standards from [petry-projects/.github/AGENTS.md](https://github.com/petry-projects/.github/blob/main/AGENTS.md). The sections below are project-specific.
+
 **Enforcement rules are modularized in `.claude/rules/`** — those files are always loaded and contain the hard constraints. This file provides project context, architecture reference, and tooling configuration.
 
 ---
@@ -18,6 +20,7 @@ TalkTerm is a desktop AI agent interface (Electron + React + TypeScript) that ma
 
 ## 1. Test-Driven Development (TDD)
 
+> **Extends org-wide TDD standards.** See [shared AGENTS.md](https://github.com/petry-projects/.github/blob/main/AGENTS.md) for mandatory TDD workflow, coverage rules, and prohibited patterns (`.skip()`, coverage-ignore).
 > **Workflow and checklist enforced in:** `.claude/rules/tdd-sequence.md`
 
 ### Testing Framework & Configuration
@@ -133,6 +136,8 @@ src/
 
 ## 5. Pre-Commit Quality Checks
 
+> **Extends org-wide pre-commit standards.** Project-specific tooling below.
+
 Husky v9 + lint-staged v15 run on every commit (~15-40s total):
 
 | Check | Tool | Purpose |
@@ -164,7 +169,7 @@ Plus: `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noImplicitOverr
 
 ## 7. CI Quality Gates (GitHub Actions)
 
-Every PR must pass ALL gates before merge:
+> **Extends org-wide CI gate standards.** See [shared AGENTS.md](https://github.com/petry-projects/.github/blob/main/AGENTS.md) for iterate-until-green policy. Project-specific gates:
 
 | Gate | Command | Threshold |
 |------|---------|-----------|
