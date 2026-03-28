@@ -1,4 +1,5 @@
 @https://raw.githubusercontent.com/petry-projects/.github/main/AGENTS.md
+@AGENTS.md
 
 # TalkTerm — Claude Code Project Context
 
