@@ -1,6 +1,7 @@
 export type ErrorCategory =
   | 'network-error'
   | 'auth-error'
+  | 'billing-error'
   | 'rate-limit'
   | 'file-permission'
   | 'sdk-error'
@@ -28,6 +29,8 @@ export function classifyError(error: unknown): ErrorCategory {
       return 'network-error';
     if (msg.includes('401') || msg.includes('unauthorized') || msg.includes('api key'))
       return 'auth-error';
+    if (msg.includes('credit') || msg.includes('balance') || msg.includes('billing'))
+      return 'billing-error';
     if (msg.includes('429') || msg.includes('rate limit')) return 'rate-limit';
     if (msg.includes('permission') || msg.includes('eacces')) return 'file-permission';
     if (msg.includes('synthesis') || msg.includes('voice') || msg.includes('speak'))
@@ -50,6 +53,8 @@ export function createUserFriendlyMessage(category: ErrorCategory): string {
       return "I'm having trouble reaching the service. Let me try again in a moment.";
     case 'auth-error':
       return "There's an issue with your API key. Let's get that sorted out.";
+    case 'billing-error':
+      return 'Your API account needs credits. Please add credits at console.anthropic.com to continue.';
     case 'rate-limit':
       return "The service is busy right now. I'll retry in a few seconds.";
     case 'file-permission':

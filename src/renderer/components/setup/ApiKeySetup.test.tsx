@@ -4,163 +4,170 @@ import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
 import { ApiKeySetup } from './ApiKeySetup';
 
+const defaultProps = {
+  onValidated: vi.fn(),
+  onSubscriptionSelected: vi.fn(),
+};
+
 describe('ApiKeySetup', () => {
-  it('renders heading', () => {
-    render(<ApiKeySetup onValidated={vi.fn()} />);
-    expect(screen.getByText('Get Started')).toBeInTheDocument();
+  describe('auth method choice screen', () => {
+    it('renders heading', () => {
+      render(<ApiKeySetup {...defaultProps} />);
+      expect(screen.getByText('Get Started')).toBeInTheDocument();
+    });
+
+    it('shows Claude Pro/Max subscription option', () => {
+      render(<ApiKeySetup {...defaultProps} />);
+      expect(screen.getByText(/Claude Pro \/ Max Subscription/)).toBeInTheDocument();
+    });
+
+    it('shows API key option', () => {
+      render(<ApiKeySetup {...defaultProps} />);
+      expect(screen.getByText(/Anthropic API Key/)).toBeInTheDocument();
+    });
+
+    it('calls onSubscriptionSelected when subscription is chosen', async () => {
+      const onSubscriptionSelected = vi.fn();
+      const user = userEvent.setup();
+      render(<ApiKeySetup {...defaultProps} onSubscriptionSelected={onSubscriptionSelected} />);
+      await user.click(screen.getByText(/Claude Pro \/ Max Subscription/));
+      expect(onSubscriptionSelected).toHaveBeenCalledTimes(1);
+    });
+
+    it('navigates to API key entry when API key is chosen', async () => {
+      const user = userEvent.setup();
+      render(<ApiKeySetup {...defaultProps} />);
+      await user.click(screen.getByText(/Anthropic API Key/));
+      expect(screen.getByPlaceholderText('sk-ant-api03-...')).toBeInTheDocument();
+    });
   });
 
-  it('renders input with placeholder', () => {
-    render(<ApiKeySetup onValidated={vi.fn()} />);
-    expect(screen.getByPlaceholderText('sk-ant-api03-...')).toBeInTheDocument();
+  describe('API key entry screen', () => {
+    async function navigateToApiKeyEntry(): Promise<ReturnType<typeof userEvent.setup>> {
+      const user = userEvent.setup();
+      await user.click(screen.getByText(/Anthropic API Key/));
+      return user;
+    }
+
+    it('auto-focuses the input', async () => {
+      render(<ApiKeySetup {...defaultProps} />);
+      await navigateToApiKeyEntry();
+      expect(screen.getByPlaceholderText('sk-ant-api03-...')).toHaveFocus();
+    });
+
+    it('shows Validate API Key button disabled initially', async () => {
+      render(<ApiKeySetup {...defaultProps} />);
+      await navigateToApiKeyEntry();
+      const btn = screen.getByRole('button', { name: /validate api key/i });
+      expect(btn).toBeDisabled();
+    });
+
+    it('enables button when input is provided', async () => {
+      render(<ApiKeySetup {...defaultProps} />);
+      const user = await navigateToApiKeyEntry();
+      await user.type(screen.getByPlaceholderText('sk-ant-api03-...'), 'some-key');
+      expect(screen.getByRole('button', { name: /validate api key/i })).toBeEnabled();
+    });
+
+    it('validates and auto-advances with valid key on Enter', async () => {
+      const onValidated = vi.fn();
+      render(<ApiKeySetup {...defaultProps} onValidated={onValidated} />);
+      const user = await navigateToApiKeyEntry();
+
+      await user.type(
+        screen.getByPlaceholderText('sk-ant-api03-...'),
+        'sk-ant-api03-test-key{Enter}',
+      );
+
+      await waitFor(
+        () => {
+          expect(screen.getByText(/key verified/i)).toBeInTheDocument();
+        },
+        { timeout: 3000 },
+      );
+      await waitFor(
+        () => {
+          expect(onValidated).toHaveBeenCalledWith('sk-ant-api03-test-key');
+        },
+        { timeout: 3000 },
+      );
+    }, 10000);
+
+    it('shows error for invalid keys', async () => {
+      render(<ApiKeySetup {...defaultProps} />);
+      const user = await navigateToApiKeyEntry();
+
+      await user.type(screen.getByPlaceholderText('sk-ant-api03-...'), 'invalid-key');
+      await user.click(screen.getByRole('button', { name: /validate api key/i }));
+
+      await waitFor(
+        () => {
+          expect(screen.getByText(/didn't work/i)).toBeInTheDocument();
+        },
+        { timeout: 3000 },
+      );
+      expect(defaultProps.onValidated).not.toHaveBeenCalled();
+    }, 10000);
+
+    it('suggests subscription option for OAuth tokens', async () => {
+      render(<ApiKeySetup {...defaultProps} />);
+      const user = await navigateToApiKeyEntry();
+
+      await user.type(screen.getByPlaceholderText('sk-ant-api03-...'), 'sk-ant-oat-test');
+      await user.click(screen.getByRole('button', { name: /validate api key/i }));
+
+      await waitFor(
+        () => {
+          expect(screen.getByText(/Claude Pro\/Max/i)).toBeInTheDocument();
+        },
+        { timeout: 3000 },
+      );
+    }, 10000);
+
+    it('has a Back button to return to choice screen', async () => {
+      render(<ApiKeySetup {...defaultProps} />);
+      const user = await navigateToApiKeyEntry();
+
+      await user.click(screen.getByText('Back'));
+      expect(screen.getByText(/How would you like to connect/)).toBeInTheDocument();
+    });
+
+    it('shows link to create API key', async () => {
+      render(<ApiKeySetup {...defaultProps} />);
+      await navigateToApiKeyEntry();
+      expect(screen.getByText(/create a free api key/i)).toBeInTheDocument();
+    });
   });
 
-  it('auto-focuses the input on mount', () => {
-    render(<ApiKeySetup onValidated={vi.fn()} />);
-    expect(screen.getByPlaceholderText('sk-ant-api03-...')).toHaveFocus();
+  describe('env key detected', () => {
+    it('shows env key detected screen', () => {
+      render(<ApiKeySetup {...defaultProps} detectedEnvKey={true} />);
+      expect(screen.getByText(/found an existing api key/i)).toBeInTheDocument();
+    });
+
+    it('calls onValidated with ENV_KEY when using detected key', async () => {
+      const onValidated = vi.fn();
+      const user = userEvent.setup();
+      render(<ApiKeySetup {...defaultProps} onValidated={onValidated} detectedEnvKey={true} />);
+      await user.click(screen.getByRole('button', { name: /use existing key/i }));
+      expect(onValidated).toHaveBeenCalledWith('ENV_KEY');
+    });
+
+    it('calls onValidated with ENV_KEY on Enter', async () => {
+      const onValidated = vi.fn();
+      const user = userEvent.setup();
+      render(<ApiKeySetup {...defaultProps} onValidated={onValidated} detectedEnvKey={true} />);
+      await user.keyboard('{Enter}');
+      expect(onValidated).toHaveBeenCalledWith('ENV_KEY');
+    });
   });
 
-  it('shows Validate API Key button on load, disabled', () => {
-    render(<ApiKeySetup onValidated={vi.fn()} />);
-    const btn = screen.getByRole('button', { name: /validate api key/i });
-    expect(btn).toBeInTheDocument();
-    expect(btn).toBeDisabled();
+  describe('expired state', () => {
+    it('shows expired message and goes directly to API key entry', async () => {
+      render(<ApiKeySetup {...defaultProps} initialState="expired" />);
+      const user = userEvent.setup();
+      await user.click(screen.getByText(/Anthropic API Key/));
+      expect(screen.getByText(/expired or been revoked/i)).toBeInTheDocument();
+    });
   });
-
-  it('enables Validate API Key button when input is provided', async () => {
-    const user = userEvent.setup();
-    render(<ApiKeySetup onValidated={vi.fn()} />);
-    const input = screen.getByPlaceholderText('sk-ant-api03-...');
-    await user.type(input, 'some-key');
-    expect(screen.getByRole('button', { name: /validate api key/i })).toBeEnabled();
-  });
-
-  it('triggers validation on Enter key press', async () => {
-    const onValidated = vi.fn();
-    const user = userEvent.setup();
-    render(<ApiKeySetup onValidated={onValidated} />);
-
-    const input = screen.getByPlaceholderText('sk-ant-api03-...');
-    await user.type(input, 'sk-ant-api03-test-key{Enter}');
-
-    await waitFor(
-      () => {
-        expect(screen.getByText(/key verified/i)).toBeInTheDocument();
-      },
-      { timeout: 3000 },
-    );
-
-    await waitFor(
-      () => {
-        expect(onValidated).toHaveBeenCalledWith('sk-ant-api03-test-key');
-      },
-      { timeout: 3000 },
-    );
-  }, 10000);
-
-  it('shows link to create API key', () => {
-    render(<ApiKeySetup onValidated={vi.fn()} />);
-    expect(screen.getByText(/create a free api key/i)).toBeInTheDocument();
-  });
-
-  it('explains API keys are separate from subscriptions', () => {
-    render(<ApiKeySetup onValidated={vi.fn()} />);
-    expect(screen.getByText(/separate from Claude Pro\/Max subscriptions/i)).toBeInTheDocument();
-  });
-
-  it('shows expired message when initialState is expired', () => {
-    render(<ApiKeySetup onValidated={vi.fn()} initialState="expired" />);
-    expect(screen.getByText(/expired or been revoked/i)).toBeInTheDocument();
-  });
-
-  it('shows env key detected screen when detectedEnvKey is true', () => {
-    render(<ApiKeySetup onValidated={vi.fn()} detectedEnvKey={true} />);
-    expect(screen.getByText(/found an existing api key/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /use existing key/i })).toBeInTheDocument();
-  });
-
-  it('calls onValidated with ENV_KEY when using detected key', async () => {
-    const onValidated = vi.fn();
-    const user = userEvent.setup();
-    render(<ApiKeySetup onValidated={onValidated} detectedEnvKey={true} />);
-    await user.click(screen.getByRole('button', { name: /use existing key/i }));
-    expect(onValidated).toHaveBeenCalledWith('ENV_KEY');
-  });
-
-  it('calls onValidated with ENV_KEY on Enter when env key detected', async () => {
-    const onValidated = vi.fn();
-    const user = userEvent.setup();
-    render(<ApiKeySetup onValidated={onValidated} detectedEnvKey={true} />);
-    await user.keyboard('{Enter}');
-    expect(onValidated).toHaveBeenCalledWith('ENV_KEY');
-  });
-
-  it('offers option to enter different key when env key detected', () => {
-    render(<ApiKeySetup onValidated={vi.fn()} detectedEnvKey={true} />);
-    expect(screen.getByText(/enter a different key/i)).toBeInTheDocument();
-  });
-
-  it('auto-advances after clicking Validate API Key with valid key', async () => {
-    const onValidated = vi.fn();
-    const user = userEvent.setup();
-    render(<ApiKeySetup onValidated={onValidated} />);
-
-    const input = screen.getByPlaceholderText('sk-ant-api03-...');
-    await user.type(input, 'sk-ant-api03-test-key');
-    await user.click(screen.getByRole('button', { name: /validate api key/i }));
-
-    await waitFor(
-      () => {
-        expect(screen.getByText(/key verified/i)).toBeInTheDocument();
-      },
-      { timeout: 3000 },
-    );
-
-    expect(screen.getByText(/continuing/i)).toBeInTheDocument();
-
-    await waitFor(
-      () => {
-        expect(onValidated).toHaveBeenCalledWith('sk-ant-api03-test-key');
-      },
-      { timeout: 3000 },
-    );
-  }, 10000);
-
-  it('does not auto-advance for invalid keys', async () => {
-    const onValidated = vi.fn();
-    const user = userEvent.setup();
-    render(<ApiKeySetup onValidated={onValidated} />);
-
-    const input = screen.getByPlaceholderText('sk-ant-api03-...');
-    await user.type(input, 'invalid-key');
-    await user.click(screen.getByRole('button', { name: /validate api key/i }));
-
-    await waitFor(
-      () => {
-        expect(screen.getByText(/didn't work/i)).toBeInTheDocument();
-      },
-      { timeout: 3000 },
-    );
-
-    expect(onValidated).not.toHaveBeenCalled();
-  }, 10000);
-
-  it('shows Validate API Key button again after failed validation for retry', async () => {
-    const user = userEvent.setup();
-    render(<ApiKeySetup onValidated={vi.fn()} />);
-
-    const input = screen.getByPlaceholderText('sk-ant-api03-...');
-    await user.type(input, 'invalid-key');
-    await user.click(screen.getByRole('button', { name: /validate api key/i }));
-
-    await waitFor(
-      () => {
-        expect(screen.getByText(/didn't work/i)).toBeInTheDocument();
-      },
-      { timeout: 3000 },
-    );
-
-    const btn = screen.getByRole('button', { name: /validate api key/i });
-    expect(btn).toBeEnabled();
-  }, 10000);
 });

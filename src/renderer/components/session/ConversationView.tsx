@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react';
+import type { AgentEvent } from '../../../shared/types/domain/agent-event';
 import type { AvatarAnimationState } from '../../hooks/useAvatarState';
 import { WebSpeechStt } from '../../speech/web-speech-stt';
 import { WebSpeechTts } from '../../speech/web-speech-tts';
@@ -38,45 +39,31 @@ function selectBestVoice(): string | undefined {
   return undefined;
 }
 
-/**
- * BMAD Analyst (Mary) demo responses.
- * Simulates the BMAD Analyst agent until the real Claude Agent SDK is wired.
- */
-const ANALYST_RESPONSES: ReadonlyMap<string, string> = new Map([
-  [
-    'brainstorm',
-    "I'd love to brainstorm with you! Let me help structure your ideas. What domain or problem space are we exploring? I'll help you generate options, evaluate them, and narrow down to the strongest candidates.",
-  ],
-  [
-    'prd',
-    "Great — let's create a Product Requirements Document. I'll guide you through the key sections: problem statement, target users, functional requirements, and success metrics. What product or feature are we defining?",
-  ],
-  [
-    'research',
-    "I can help with research! I'll look into market trends, competitive landscape, and domain specifics. What topic or industry should I focus on?",
-  ],
-  [
-    'architecture',
-    "Let's think through the architecture. I'll help you map out components, data flow, and integration points. What system are we designing?",
-  ],
-]);
-
-function getAnalystResponse(userText: string): string {
-  const lower = userText.toLowerCase();
-  for (const [keyword, response] of ANALYST_RESPONSES) {
-    if (lower.includes(keyword)) {
-      return response;
-    }
-  }
-  return `That's a great starting point! I'm Mary, your BMAD Analyst. I can help you brainstorm ideas, create product requirements, conduct research, or plan architecture. What would you like to explore? Just tell me naturally — for example, "help me brainstorm features for an onboarding flow" or "let's create a PRD for my app."`;
+/** Option cards shown by the avatar (FR18/FR19) */
+interface OptionCard {
+  label: string;
+  description: string;
 }
+
+/** Initial option cards Mary presents to guide the user */
+const INITIAL_OPTION_CARDS: readonly OptionCard[] = [
+  { label: 'Brainstorm', description: 'Generate and evaluate ideas' },
+  { label: 'Create a PRD', description: 'Define product requirements' },
+  { label: 'Research', description: 'Explore market & domain' },
+  { label: 'Architecture', description: 'Design system components' },
+];
 
 interface ConversationViewProps {
   userName: string;
   avatarName: string;
+  sessionId: string;
 }
 
-export function ConversationView({ userName, avatarName }: ConversationViewProps): ReactElement {
+export function ConversationView({
+  userName,
+  avatarName,
+  sessionId,
+}: ConversationViewProps): ReactElement {
   const [avatarState, setAvatarState] = useState<AvatarAnimationState>('ready');
   const [caption, setCaption] = useState<string | null>(
     `Hey ${userName}! I'm Mary, your BMAD Analyst. What are you working on today?`,
@@ -85,6 +72,8 @@ export function ConversationView({ userName, avatarName }: ConversationViewProps
   const [inputValue, setInputValue] = useState('');
   const [sttSupported, setSttSupported] = useState(true);
   const [liveMode, setLiveMode] = useState(false);
+  const [optionCards, setOptionCards] = useState<readonly OptionCard[]>([]);
+  const [hasInteracted, setHasInteracted] = useState(false);
 
   const sttRef = useRef<WebSpeechStt | null>(null);
   const ttsRef = useRef<WebSpeechTts | null>(null);
@@ -117,6 +106,63 @@ export function ConversationView({ userName, avatarName }: ConversationViewProps
     };
   }, []);
 
+  // Subscribe to agent events from main process
+  useEffect(() => {
+    const unsubscribe = window.electronAPI.onAgentEvent((event: AgentEvent) => {
+      switch (event.type) {
+        case 'text':
+          setAvatarState('speaking');
+          setCaption(event.content);
+          setIsCaptionVisible(true);
+          // After agent's first response, show option cards for guided interaction
+          if (!hasInteracted) {
+            setOptionCards(INITIAL_OPTION_CARDS);
+            setHasInteracted(true);
+          }
+          // Speak the response via TTS
+          if (ttsRef.current !== null) {
+            ttsRef.current.onEnd = (): void => {
+              setAvatarState('ready');
+              if (liveModeRef.current) {
+                setTimeout(() => {
+                  startListening();
+                }, 300);
+              }
+            };
+            ttsRef.current.speak(event.content, voiceRef.current);
+          }
+          break;
+        case 'tool-call':
+          setAvatarState('thinking');
+          setCaption(`Using ${event.toolName}...`);
+          setIsCaptionVisible(true);
+          break;
+        case 'tool-result':
+          setCaption(event.success ? `${event.toolName} completed` : `${event.toolName} failed`);
+          break;
+        case 'error':
+          setAvatarState('ready');
+          setCaption(event.userMessage);
+          setIsCaptionVisible(true);
+          break;
+        case 'complete':
+          setAvatarState((prev) => (prev === 'speaking' ? prev : 'ready'));
+          break;
+        case 'progress':
+          setCaption(`${event.step}: ${event.status}`);
+          setIsCaptionVisible(true);
+          break;
+        case 'confirm-request':
+          setAvatarState('ready');
+          setCaption(`${event.description} — confirm?`);
+          setIsCaptionVisible(true);
+          break;
+      }
+    });
+
+    return unsubscribe;
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- startListening is stable via ref
+
   const startListening = useCallback((): void => {
     const stt = sttRef.current;
     if (stt === null) return;
@@ -124,7 +170,6 @@ export function ConversationView({ userName, avatarName }: ConversationViewProps
 
     stt.onResult = (result): void => {
       if (result.isFinal) {
-        // Auto-send the final transcript
         const text = result.transcript.trim();
         if (text !== '') {
           setInputValue('');
@@ -133,7 +178,6 @@ export function ConversationView({ userName, avatarName }: ConversationViewProps
           handleSendInternal(text);
         }
       } else {
-        // Show interim results in caption
         setCaption(result.transcript);
         setIsCaptionVisible(true);
       }
@@ -150,8 +194,6 @@ export function ConversationView({ userName, avatarName }: ConversationViewProps
     };
 
     stt.onEnd = (): void => {
-      // In live mode, auto-restart listening after TTS finishes
-      // (don't restart during speaking — barge-in handles that)
       setAvatarState((prev) => {
         if (prev === 'listening') {
           return 'ready';
@@ -166,32 +208,15 @@ export function ConversationView({ userName, avatarName }: ConversationViewProps
     setIsCaptionVisible(true);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps -- handleSendInternal is stable
 
-  const speakResponse = useCallback(
-    (text: string): void => {
-      const tts = ttsRef.current;
-      if (tts === null) return;
-
-      setAvatarState('speaking');
-      setCaption(text);
-      setIsCaptionVisible(true);
-
-      tts.onEnd = (): void => {
-        setAvatarState('ready');
-        // In live mode, auto-restart listening after avatar finishes speaking
-        if (liveModeRef.current) {
-          setTimeout(() => {
-            startListening();
-          }, 300);
-        }
-      };
-
-      tts.speak(text, voiceRef.current);
-    },
-    [startListening],
-  );
+  /** FR37 — Stop avatar talking (barge-in). Stops TTS and returns to ready. */
+  function handleStopTalking(): void {
+    ttsRef.current?.stop();
+    sttRef.current?.stop();
+    setAvatarState('ready');
+    window.electronAPI.cancelAgent();
+  }
 
   function handleSendInternal(text: string): void {
-    // Stop any ongoing STT/TTS
     sttRef.current?.stop();
     ttsRef.current?.stop();
 
@@ -199,15 +224,23 @@ export function ConversationView({ userName, avatarName }: ConversationViewProps
     setIsCaptionVisible(false);
     setAvatarState('thinking');
     setInputValue('');
+    // Hide option cards after first user message
+    setOptionCards([]);
 
-    setTimeout(() => {
-      const response = getAnalystResponse(text);
-      speakResponse(response);
-    }, 1500);
+    window.electronAPI.sendAgentMessage(sessionId, text).catch(() => {
+      setAvatarState('ready');
+      setCaption('Something went wrong. Please try again.');
+      setIsCaptionVisible(true);
+    });
   }
 
   function handleSend(text: string): void {
     handleSendInternal(text);
+  }
+
+  /** FR18/FR19 — User clicks an option card to send that choice */
+  function handleOptionCardClick(card: OptionCard): void {
+    handleSendInternal(`Help me ${card.label.toLowerCase()}`);
   }
 
   function handleMicClick(): void {
@@ -215,7 +248,6 @@ export function ConversationView({ userName, avatarName }: ConversationViewProps
     if (stt === null) return;
 
     if (stt.isListening || liveMode) {
-      // Stop live mode
       stt.stop();
       setLiveMode(false);
       setAvatarState('ready');
@@ -224,10 +256,11 @@ export function ConversationView({ userName, avatarName }: ConversationViewProps
       return;
     }
 
-    // Start live mode — continuous back-and-forth
     setLiveMode(true);
     startListening();
   }
+
+  const isTalkingOrThinking = avatarState === 'speaking' || avatarState === 'thinking';
 
   return (
     <div className="flex h-screen w-screen flex-col items-center justify-between bg-stage-bg">
@@ -236,6 +269,19 @@ export function ConversationView({ userName, avatarName }: ConversationViewProps
         <AvatarCanvas state={avatarState} />
         <StatusIndicator state={avatarState} />
         <CaptionBar text={caption} visible={isCaptionVisible} />
+
+        {/* FR37 — Stop talking button (visible when avatar is speaking or thinking) */}
+        {isTalkingOrThinking && (
+          <button
+            type="button"
+            onClick={handleStopTalking}
+            aria-label="Stop talking"
+            className="rounded-lg border border-danger bg-danger/20 px-4 py-2 text-small font-medium text-danger transition-colors hover:bg-danger/40"
+          >
+            ⏹ Stop
+          </button>
+        )}
+
         {!sttSupported && (
           <p className="text-caption text-text-muted-on-dark">
             Voice input requires Chrome or Edge.
@@ -245,6 +291,29 @@ export function ConversationView({ userName, avatarName }: ConversationViewProps
           <p className="animate-pulse text-caption text-primary">
             Live mode — speak naturally, click mic to stop
           </p>
+        )}
+
+        {/* FR18/FR19 — Option cards for guided interaction */}
+        {optionCards.length > 0 && avatarState === 'ready' && (
+          <div
+            className="mt-4 flex flex-wrap justify-center gap-3"
+            role="group"
+            aria-label="Suggested actions"
+          >
+            {optionCards.map((card) => (
+              <button
+                key={card.label}
+                type="button"
+                onClick={() => {
+                  handleOptionCardClick(card);
+                }}
+                className="flex w-[180px] flex-col gap-1 rounded-xl border border-text-muted-on-dark p-3 text-left transition-all hover:border-primary hover:-translate-y-0.5 hover:shadow-md"
+              >
+                <span className="text-small font-semibold text-text-on-dark">{card.label}</span>
+                <span className="text-caption text-text-muted-on-dark">{card.description}</span>
+              </button>
+            ))}
+          </div>
         )}
       </div>
 
