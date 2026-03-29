@@ -1,7 +1,9 @@
 import path from 'node:path';
 import { app, BrowserWindow, safeStorage } from 'electron';
+import type { AuthMode } from '../shared/types/ports/agent-backend';
 import { AgentMessageRouter } from './agent/agent-message-router';
 import { ClaudeSdkBackend } from './agent/claude-sdk-backend';
+import { AgentIPCHandler } from './ipc/agent-ipc-handler';
 import { SessionIPCHandler } from './ipc/session-ipc-handler';
 import { SettingsIPCHandler } from './ipc/settings-ipc-handler';
 import { checkAdminPrivileges } from './security/admin-check';
@@ -12,13 +14,20 @@ import { MemoryIndexStore } from './storage/memory-index-store';
 import { SqliteAuditRepository } from './storage/sqlite-audit-repository';
 import { SqliteSessionRepository } from './storage/sqlite-session-repository';
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports -- Electron Forge requires CJS for squirrel startup
-const squirrelStartup = require('electron-squirrel-startup') as boolean;
-if (squirrelStartup) {
-  app.quit();
+// Squirrel.Windows startup handling — only needed on Windows
+if (process.platform === 'win32') {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- Electron Forge requires CJS for squirrel startup
+    const squirrelStartup = require('electron-squirrel-startup') as boolean;
+    if (squirrelStartup) {
+      app.quit();
+    }
+  } catch {
+    // Module not available in production builds — safe to ignore on non-Windows
+  }
 }
 
-declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string;
+declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
 declare const MAIN_WINDOW_VITE_NAME: string;
 
 // --- Composition Root ---
@@ -51,14 +60,23 @@ function bootstrap(): void {
   });
 
   // 4. Agent backend
-  const agentBackend = new ClaudeSdkBackend(auditRepo, () => keyManager.retrieveKey());
-  const _agentRouter = new AgentMessageRouter(agentBackend);
+  const agentBackend = new ClaudeSdkBackend(
+    auditRepo,
+    () => keyManager.retrieveKey(),
+    (): AuthMode => {
+      const mode = configStore.get('authMode');
+      return mode === 'claude-subscription' ? 'claude-subscription' : 'api-key';
+    },
+  );
+  const agentRouter = new AgentMessageRouter(agentBackend);
 
   // 5. IPC handlers — register with ipcMain
   // eslint-disable-next-line @typescript-eslint/no-require-imports -- dynamic require for ipcMain in composition root
   const { ipcMain } = require('electron') as typeof import('electron');
+  const agentHandler = new AgentIPCHandler(agentRouter, () => mainWindow?.webContents ?? null);
   const settingsHandler = new SettingsIPCHandler(keyManager, configStore);
   const sessionHandler = new SessionIPCHandler(sessionRepo, configStore);
+  agentHandler.register(ipcMain);
   settingsHandler.register(ipcMain);
   sessionHandler.register(ipcMain);
 
@@ -82,13 +100,38 @@ function bootstrap(): void {
     mainWindow?.webContents.send('admin:check-result', adminResult);
   });
 
-  if (MAIN_WINDOW_VITE_DEV_SERVER_URL !== '') {
+  // Log renderer errors to stderr for debugging
+  mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription) => {
+    console.error('did-fail-load:', errorCode, errorDescription);
+  });
+  mainWindow.webContents.on('render-process-gone', (_event, details) => {
+    console.error('render-process-gone:', details);
+  });
+
+  if (MAIN_WINDOW_VITE_DEV_SERVER_URL !== undefined && MAIN_WINDOW_VITE_DEV_SERVER_URL !== '') {
     void mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
   } else {
     void mainWindow.loadFile(
       path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`),
     );
   }
+
+  // Force window to foreground
+  mainWindow.show();
+  mainWindow.focus();
+  app.focus({ steal: true });
+
+  // Ctrl+D / Cmd+D to toggle DevTools (developer/debug view)
+  // Use before-input-event instead of globalShortcut for reliable packaged-app support
+  mainWindow.webContents.on('before-input-event', (_event, input) => {
+    if (input.key === 'd' && (input.control || input.meta) && input.type === 'keyDown') {
+      if (mainWindow?.webContents.isDevToolsOpened() === true) {
+        mainWindow.webContents.closeDevTools();
+      } else {
+        mainWindow?.webContents.openDevTools({ mode: 'detach' });
+      }
+    }
+  });
 
   // 8. Crash-safe session persistence
   app.on('before-quit', () => {

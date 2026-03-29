@@ -17,6 +17,8 @@ export interface ElectronAPI {
   validateApiKey: (key: string) => Promise<{ valid: boolean; message?: string }>;
   storeApiKey: (key: string) => Promise<void>;
   getKeyState: () => Promise<'none' | 'valid' | 'expired'>;
+  setAuthMode: (mode: 'api-key' | 'claude-subscription') => Promise<void>;
+  getAuthMode: () => Promise<'api-key' | 'claude-subscription'>;
 
   // Profile
   getProfile: () => Promise<UserProfile | null>;

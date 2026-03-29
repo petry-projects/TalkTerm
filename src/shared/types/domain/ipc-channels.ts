@@ -15,6 +15,8 @@ export const IPC_CHANNELS = {
   SETTINGS_VALIDATE_KEY: 'settings:validate-key',
   SETTINGS_STORE_KEY: 'settings:store-key',
   SETTINGS_GET_KEY_STATE: 'settings:get-key-state',
+  SETTINGS_SET_AUTH_MODE: 'settings:set-auth-mode',
+  SETTINGS_GET_AUTH_MODE: 'settings:get-auth-mode',
   PROFILE_GET: 'profile:get',
   PROFILE_SET: 'profile:set',
   AVATAR_GET_ROSTER: 'avatar:get-roster',

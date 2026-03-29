@@ -36,6 +36,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_GET_KEY_STATE) as Promise<
       'none' | 'valid' | 'expired'
     >,
+  setAuthMode: (mode: 'api-key' | 'claude-subscription'): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_SET_AUTH_MODE, mode) as Promise<void>,
+  getAuthMode: (): Promise<'api-key' | 'claude-subscription'> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_GET_AUTH_MODE) as Promise<
+      'api-key' | 'claude-subscription'
+    >,
 
   // Profile
   getProfile: (): Promise<unknown> =>
