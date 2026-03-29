@@ -1,13 +1,19 @@
-import { faker } from '@faker-js/faker';
 import type { Session, SessionStatus } from '../../../src/shared/types/domain/session';
 import type { AuditEntry } from '../../../src/shared/types/domain/audit-entry';
 
+let counter = 0;
+
+function nextId(): string {
+  counter += 1;
+  return `test-${counter.toString().padStart(4, '0')}`;
+}
+
 export function buildSession(overrides?: Partial<Session>): Session {
-  const now = faker.date.recent().toISOString();
+  const now = new Date().toISOString();
   return {
-    id: faker.string.uuid(),
+    id: nextId(),
     sdkSessionId: null,
-    workspacePath: `/home/${faker.internet.username()}/project`,
+    workspacePath: `/tmp/test-project-${nextId()}`,
     status: 'active' as SessionStatus,
     avatarPersonaId: 'mary',
     createdAt: now,
@@ -18,11 +24,11 @@ export function buildSession(overrides?: Partial<Session>): Session {
 
 export function buildAuditEntry(overrides?: Partial<AuditEntry>): AuditEntry {
   return {
-    sessionId: faker.string.uuid(),
-    timestamp: faker.date.recent().toISOString(),
+    sessionId: nextId(),
+    timestamp: new Date().toISOString(),
     actionType: 'tool:bash',
     outcome: 'success',
-    userIntent: faker.lorem.sentence(),
+    userIntent: 'Test action',
     details: {},
     ...overrides,
   };
@@ -47,11 +53,11 @@ export function buildSessionRow(
   created_at: string;
   updated_at: string;
 } {
-  const now = faker.date.recent().toISOString();
+  const now = new Date().toISOString();
   return {
-    id: faker.string.uuid(),
+    id: nextId(),
     sdk_session_id: null,
-    workspace_path: `/home/${faker.internet.username()}/project`,
+    workspace_path: `/tmp/test-project-${nextId()}`,
     status: 'active',
     avatar_persona_id: 'mary',
     created_at: now,
