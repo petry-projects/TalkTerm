@@ -9,6 +9,7 @@ export default tseslint.config(
       'node_modules/',
       '.vite/',
       'out/',
+      'coverage/',
       '**/*.config.ts',
       '**/*.config.mjs',
       '**/*.config.js',
