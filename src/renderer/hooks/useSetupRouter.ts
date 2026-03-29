@@ -10,8 +10,8 @@ export interface UseSetupRouterReturn {
 const STEP_ORDER: SetupStep[] = [
   'needs-key',
   'needs-profile',
-  'needs-avatar',
   'needs-workspace',
+  'needs-avatar',
   'ready',
 ];
 

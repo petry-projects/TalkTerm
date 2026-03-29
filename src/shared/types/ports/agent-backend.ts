@@ -1,8 +1,11 @@
 import type { AgentEvent } from '../domain/agent-event';
 
+export type AuthMode = 'api-key' | 'claude-subscription';
+
 export interface AgentSessionConfig {
   workspacePath: string;
   apiKey: string;
+  authMode?: AuthMode;
   maxTurns?: number;
   maxBudgetUsd?: number;
 }

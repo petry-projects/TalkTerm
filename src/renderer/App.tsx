@@ -13,14 +13,38 @@ export function App(): ReactElement {
   const { currentStep, completeCurrentStep } = useSetupRouter('needs-key');
   const [userName, setUserName] = useState('');
   const [phase, setPhase] = useState<AppPhase>('setup');
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [workspacePath, setWorkspacePath] = useState('');
+
+  async function startNewSession(): Promise<void> {
+    try {
+      const id = await window.electronAPI.startSession(workspacePath || '/tmp');
+      setSessionId(id);
+      setPhase('conversation');
+    } catch {
+      // If session start fails, still enter conversation with a fallback ID
+      setSessionId(crypto.randomUUID());
+      setPhase('conversation');
+    }
+  }
 
   // Setup phase — walk through setup steps
   if (phase === 'setup') {
     if (currentStep === 'needs-key') {
       return (
         <ApiKeySetup
-          onValidated={() => {
-            completeCurrentStep();
+          onValidated={(key: string) => {
+            void Promise.all([
+              window.electronAPI.storeApiKey(key),
+              window.electronAPI.setAuthMode('api-key'),
+            ]).then(() => {
+              completeCurrentStep();
+            });
+          }}
+          onSubscriptionSelected={() => {
+            void window.electronAPI.setAuthMode('claude-subscription').then(() => {
+              completeCurrentStep();
+            });
           }}
         />
       );
@@ -37,24 +61,24 @@ export function App(): ReactElement {
       );
     }
 
-    if (currentStep === 'needs-avatar') {
+    if (currentStep === 'needs-workspace') {
       return (
-        <AvatarSelection
-          onSelect={() => {
+        <WorkspaceSelection
+          onSelectFolder={(path: string) => {
+            setWorkspacePath(path);
+            completeCurrentStep();
+          }}
+          onSkip={() => {
             completeCurrentStep();
           }}
         />
       );
     }
 
-    if (currentStep === 'needs-workspace') {
+    if (currentStep === 'needs-avatar') {
       return (
-        <WorkspaceSelection
-          onSelectFolder={(_path: string) => {
-            completeCurrentStep();
-            setPhase('greeting');
-          }}
-          onSkip={() => {
+        <AvatarSelection
+          onSelect={() => {
             completeCurrentStep();
             setPhase('greeting');
           }}
@@ -74,12 +98,18 @@ export function App(): ReactElement {
         incompleteSessions={[]}
         onResume={() => {}}
         onStartNew={() => {
-          setPhase('conversation');
+          void startNewSession();
         }}
       />
     );
   }
 
   // Conversation phase — main interaction
-  return <ConversationView userName={userName || 'there'} avatarName="Mary" />;
+  return (
+    <ConversationView
+      userName={userName || 'there'}
+      avatarName="Mary"
+      sessionId={sessionId ?? ''}
+    />
+  );
 }

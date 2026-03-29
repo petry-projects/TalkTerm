@@ -1,6 +1,8 @@
 # TalkTerm — Project Context & Implementation Rules
 
-This file is the single source of truth for all implementation agents working on TalkTerm. It enforces SDLC best practices, coding standards, and architectural rules. Every story implementation, code review, and PR must comply with these rules.
+This file extends the [petry-projects organization standards](https://github.com/petry-projects/.github/blob/main/AGENTS.md) with TalkTerm-specific guidance. **Read the org-level AGENTS.md first** — it defines TDD, SOLID, CLEAN, DRY, DDD, KISS, YAGNI, pre-commit checks, CI gates, BMAD workflow, and multi-agent isolation rules that apply to all repositories.
+
+> If a rule here conflicts with the org-level AGENTS.md, the rule here takes precedence.
 
 ---
 
@@ -14,16 +16,9 @@ TalkTerm is a desktop AI agent interface (Electron + React + TypeScript) that ma
 
 ---
 
-## 1. Test-Driven Development (TDD) — Strict
+## 1. Testing — Project-Specific Configuration
 
-**Every story starts with a failing test.** No production code is written without a failing test that justifies it.
-
-### TDD Workflow (Red-Green-Refactor)
-
-1. **Red:** Write a failing test that defines the expected behavior
-2. **Green:** Write the minimum production code to make the test pass
-3. **Refactor:** Clean up the code while keeping tests green
-4. **Repeat:** Next behavior, next failing test
+The org-level AGENTS.md defines TDD workflow and general testing rules. This section adds TalkTerm-specific framework configuration.
 
 ### Testing Framework & Configuration
 
@@ -65,108 +60,15 @@ Tests run in environment-appropriate contexts:
 - **Shared types:** No mocking needed — pure functions only.
 - **Test against interfaces, not implementations.** If code works with `FakeAgentBackend`, it works with any real backend.
 
-### Coverage Requirements
+### Coverage & Mutation Testing
 
-- **Branch coverage:** 90% (enforced in CI)
-- **Function coverage:** 90% (enforced in CI)
-- **Line coverage:** 90% (enforced in CI)
-- **Statement coverage:** 90% (enforced in CI)
-
-Untested code paths should be justified or removed. Dead code is deleted, not excluded.
-
-### Mutation Testing
-
-**Tool:** Stryker Mutator (`@stryker-mutator/core` with `@stryker-mutator/vitest-runner`)
-
-Mutation testing validates that tests actually catch bugs — not just that they execute code paths. Stryker modifies (mutates) production code and verifies that tests fail. Surviving mutants indicate weak or missing assertions.
-
-**Requirements:**
-
-- **Mutation score minimum:** 80% (enforced in CI)
-- **Target:** 90%+ for domain logic, repositories, and use cases
-- Mutation testing runs in CI on every PR (not in pre-commit — too slow)
-- Surviving mutants must be investigated: either strengthen the test or justify the survival
-
-**Stryker configuration** (`stryker.config.mjs`):
-
-```javascript
-export default {
-  testRunner: 'vitest',
-  mutate: [
-    'src/**/*.ts',
-    'src/**/*.tsx',
-    '!src/**/*.test.{ts,tsx}',
-    '!src/**/index.ts',
-    '!src/preload/**',           // contextBridge wiring — tested via E2E
-    '!src/main/main.ts',         // composition root — tested via integration/E2E
-  ],
-  reporters: ['html', 'clear-text', 'progress'],
-  thresholds: {
-    high: 90,
-    low: 80,
-    break: 80,   // CI fails below 80%
-  },
-  vitest: {
-    configFile: 'vitest.config.ts',
-  },
-};
-```
-
-**What to exclude from mutation testing:**
-- Composition roots (`main.ts`, `renderer.tsx`) — wiring code tested via integration/E2E
-- Preload scripts — contextBridge boilerplate tested via E2E
-- Type-only files (`.d.ts`, pure type exports)
-
-**What must score 90%+:**
-- Domain objects (`shared/types/domain/`)
-- Repository implementations (`main/storage/`)
-- Use case orchestration (`main/agent/`)
-- Security logic (`main/security/`)
-- React reducers and hooks with business logic
+- **Coverage thresholds:** 90% branch, function, line, and statement (enforced in CI)
+- **Mutation testing:** Stryker Mutator with Vitest runner — 80% minimum score, 90%+ target for domain/repository/use-case layers
+- **Mutation exclusions:** composition roots, preload scripts, type-only files
 
 ---
 
-## 2. SOLID Principles
-
-### Single Responsibility (S)
-
-Each file and class has one reason to change. Each directory in `src/main/` maps to one bounded context.
-
-```
-GOOD: agent-backend.ts (interface), claude-sdk-backend.ts (implementation), agent-message-router.ts (routing)
-BAD:  agent.ts (creates session + routes messages + writes audit + handles errors)
-```
-
-### Open/Closed (O)
-
-New behaviors are added by creating new implementations, not modifying existing ones. The `AgentBackend`, `SpeechToText`, `TextToSpeech`, `SessionRepository`, and `AuditRepository` interfaces are extension points — add new implementations without changing consumers.
-
-### Liskov Substitution (L)
-
-Any implementation of an interface must fulfill the full contract. Validate with a `Fake*` implementation in tests — if code works with the fake, it works with any real implementation.
-
-### Interface Segregation (I)
-
-IPC channels are already segregated: `agent:*`, `session:*`, `settings:*`, `voice:*`. The renderer subscribes only to channels it needs. Keep interfaces focused — prefer multiple small interfaces over one large one.
-
-### Dependency Inversion (D)
-
-High-level modules depend on abstractions (interfaces), not implementations. Use **manual constructor injection** — no DI framework.
-
-```typescript
-// Composition root in src/main/main.ts
-const db = initializeDatabase(dbPath);
-const sessionRepo = new SqliteSessionRepository(db);
-const auditRepo = new SqliteAuditRepository(db);
-const keyManager = new SafeStorageKeyManager();
-const agentBackend = new ClaudeSdkBackend(auditRepo, configStore);
-```
-
-**No DI frameworks** (TSyringe, InversifyJS, etc.). Manual wiring in `main.ts` is simpler, fully type-safe, and sufficient for this project's ~7 components.
-
----
-
-## 3. Clean Architecture
+## 2. Clean Architecture — TalkTerm Layers
 
 Dependencies point inward. Inner layers never import from outer layers.
 
@@ -212,9 +114,9 @@ src/
 
 ---
 
-## 4. Domain-Driven Design (DDD)
+## 3. DDD — TalkTerm Bounded Contexts
 
-### Bounded Contexts
+The org-level AGENTS.md defines general DDD principles. This section maps them to TalkTerm's specific bounded contexts.
 
 | Context | Directory | Responsibility | Aggregate Root |
 |---------|-----------|---------------|----------------|
@@ -225,153 +127,41 @@ src/
 | **Avatar** | `renderer/components/avatar/` | Animation state machine, persona mapping | `AvatarState` |
 | **Overlay** | `renderer/components/overlay/` + `display/` | Action cards, output panels, display modes | `OverlayStack` |
 
-### Aggregate Roots
-
-An aggregate root is the entry point for all modifications to its cluster of related objects. External code interacts only with the aggregate root — never with its internal objects directly.
-
-```typescript
-// src/shared/types/domain/session.ts
-export class Session {
-  private constructor(
-    public readonly id: SessionId,
-    public readonly workspacePath: WorkspacePath,
-    private _status: SessionStatus,
-    private _sdkSessionId: string | null,
-    public readonly createdAt: Date,
-    private _updatedAt: Date,
-  ) {}
-
-  static create(workspace: WorkspacePath): Session { ... }
-  resume(sdkSessionId: string): void { ... }
-  pause(): void { ... }
-  complete(): void { ... }
-  fail(reason: string): void { ... }
-
-  get status(): SessionStatus { return this._status; }
-  get updatedAt(): Date { return this._updatedAt; }
-}
-```
-
-### Value Objects (Immutable, Compared by Value)
-
-Use branded types to prevent passing the wrong string to the wrong function:
-
-```typescript
-// src/shared/types/domain/value-objects.ts
-export type SessionId = string & { readonly __brand: 'SessionId' };
-export type WorkspacePath = string & { readonly __brand: 'WorkspacePath' };
-export type ApiKey = string & { readonly __brand: 'ApiKey' };
-
-export function createSessionId(raw: string): SessionId {
-  if (!raw || raw.length < 8) throw new Error('Invalid session ID');
-  return raw as SessionId;
-}
-
-export function createWorkspacePath(raw: string): WorkspacePath {
-  if (!raw) throw new Error('Workspace path cannot be empty');
-  return raw as WorkspacePath;
-}
-```
-
-### Repository Interfaces (Ports)
-
-```typescript
-// src/shared/types/ports/session-repository.ts
-export interface SessionRepository {
-  save(session: Session): void;
-  findById(id: SessionId): Session | null;
-  findIncomplete(workspacePath: WorkspacePath): Session[];
-  findAll(): Session[];
-}
-
-// src/shared/types/ports/audit-repository.ts
-export interface AuditRepository {
-  append(entry: AuditEntry): void;
-  findBySession(sessionId: SessionId): AuditEntry[];
-  findByDateRange(from: Date, to: Date): AuditEntry[];
-}
-```
-
-### Domain Events
-
-Domain events decouple bounded contexts. When an action in one context affects another, publish an event rather than creating a direct dependency.
-
-```typescript
-// src/shared/types/domain/events.ts
-export type DomainEvent =
-  | { type: 'session:created'; sessionId: SessionId; workspace: WorkspacePath }
-  | { type: 'session:resumed'; sessionId: SessionId }
-  | { type: 'session:completed'; sessionId: SessionId; outputPath: string }
-  | { type: 'agent:action-logged'; entry: AuditEntry }
-  | { type: 'agent:error-classified'; error: AgentError }
-  | { type: 'preference:updated'; agentType: string; key: string; value: string };
-
-// Simple synchronous event bus (no framework needed)
-export class DomainEventBus {
-  private handlers = new Map<string, Array<(event: DomainEvent) => void>>();
-
-  on(type: DomainEvent['type'], handler: (event: DomainEvent) => void): void { ... }
-  emit(event: DomainEvent): void { ... }
-}
-```
-
 ### Anti-Corruption Layer
 
 The Claude Agent SDK's message types are external — do not let them leak into domain code. Map SDK messages to domain events at the boundary (`claude-sdk-backend.ts`).
 
-```typescript
-// In claude-sdk-backend.ts — the ONLY file that imports the SDK
-// Map SDKMessage → AgentEvent (our domain type) at the boundary
-function mapSdkMessage(msg: SDKMessage): AgentEvent { ... }
-```
+### Dependency Injection
+
+**Manual constructor injection** in `main.ts` — no DI frameworks (TSyringe, InversifyJS, etc.). Manual wiring is simpler, fully type-safe, and sufficient for this project's ~7 components.
 
 ---
 
-## 5. Pre-Commit Quality Checks (Thorough Gate)
+## 4. Pre-Commit — TalkTerm Configuration
 
-### Husky v9 + lint-staged v15
+The org-level AGENTS.md defines general pre-commit requirements. TalkTerm uses **Husky v9 + lint-staged v15**:
 
 **Pre-commit hook** (`.husky/pre-commit`):
-
 ```bash
 #!/usr/bin/env sh
 npx lint-staged && npx tsc --noEmit && npx vitest related --run
 ```
 
 **lint-staged configuration** (in `package.json`):
-
 ```json
 {
   "lint-staged": {
-    "*.{ts,tsx}": [
-      "eslint --fix --max-warnings 0",
-      "prettier --write"
-    ],
-    "*.{css,json,md}": [
-      "prettier --write"
-    ]
+    "*.{ts,tsx}": ["eslint --fix --max-warnings 0", "prettier --write"],
+    "*.{css,json,md}": ["prettier --write"]
   }
 }
 ```
 
-### What Runs on Every Commit
-
-| Check | Tool | Purpose | Approximate Time |
-|-------|------|---------|-----------------|
-| Lint + autofix | ESLint | Catch floating promises, unused code, type issues | ~3-5s |
-| Format | Prettier | Consistent formatting | <1s |
-| Type check | `tsc --noEmit` | Catch type errors across full project | ~5-15s |
-| Related tests | `vitest related --run` | Run tests affected by staged files | ~5-20s |
-
-**Total: 15-40 seconds per commit.** This catches the vast majority of defects before they reach CI.
-
 ---
 
-## 6. Code Quality Tooling
+## 5. Code Quality Tooling
 
-### ESLint (Flat Config)
-
-Key rules enforced:
+### ESLint (Flat Config) — Key Rules
 
 | Rule | Why |
 |------|-----|
@@ -380,49 +170,19 @@ Key rules enforced:
 | `@typescript-eslint/explicit-function-return-type` | Documents intent, catches type widening |
 | `@typescript-eslint/no-unused-vars` | Dead code removal (with `_` prefix exceptions) |
 | `import-x/order` | Consistent import ordering: builtin → external → internal → parent → sibling |
-| `import-x/no-duplicates` | No duplicate imports |
 | React hooks rules | Enforce rules of hooks and exhaustive deps |
 
-**Zero warnings policy:** `--max-warnings 0` — warnings are errors.
-
 ### Prettier
-
 ```json
-{
-  "semi": true,
-  "singleQuote": true,
-  "trailingComma": "all",
-  "printWidth": 100,
-  "tabWidth": 2
-}
+{ "semi": true, "singleQuote": true, "trailingComma": "all", "printWidth": 100, "tabWidth": 2 }
 ```
 
-### TypeScript Configuration
-
-- `strict: true` — enables all strict checks
-- `noUncheckedIndexedAccess: true` — forces null checks on array/object indexing
-- `exactOptionalPropertyTypes: true` — distinguishes `undefined` from missing
-- `noImplicitOverride: true` — requires `override` keyword
+### TypeScript
+- `strict: true`, `noUncheckedIndexedAccess: true`, `exactOptionalPropertyTypes: true`, `noImplicitOverride: true`
 
 ---
 
-## 7. CI Quality Gates (GitHub Actions)
-
-Every PR must pass ALL gates before merge:
-
-| Gate | Command | Blocks PR? | Why |
-|------|---------|-----------|-----|
-| Type check | `tsc --noEmit` | Yes | Type errors are bugs |
-| Lint | `eslint . --max-warnings 0` | Yes | Catches floating promises, dead code |
-| Format | `prettier --check .` | Yes | Formatting is not debatable |
-| Unit + component tests | `vitest run` | Yes | Regressions |
-| Coverage (all metrics) | `vitest run --coverage` | Yes (90% branch/function/line/statement) | Comprehensive test coverage |
-| Mutation testing | `npx stryker run` | Yes (80% score) | Tests must catch real bugs, not just execute paths |
-| E2E (macOS + Windows) | `playwright test` | Yes | Cross-platform correctness |
-
----
-
-## 8. Naming Conventions
+## 6. Naming Conventions
 
 | Category | Convention | Example |
 |----------|-----------|---------|
@@ -442,7 +202,7 @@ Every PR must pass ALL gates before merge:
 
 ---
 
-## 9. Architectural Boundaries (Hard Rules)
+## 7. Architectural Boundaries (Hard Rules)
 
 These are **non-negotiable** — any violation must be fixed before merge:
 
@@ -457,7 +217,7 @@ These are **non-negotiable** — any violation must be fixed before merge:
 
 ---
 
-## 10. Story Implementation Protocol
+## 8. Story Implementation Protocol
 
 When implementing any story, follow this exact sequence:
 
@@ -491,23 +251,13 @@ Before marking a story as done:
 
 ---
 
-## 11. Development Environment
+## 9. Development Environment
 
 ### Required Tools
 
 - Node.js 24+ (bundled with Electron 41)
 - npm (package manager)
 - Git
-
-### Key Dev Dependencies
-
-```
-vitest @testing-library/react @testing-library/user-event @testing-library/jest-dom jsdom
-eslint typescript-eslint eslint-plugin-react eslint-plugin-react-hooks eslint-plugin-import-x
-prettier husky lint-staged
-@playwright/test
-@stryker-mutator/core @stryker-mutator/vitest-runner
-```
 
 ### npm Scripts
 
@@ -525,7 +275,7 @@ npm run build     → electron-forge make
 
 ---
 
-## 12. File Organization Rules
+## 10. File Organization Rules
 
 - Feature-based organization in renderer: `avatar/`, `overlay/`, `voice/`, `session/`, `display/`, `setup/`
 - Concern-based organization in main: `agent/`, `storage/`, `security/`, `ipc/`
@@ -540,6 +290,7 @@ npm run build     → electron-forge make
 
 ## References
 
+- **Org Standards:** [petry-projects AGENTS.md](https://github.com/petry-projects/.github/blob/main/AGENTS.md)
 - **PRD:** `_bmad-output/planning-artifacts/prd.md` (v2.2)
 - **Architecture:** `_bmad-output/planning-artifacts/architecture.md`
 - **UX Design:** `_bmad-output/planning-artifacts/ux-design-specification.md` (v1.5)

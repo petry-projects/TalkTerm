@@ -7,17 +7,22 @@ import {
   type SyntheticEvent,
 } from 'react';
 
+type AuthChoice = 'none' | 'api-key' | 'claude-subscription';
+
 interface ApiKeySetupProps {
   onValidated: (key: string) => void;
+  onSubscriptionSelected: () => void;
   initialState?: 'empty' | 'expired';
   detectedEnvKey?: boolean;
 }
 
 export function ApiKeySetup({
   onValidated,
+  onSubscriptionSelected,
   initialState,
   detectedEnvKey,
 }: ApiKeySetupProps): ReactElement {
+  const [authChoice, setAuthChoice] = useState<AuthChoice>('none');
   const [key, setKey] = useState('');
   const [isValid, setIsValid] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
@@ -28,12 +33,14 @@ export function ApiKeySetup({
   );
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Auto-focus input on mount
+  // Auto-focus input when API key entry is shown
   useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
+    if (authChoice === 'api-key') {
+      inputRef.current?.focus();
+    }
+  }, [authChoice]);
 
-  // Auto-advance after validation succeeds — show success indicator briefly then proceed
+  // Auto-advance after validation succeeds
   useEffect(() => {
     if (!isValid) return;
     const timer = setTimeout(() => {
@@ -55,11 +62,10 @@ export function ApiKeySetup({
 
     await new Promise((resolve) => setTimeout(resolve, 500));
 
-    // Detect OAuth tokens (subscription tokens) and give a clear explanation
     if (key.startsWith('sk-ant-oat')) {
       setIsValid(false);
       setError(
-        "This looks like a Claude subscription token — TalkTerm needs an API key instead. API keys are separate from your Claude Pro/Max subscription. Click the link below to create one (it's free to start).",
+        'This looks like a Claude subscription token — use the "Claude Pro/Max" option instead, or enter an API key that starts with sk-ant-api03-.',
       );
       setIsValidating(false);
       return;
@@ -101,7 +107,7 @@ export function ApiKeySetup({
 
           <div className="rounded-lg border border-semantic-success/30 bg-semantic-success/10 p-4">
             <p className="text-center text-body text-text-on-dark">
-              ✓ Found an existing API key in your environment
+              Found an existing API key in your environment
             </p>
             <p className="mt-1 text-center text-small text-text-muted-on-dark">
               ANTHROPIC_API_KEY is already configured on this system.
@@ -130,21 +136,74 @@ export function ApiKeySetup({
     );
   }
 
+  // Auth method choice screen
+  if (authChoice === 'none') {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-stage-bg">
+        <div className="flex w-full max-w-md flex-col gap-6 rounded-2xl bg-surface-muted/80 p-10">
+          <h1 className="text-center text-display text-text-on-dark">Get Started</h1>
+
+          <p className="text-center text-body text-text-muted-on-dark">
+            How would you like to connect to Claude?
+          </p>
+
+          <button
+            type="button"
+            onClick={() => {
+              onSubscriptionSelected();
+            }}
+            className="w-full rounded-lg border-2 border-primary bg-primary/10 px-4 py-4 text-left transition-colors hover:bg-primary/20 focus:ring-2 focus:ring-primary/50 focus:outline-none"
+          >
+            <span className="block text-body font-semibold text-text-on-dark">
+              Claude Pro / Max Subscription
+            </span>
+            <span className="mt-1 block text-small text-text-muted-on-dark">
+              Sign in with your existing Claude account. No API key needed.
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setAuthChoice('api-key');
+            }}
+            className="w-full rounded-lg border-2 border-text-muted-on-dark/30 px-4 py-4 text-left transition-colors hover:border-text-muted-on-dark/60 hover:bg-surface-muted/50 focus:ring-2 focus:ring-primary/50 focus:outline-none"
+          >
+            <span className="block text-body font-semibold text-text-on-dark">
+              Anthropic API Key
+            </span>
+            <span className="mt-1 block text-small text-text-muted-on-dark">
+              Use an API key from console.anthropic.com. Pay-as-you-go billing.
+            </span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // API key entry screen
   return (
     <div className="flex h-screen w-screen items-center justify-center bg-stage-bg">
       <form
         onSubmit={handleSubmit}
         className="flex w-full max-w-md flex-col gap-6 rounded-2xl bg-surface-muted/80 p-10"
       >
-        <h1 className="text-center text-display text-text-on-dark">Get Started</h1>
-
-        <p className="text-center text-body text-text-muted-on-dark">
-          TalkTerm connects to Claude through the Anthropic API.{' '}
-          <span className="text-text-on-dark">
-            API keys are separate from Claude Pro/Max subscriptions
-          </span>{' '}
-          — you can create one for free at the Anthropic Console.
-        </p>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setAuthChoice('none');
+              setKey('');
+              setError(null);
+              setIsValid(false);
+            }}
+            className="text-small text-text-muted-on-dark hover:text-text-on-dark"
+          >
+            Back
+          </button>
+          <h1 className="flex-1 text-center text-display text-text-on-dark">Enter API Key</h1>
+          <div className="w-8" />
+        </div>
 
         <div className="flex flex-col gap-2">
           <input
@@ -165,7 +224,7 @@ export function ApiKeySetup({
                   : 'border-text-muted-on-dark focus:border-primary'
             }`}
           />
-          {isValid && <p className="text-small text-semantic-success">✓ Key verified</p>}
+          {isValid && <p className="text-small text-semantic-success">Key verified</p>}
           {error !== null && error !== '' && <p className="text-small text-danger">{error}</p>}
         </div>
 
@@ -176,12 +235,8 @@ export function ApiKeySetup({
             rel="noopener noreferrer"
             className="text-small text-primary hover:underline"
           >
-            Create a free API key at console.anthropic.com →
+            Create a free API key at console.anthropic.com
           </a>
-          <p className="text-caption text-text-muted-on-dark">
-            Have a Claude subscription? You still need an API key — they're separate. The API has
-            its own free tier with credits to get started.
-          </p>
         </div>
 
         {isValid ? (

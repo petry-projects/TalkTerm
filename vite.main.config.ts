@@ -7,7 +7,7 @@ export default defineConfig({
   },
   build: {
     rollupOptions: {
-      external: ['electron-squirrel-startup', 'better-sqlite3'],
+      external: ['better-sqlite3', '@anthropic-ai/claude-agent-sdk'],
     },
   },
 });

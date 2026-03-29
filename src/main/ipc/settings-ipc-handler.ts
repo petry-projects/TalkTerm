@@ -19,6 +19,14 @@ export class SettingsIPCHandler implements IPCRegistrar {
       this.keyManager.storeKey(key as string);
     });
 
+    ipcMain.handle(IPC_CHANNELS.SETTINGS_SET_AUTH_MODE, (_event: unknown, mode: unknown) => {
+      this.configStore.set('authMode', mode);
+    });
+
+    ipcMain.handle(IPC_CHANNELS.SETTINGS_GET_AUTH_MODE, () => {
+      return this.configStore.get('authMode') ?? 'api-key';
+    });
+
     ipcMain.handle(IPC_CHANNELS.SETTINGS_GET, (_event: unknown, key: unknown) => {
       return this.configStore.get(key as string);
     });
