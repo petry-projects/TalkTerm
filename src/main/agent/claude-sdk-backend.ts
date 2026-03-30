@@ -345,10 +345,14 @@ export class ClaudeSdkBackend implements AgentBackend {
           return;
         }
 
-        console.debug('[ClaudeSdkBackend] SDK →', JSON.stringify(msg));
+        const msgType = `${msg.type}${(msg as { subtype?: string }).subtype !== undefined ? `:${(msg as { subtype?: string }).subtype ?? ''}` : ''}`;
+        console.log(`[SDK →] ${msgType}`, msg.type === 'assistant' ? '(content blocks)' : '');
         const events = this.mapSdkMessage(msg, sessionId);
         for (const event of events) {
-          console.debug('[ClaudeSdkBackend] → UI', JSON.stringify(event));
+          console.log(
+            `[SDK → UI] ${event.type}`,
+            event.type === 'text' ? `"${event.content.slice(0, 80)}..."` : '',
+          );
           yield event;
         }
       }
@@ -462,8 +466,23 @@ export class ClaudeSdkBackend implements AgentBackend {
         break;
       }
 
-      // system init, status, and other message types we don't need to surface
       default:
+        // Surface rate limits and task notifications so the user isn't staring at a frozen screen
+        if (msg.type === 'rate_limit_event') {
+          console.warn('[ClaudeSdkBackend] Rate limited — SDK is waiting');
+          events.push({
+            type: 'progress',
+            step: 'Waiting for API availability...',
+            status: 'in-progress',
+          });
+        } else if (msg.type === 'system') {
+          const sysMsg = msg as { type: 'system'; subtype?: string };
+          if (sysMsg.subtype === 'task_started') {
+            events.push({ type: 'progress', step: 'Processing...', status: 'in-progress' });
+          } else if (sysMsg.subtype === 'task_notification') {
+            events.push({ type: 'progress', step: 'Working...', status: 'in-progress' });
+          }
+        }
         break;
     }
 
