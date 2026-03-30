@@ -34,6 +34,16 @@ export interface ElectronAPI {
 
   // Launch
   assessLaunchState: () => Promise<LaunchState>;
+
+  // Audio / STT
+  startAudioCapture: () => Promise<void>;
+  stopAudioCapture: () => Promise<void>;
+  sendAudioData: (pcmFloat32: Float32Array) => void;
+  onAudioResult: (
+    callback: (result: { transcript: string; isFinal: boolean }) => void,
+  ) => () => void;
+  onAudioError: (callback: (error: string) => void) => () => void;
+  onAudioEnd: (callback: () => void) => () => void;
 }
 
 declare global {
