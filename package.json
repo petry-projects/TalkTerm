@@ -80,6 +80,7 @@
     "electron-squirrel-startup": "^1.0.1",
     "electron-store": "^11.0.2",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "sherpa-onnx-node": "^1.12.34"
   }
 }

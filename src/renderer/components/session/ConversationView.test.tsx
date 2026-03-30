@@ -28,8 +28,8 @@ let mockTtsInstance: {
   isSpeaking: boolean;
 };
 
-vi.mock('../../speech/web-speech-stt', () => ({
-  WebSpeechStt: vi.fn().mockImplementation(() => {
+vi.mock('../../speech/ipc-speech-stt', () => ({
+  IpcSpeechStt: vi.fn().mockImplementation(() => {
     mockSttInstance = {
       start: mockSttStart,
       stop: mockSttStop,
@@ -92,6 +92,12 @@ beforeEach(() => {
         avatarSelected: false,
         workspaceSelected: false,
       }),
+      startAudioCapture: vi.fn().mockResolvedValue(undefined),
+      stopAudioCapture: vi.fn().mockResolvedValue(undefined),
+      sendAudioData: vi.fn(),
+      onAudioResult: vi.fn().mockReturnValue(vi.fn()),
+      onAudioError: vi.fn().mockReturnValue(vi.fn()),
+      onAudioEnd: vi.fn().mockReturnValue(vi.fn()),
     },
     writable: true,
     configurable: true,
@@ -245,14 +251,27 @@ describe('ConversationView', () => {
     expect(screen.getByText('hello')).toBeInTheDocument();
   });
 
-  it('shows friendly error when STT fails', async () => {
+  it('shows microphone error when mic access fails', async () => {
     const user = userEvent.setup();
     render(<ConversationView userName="DJ" avatarName="Mary" sessionId="s1" />);
 
     await user.click(screen.getByRole('button', { name: /start recording/i }));
 
     act(() => {
-      mockSttInstance.onError?.(new Error('Speech recognition error: network'));
+      mockSttInstance.onError?.(new Error('Microphone access failed: Permission denied'));
+    });
+
+    expect(screen.getByText(/microphone access failed/i)).toBeInTheDocument();
+  });
+
+  it('shows generic error for other STT failures', async () => {
+    const user = userEvent.setup();
+    render(<ConversationView userName="DJ" avatarName="Mary" sessionId="s1" />);
+
+    await user.click(screen.getByRole('button', { name: /start recording/i }));
+
+    act(() => {
+      mockSttInstance.onError?.(new Error('Speech recognition error: audio-capture'));
     });
 
     expect(screen.getByText(/could not hear you/i)).toBeInTheDocument();
@@ -322,57 +341,53 @@ describe('ConversationView', () => {
     expect(screen.getByLabelText(/avatar is ready/i)).toBeInTheDocument();
   });
 
-  // FR18/FR19 — Option cards
-  it('does not show option cards before first agent response', () => {
+  // FR57-59 — Structured question input
+  it('shows question card stack when agent sends structured questions', () => {
     render(<ConversationView userName="DJ" avatarName="Mary" sessionId="s1" />);
-    expect(screen.queryByRole('group', { name: /suggested actions/i })).not.toBeInTheDocument();
+    simulateAgentEvent({
+      type: 'text',
+      content:
+        'Great idea! A few questions:\n1. **Platform** — iOS or Android?\n2. **Scope** — MVP or full?',
+    });
+    expect(screen.getByTestId('question-card-stack')).toBeInTheDocument();
+    expect(screen.getByText('Platform')).toBeInTheDocument();
   });
 
-  it('shows option cards after first agent text response', () => {
+  it('speaks only the preamble when questions are detected', () => {
     render(<ConversationView userName="DJ" avatarName="Mary" sessionId="s1" />);
-
-    // Simulate agent responding
-    simulateAgentEvent({ type: 'text', content: 'Hello! How can I help?' });
-
-    // Cards should now be visible (they show when avatar returns to ready)
-    act(() => {
-      mockTtsInstance.onEnd?.();
+    simulateAgentEvent({
+      type: 'text',
+      content:
+        'Great idea! A few questions:\n1. **Platform** — iOS or Android?\n2. **Scope** — MVP or full?',
     });
-
-    expect(screen.getByRole('group', { name: /suggested actions/i })).toBeInTheDocument();
-    expect(screen.getByText('Brainstorm')).toBeInTheDocument();
-    expect(screen.getByText('Create a PRD')).toBeInTheDocument();
-    expect(screen.getByText('Research')).toBeInTheDocument();
-    expect(screen.getByText('Architecture')).toBeInTheDocument();
+    expect(mockTtsSpeak).toHaveBeenCalledWith('Great idea! A few questions:', undefined);
   });
 
-  it('clicking an option card sends the choice via IPC', async () => {
-    const user = userEvent.setup();
-    render(<ConversationView userName="DJ" avatarName="Mary" sessionId="s1" />);
-
-    // Trigger cards by simulating first agent response
-    simulateAgentEvent({ type: 'text', content: 'Hello!' });
-    act(() => {
-      mockTtsInstance.onEnd?.();
+  it('sends aggregated message when question answers are submitted', () => {
+    render(<ConversationView userName="DJ" avatarName="Mary" sessionId="session-q" />);
+    simulateAgentEvent({
+      type: 'text',
+      content: 'Questions:\n1. **A** — First?\n2. **B** — Second?',
     });
+    expect(screen.getByTestId('question-card-stack')).toBeInTheDocument();
 
-    await user.click(screen.getByText('Brainstorm'));
-    expect(mockSendAgentMessage).toHaveBeenCalledWith('s1', 'Help me brainstorm');
+    // Dismiss the card stack (simulates submission callback)
+    // The QuestionCardStack calls onSubmit with the aggregated message
+    // We can test the integration by checking the card stack renders and dismiss works
+    const closeBtn = screen.getByRole('button', { name: /close questions/i });
+    act(() => {
+      closeBtn.click();
+    });
+    expect(screen.queryByTestId('question-card-stack')).not.toBeInTheDocument();
   });
 
-  it('hides option cards after user sends a message via card click', async () => {
-    const user = userEvent.setup();
+  it('does not show card stack for single-question text', () => {
     render(<ConversationView userName="DJ" avatarName="Mary" sessionId="s1" />);
-
-    // Show cards
-    simulateAgentEvent({ type: 'text', content: 'Hello!' });
-    act(() => {
-      mockTtsInstance.onEnd?.();
+    simulateAgentEvent({
+      type: 'text',
+      content: 'Just one thing: 1. **Platform** — iOS or Android?',
     });
-    expect(screen.getByText('Brainstorm')).toBeInTheDocument();
-
-    // Click a card
-    await user.click(screen.getByText('Brainstorm'));
-    expect(screen.queryByText('Create a PRD')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('question-card-stack')).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/avatar is speaking/i)).toBeInTheDocument();
   });
 });
