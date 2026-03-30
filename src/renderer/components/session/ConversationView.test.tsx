@@ -328,6 +328,24 @@ describe('ConversationView', () => {
     expect(screen.getByRole('button', { name: /stop talking/i })).toBeInTheDocument();
   });
 
+  it('shows stop button during progress events (rate limiting)', async () => {
+    const user = userEvent.setup();
+    render(<ConversationView userName="DJ" avatarName="Mary" sessionId="s1" />);
+
+    // Send a message to enter thinking state
+    const input = screen.getByPlaceholderText(/speak to Mary/i);
+    await user.type(input, 'test{Enter}');
+
+    // Simulate a progress event (e.g., rate limit)
+    simulateAgentEvent({
+      type: 'progress',
+      step: 'Waiting for API availability...',
+      status: 'in-progress',
+    });
+    expect(screen.getByRole('button', { name: /stop talking/i })).toBeInTheDocument();
+    expect(screen.getByText(/Waiting for API availability/i)).toBeInTheDocument();
+  });
+
   it('clicking stop button stops TTS and returns to ready', async () => {
     const user = userEvent.setup();
     render(<ConversationView userName="DJ" avatarName="Mary" sessionId="s1" />);
