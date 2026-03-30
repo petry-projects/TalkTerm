@@ -180,4 +180,86 @@ describe('parseQuestions', () => {
     // Non-question numbered items (no ? mark, no bold interrogative) — parser should return null
     expect(result).toBeNull();
   });
+
+  // --- Dash-list format (bold headers + dash questions) ---
+
+  it('parses dash-list questions under bold section headers', () => {
+    const text = [
+      "That's a cool idea! Before I plan, some questions:",
+      '',
+      '**Core concept:**',
+      '- Is this a mobile app (iOS, Android, both), a web app, or both?',
+      '- Do you have a preferred tech stack?',
+      '',
+      '**Users & roles:**',
+      '- Are you thinking three main user types — twirlers, coaches, and organizers?',
+      '- Should coaches be able to manage multiple twirlers?',
+      '',
+      '**Scope:**',
+      '- Are you looking for a full architecture plan for an MVP?',
+      '',
+      'Happy to help shape this!',
+    ].join('\n');
+    const result = parseQuestions(text);
+    expect(result).not.toBeNull();
+    expect(result?.preamble).toContain('cool idea');
+    expect(result?.questions).toHaveLength(5);
+    expect(result?.questions[0]?.title).toContain('Core concept');
+    expect(result?.questions[0]?.body).toContain('mobile app');
+    expect(result?.questions[2]?.title).toContain('Users & roles');
+  });
+
+  it('parses dash-list questions without section headers', () => {
+    const text = [
+      'A few questions:',
+      '- What platform are you targeting?',
+      '- What is your budget?',
+      '- When do you need this done?',
+    ].join('\n');
+    const result = parseQuestions(text);
+    expect(result).not.toBeNull();
+    expect(result?.questions).toHaveLength(3);
+  });
+
+  it('ignores dash-list items without question marks', () => {
+    const text = [
+      'Here are the steps:',
+      '- Install the dependencies',
+      '- Configure the server',
+      '- Deploy to production',
+    ].join('\n');
+    const result = parseQuestions(text);
+    expect(result).toBeNull();
+  });
+
+  it('parses real-world bold-header + dash-list agent response', () => {
+    const text = [
+      "That's a cool niche idea! Baton twirling has a dedicated community. I have some questions to help shape the direction:",
+      '',
+      '**Core concept:**',
+      '- Is this a mobile app (iOS, Android, both), a web app, or both?',
+      '- Do you have a preferred tech stack, or are you open to recommendations?',
+      '',
+      "**Key features — what's most important to start with?**",
+      '- **Competitions:** Discovery/search, registration, results tracking, scoring?',
+      '- **Coach-twirler connection:** Messaging, video sharing, lesson scheduling, progress tracking?',
+      '- **Community:** Social feed, profiles, team/group management?',
+      '',
+      '**Users & roles:**',
+      '- Are you thinking three main user types — twirlers, coaches, and competition organizers?',
+      '- Should coaches be able to manage multiple twirlers/teams?',
+      '',
+      '**Scope:**',
+      '- Are you looking for a full architecture plan for an MVP, or more of a feature brainstorm at this stage?',
+      '- Any timeline or constraints I should know about?',
+      '',
+      "Happy to help shape this — just let me know where you'd like to start!",
+    ].join('\n');
+    const result = parseQuestions(text);
+    expect(result).not.toBeNull();
+    expect(result?.preamble).toContain('cool niche idea');
+    expect(result?.questions.length).toBeGreaterThanOrEqual(7);
+    expect(result?.questions[0]?.title).toContain('Core concept');
+    expect(result?.questions[2]?.title).toContain('Key features');
+  });
 });
