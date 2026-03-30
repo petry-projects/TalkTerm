@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createMockIpcMain, createMockWebContents } from '../../../test/support/fixtures/ipc';
 import type { AgentEvent } from '../../shared/types/domain/agent-event';
 import { IPC_CHANNELS } from '../../shared/types/domain/ipc-channels';
+import type { SessionRepository } from '../../shared/types/ports/session-repository';
 import type { AgentMessageRouter } from '../agent/agent-message-router';
 import { AgentIPCHandler } from './agent-ipc-handler';
 import type { IPCMain } from './ipc-registrar';
@@ -15,6 +16,18 @@ function createMockRouter(): AgentMessageRouter {
     cancel: vi.fn(),
     resumeSession: vi.fn().mockResolvedValue(undefined),
   } as unknown as AgentMessageRouter;
+}
+
+function createMockSessionRepo(workspacePath: string = '/tmp'): SessionRepository {
+  return {
+    save: vi.fn(),
+    findById: vi.fn().mockReturnValue({ id: 'session-1', workspacePath, status: 'active' }),
+    findByStatus: vi.fn().mockReturnValue([]),
+    findByWorkspace: vi.fn().mockReturnValue([]),
+    findIncomplete: vi.fn().mockReturnValue([]),
+    updateStatus: vi.fn(),
+    updateSdkSessionId: vi.fn(),
+  } as unknown as SessionRepository;
 }
 
 describe('AgentIPCHandler', () => {
@@ -63,6 +76,7 @@ describe('AgentIPCHandler', () => {
   it('sets up event forwarding during register and sends events to webContents', async () => {
     const router = createMockRouter();
     const webContents = createMockWebContents();
+    const sessionRepo = createMockSessionRepo('/home/user/project');
 
     // Capture the onEvent callback registered during register()
     let eventForwarder: ((event: AgentEvent) => void) | undefined;
@@ -77,7 +91,7 @@ describe('AgentIPCHandler', () => {
       return Promise.resolve();
     });
 
-    const handler = new AgentIPCHandler(router, () => webContents);
+    const handler = new AgentIPCHandler(router, () => webContents, sessionRepo);
     handler.register(ipcMain);
 
     // onEvent should be called once during register, not per sendMessage
@@ -86,7 +100,11 @@ describe('AgentIPCHandler', () => {
     const agentAction = handlers.get(IPC_CHANNELS.AGENT_ACTION);
     await agentAction?.({}, 'session-1', 'Hello agent');
 
-    expect(router.sendMessage).toHaveBeenCalledWith('session-1', 'Hello agent');
+    expect(router.sendMessage).toHaveBeenCalledWith(
+      'session-1',
+      'Hello agent',
+      '/home/user/project',
+    );
     expect(webContents.send).toHaveBeenCalledWith(IPC_CHANNELS.AGENT_MESSAGE, {
       type: 'text',
       content: 'Hello',
@@ -95,6 +113,34 @@ describe('AgentIPCHandler', () => {
       type: 'complete',
       summary: 'Done',
     });
+  });
+
+  it('passes workspace path from session repo to router.sendMessage', async () => {
+    const router = createMockRouter();
+    const webContents = createMockWebContents();
+    const sessionRepo = createMockSessionRepo('/tmp');
+
+    const handler = new AgentIPCHandler(router, () => webContents, sessionRepo);
+    handler.register(ipcMain);
+
+    const agentAction = handlers.get(IPC_CHANNELS.AGENT_ACTION);
+    await agentAction?.({}, 'session-1', 'test message');
+
+    expect(sessionRepo.findById).toHaveBeenCalledWith('session-1');
+    expect(router.sendMessage).toHaveBeenCalledWith('session-1', 'test message', '/tmp');
+  });
+
+  it('passes undefined workspace path when no session repo is provided', async () => {
+    const router = createMockRouter();
+    const webContents = createMockWebContents();
+
+    const handler = new AgentIPCHandler(router, () => webContents);
+    handler.register(ipcMain);
+
+    const agentAction = handlers.get(IPC_CHANNELS.AGENT_ACTION);
+    await agentAction?.({}, 'session-1', 'test message');
+
+    expect(router.sendMessage).toHaveBeenCalledWith('session-1', 'test message', undefined);
   });
 
   it('throws when no active window is available', async () => {

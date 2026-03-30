@@ -1,4 +1,5 @@
 import { IPC_CHANNELS } from '../../shared/types/domain/ipc-channels';
+import type { SessionRepository } from '../../shared/types/ports/session-repository';
 import type { AgentMessageRouter } from '../agent/agent-message-router';
 import type { IPCMain, IPCRegistrar } from './ipc-registrar';
 
@@ -10,6 +11,7 @@ export class AgentIPCHandler implements IPCRegistrar {
   constructor(
     private readonly router: AgentMessageRouter,
     private readonly getWebContents: () => WebContents | null,
+    private readonly sessionRepo?: SessionRepository,
   ) {}
 
   register(ipcMain: IPCMain): void {
@@ -30,7 +32,9 @@ export class AgentIPCHandler implements IPCRegistrar {
         }
 
         try {
-          await this.router.sendMessage(sessionId as string, message as string);
+          const session = this.sessionRepo?.findById(sessionId as string);
+          const workspacePath = session?.workspacePath;
+          await this.router.sendMessage(sessionId as string, message as string, workspacePath);
         } catch (err: unknown) {
           // Send error as an agent event so the UI can recover
           const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';

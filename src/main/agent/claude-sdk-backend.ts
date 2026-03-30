@@ -169,7 +169,11 @@ export class ClaudeSdkBackend implements AgentBackend {
     yield* this.runSdkSession(sdk, config, apiKey);
   }
 
-  async *sendMessage(sessionId: string, message: string): AsyncIterable<AgentEvent> {
+  async *sendMessage(
+    sessionId: string,
+    message: string,
+    workspacePath?: string,
+  ): AsyncIterable<AgentEvent> {
     // Audit logging is best-effort — don't let it break the conversation
     try {
       this.auditRepo.append(createAuditEntry(sessionId, 'user:message', 'success', message));
@@ -208,7 +212,7 @@ export class ClaudeSdkBackend implements AgentBackend {
     }
 
     const apiKey = useSubscription ? null : this.getApiKey();
-    yield* this.runSdkTurn(sdk, apiKey, sessionId, message);
+    yield* this.runSdkTurn(sdk, apiKey, sessionId, message, workspacePath);
   }
 
   cancelCurrentAction(): void {
@@ -309,12 +313,14 @@ export class ClaudeSdkBackend implements AgentBackend {
     apiKey: string | null,
     sessionId: string,
     message: string,
+    workspacePath?: string,
   ): AsyncIterable<AgentEvent> {
     this.abortController = new AbortController();
 
     const queryObj = sdk.query({
       prompt: message,
       options: this.buildSdkOptions(apiKey, {
+        cwd: workspacePath,
         maxTurns: 3,
       }),
     });
@@ -339,8 +345,10 @@ export class ClaudeSdkBackend implements AgentBackend {
           return;
         }
 
+        console.debug('[ClaudeSdkBackend] SDK →', JSON.stringify(msg));
         const events = this.mapSdkMessage(msg, sessionId);
         for (const event of events) {
+          console.debug('[ClaudeSdkBackend] → UI', JSON.stringify(event));
           yield event;
         }
       }

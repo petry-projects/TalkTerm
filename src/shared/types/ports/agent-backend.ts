@@ -12,7 +12,11 @@ export interface AgentSessionConfig {
 
 export interface AgentBackend {
   startSession(config: AgentSessionConfig): AsyncIterable<AgentEvent> | Iterable<AgentEvent>;
-  sendMessage(sessionId: string, message: string): AsyncIterable<AgentEvent> | Iterable<AgentEvent>;
+  sendMessage(
+    sessionId: string,
+    message: string,
+    workspacePath?: string,
+  ): AsyncIterable<AgentEvent> | Iterable<AgentEvent>;
   cancelCurrentAction(): void;
   resumeSession(sessionId: string): AsyncIterable<AgentEvent> | Iterable<AgentEvent>;
 }

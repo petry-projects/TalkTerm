@@ -18,8 +18,8 @@ export class AgentMessageRouter {
     }
   }
 
-  async sendMessage(sessionId: string, message: string): Promise<void> {
-    for await (const event of this.backend.sendMessage(sessionId, message)) {
+  async sendMessage(sessionId: string, message: string, workspacePath?: string): Promise<void> {
+    for await (const event of this.backend.sendMessage(sessionId, message, workspacePath)) {
       this.handler?.(event);
     }
   }
