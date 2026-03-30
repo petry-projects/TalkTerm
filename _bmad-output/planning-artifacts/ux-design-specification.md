@@ -2,7 +2,7 @@
 stepsCompleted: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
 lastStep: 14
 status: complete
-version: '1.2'
+version: '1.3'
 completedAt: '2026-03-23'
 originalCompletedAt: '2026-03-21'
 figmaDesignFile: 'https://www.figma.com/design/SQFww2abh8iCLfdlxT1XKt/Untitled?node-id=0-1&p=f&t=MiRH0bNSpkPNKPhl-0'
@@ -1227,6 +1227,194 @@ flowchart TD
 
 ---
 
+### Journey 7: Structured Question Input (FR57–FR59)
+
+**Goal:** When the agent responds with multiple numbered questions, present them as individual input cards instead of a wall of text — enabling focused, non-linear answering with aggregated submission.
+
+**Persona:** Sarah or Marcus — any user receiving multi-question agent responses.
+
+**Trigger condition:** Agent `text` event contains 2+ numbered questions (detected by renderer-side parser). Single questions remain in the standard caption + input flow.
+
+```mermaid
+flowchart TD
+    A[Agent responds with<br/>numbered questions<br/>in text event] --> B[Parser detects<br/>structured questions<br/>extracts QuestionSet]
+
+    B --> C{Question count}
+    C -->|1 question| D[Standard caption + input<br/>No special treatment]
+    C -->|2+ questions| E[Avatar speaks summary:<br/>'Great concept! I have 5 questions<br/>to help me understand your vision.']
+
+    E --> F[Question Card Stack appears<br/>in Right Panel<br/>First question card focused]
+
+    F --> G[User answers current question<br/>via text input or voice]
+
+    G --> H{More unanswered<br/>questions?}
+    H -->|Yes| I[Navigate: Next / Back / Dot jump<br/>Answered dots show checkmark]
+    I --> G
+    H -->|User clicks Submit All| J[Review overlay appears<br/>All answers listed compactly]
+
+    J --> K{User reviews}
+    K -->|Edit| L[Return to specific card<br/>via click on answer row]
+    L --> G
+    K -->|Confirm| M[Aggregated response sent<br/>to agent as formatted message]
+
+    M --> N[Avatar: thinking state<br/>Card stack dismissed<br/>Normal conversation resumes]
+```
+
+#### Question Card Stack — Component Design
+
+**Location:** Right Panel (consistent with all structured content display).
+
+**Card anatomy:**
+
+```
+┌─────────────────────────────────────────────────┐
+│  1 of 5                           ● ● ○ ○ ○    │
+│                                                 │
+│  Platform                                       │
+│  Are you thinking mobile (iOS, Android, or      │
+│  both), web app, or all of the above?           │
+│                                                 │
+│  ┌─────────────────────────────────────────┐    │
+│  │ Your answer...                          │    │
+│  │                                         │    │
+│  └─────────────────────────────────────────┘    │
+│                                                 │
+│  [Skip]                            [Next →]     │
+└─────────────────────────────────────────────────┘
+```
+
+**Card elements:**
+
+| Element | Spec | Notes |
+|---|---|---|
+| Progress indicator | `1 of N` + dot navigation | Dots clickable for non-linear navigation |
+| Question title | H2 (18px, Medium) | Extracted from bold text or first sentence |
+| Question body | Body (15px, Regular) | Full question context including sub-bullets |
+| Suggestion chips | Pill buttons below question body | Rendered when question contains example options (e.g., "Competition discovery, Video sharing..."). Selectable + user can type additional text. |
+| Answer input | Auto-expanding textarea | 12px padding, 8px border-radius, focus border: Primary (#EB8C00). Supports paste, multi-line. |
+| Skip link | Caption (12px), Text Muted | Marks question as intentionally skipped |
+| Navigation | Back / Next buttons | Primary accent style. Last card shows "Submit All" instead of "Next" |
+
+**Dot navigation states:**
+
+| State | Visual | Meaning |
+|---|---|---|
+| Current | Filled circle, Primary (#EB8C00) | Active question |
+| Answered | Filled circle, Success (#2E7D32) with checkmark | User provided an answer |
+| Skipped | Dash circle, Text Muted (#A0A0A0) | User intentionally skipped |
+| Unanswered | Hollow circle, Border (#E0E0E0) | Not yet visited |
+
+**Suggestion chips (for questions with example options):**
+
+When the agent's question includes enumerated options (e.g., "Competition discovery/registration, Coach-student messaging, Practice tracking, Video sharing"), these are parsed and rendered as selectable pill-shaped chips below the question body:
+
+- **Chip style:** Surface Elevated (#F5F5F5) background, Border (#E0E0E0), Body Small (13px), 8px horizontal padding, 4px vertical padding, rounded-full
+- **Selected chip:** Primary (#EB8C00) border, Primary Light (#FFB600) background at 20% opacity
+- **Behavior:** Toggle on/off. Selected chips are included in the answer. User can also type freely in the text area — chips and text are combined in the aggregated response.
+- **Chip source:** Parsed from dash-list items, slash-separated lists, or comma-separated options within the question body
+
+#### Review Overlay — Before Submission
+
+When user clicks "Submit All" on the last card (or via a persistent "Review & Submit" button visible when all questions are answered):
+
+```
+┌──────────────────────────────────────────┐
+│  Your Answers                     5 of 5 │
+│                                          │
+│  1. Platform                             │
+│     Web app to start, mobile later    ✎  │
+│                                          │
+│  2. Core features                        │
+│     Competition discovery, Video       ✎  │
+│     sharing, Coach profiles               │
+│                                          │
+│  3. Tech preferences                     │
+│     Open to recommendations           ✎  │
+│                                          │
+│  4. Scope                                │
+│     MVP prototype                     ✎  │
+│                                          │
+│  5. Users                                │
+│     Competitive twirlers & coaches    ✎  │
+│                                          │
+│  [← Edit]              [Send to Mary →]  │
+└──────────────────────────────────────────┘
+```
+
+- Each answer row shows the edit icon (✎) — clicking returns to that specific card
+- Skipped questions show "— Skipped" in Text Muted
+- "Send to [Avatar Name]" button uses Primary accent
+- "Edit" returns to the card stack at the first question
+
+#### Aggregated Message Format
+
+The submitted response is formatted as a clean structured message sent via `sendAgentMessage`:
+
+```
+1. Platform: Web app to start, mobile later
+2. Core features: Competition discovery, Video sharing, Coach profiles
+3. Tech preferences: Open to recommendations
+4. Scope: MVP prototype
+5. Users: Competitive twirlers and coaches primarily
+```
+
+Skipped questions are included as: `3. Tech preferences: (no answer provided)`
+
+#### Voice Mode Flow
+
+In voice/live mode, the Question Card Stack supports a guided conversational flow:
+
+| Step | Avatar | User | UI |
+|---|---|---|---|
+| 1 | Speaks: "First question — what platform are you thinking?" | — | Card 1 focused, listening indicator |
+| 2 | — | Speaks answer | Transcription fills card 1 input |
+| 3 | Speaks: "Got it. Next — what are your must-have features?" | — | Auto-advance to card 2 |
+| 4 | — | Speaks answer | Transcription fills card 2 input |
+| ... | Repeat for each question | ... | ... |
+| N | Speaks: "I've got all five. Here's what I heard — take a look." | — | Review overlay appears |
+| N+1 | — | "Looks good" or "Change number 3" | Submit or navigate to specific card |
+
+**Voice commands recognized during card stack:**
+- "Next" / "Skip" — advance to next card
+- "Back" / "Previous" — return to previous card
+- "Question [N]" / "Go to [N]" — jump to specific card
+- "Submit" / "Send" / "Looks good" — trigger review overlay
+- "Change [N]" / "Edit [N]" — return to specific card from review
+
+#### Edge Cases
+
+| Edge Case | Handling |
+|---|---|
+| Agent asks 1 question | No card stack — standard caption + text input flow |
+| Agent asks 2 questions | Card stack with 2 cards — minimal but still structured |
+| Agent asks 10+ questions | Card stack with scrollable dot nav; group into sections if questions have category headers |
+| Questions have no bold headers | Parser extracts first sentence (up to `?` or `—`) as title |
+| Mixed content (preamble + questions) | Avatar speaks preamble text; only questions become cards |
+| User starts typing before cards render | Buffer input, pre-fill first card's answer field |
+| Agent sends follow-up questions after answers | New card stack replaces previous (answers already submitted) |
+| User dismisses card stack without submitting | Left panel option: "Answer [Avatar]'s questions" to reopen with answers preserved |
+| Network loss during submission | Standard FR38 handling — answers preserved locally, resubmit on reconnect |
+
+#### Layout State Transitions
+
+| Phase | Left Panel | Center Stage | Right Panel | Avatar State |
+|---|---|---|---|---|
+| Question detection | Hidden | Avatar speaks summary | Question Card Stack slides in | Speaking |
+| User answering | "Dismiss questions" option | Avatar idle, gentle animation | Card stack active — user navigates & answers | Ready |
+| Review | Hidden | Avatar: "Here's what I heard" | Review overlay | Speaking |
+| Submission | Hidden | Normal conversation | Card stack dismissed | Thinking |
+
+**Key UX decisions:**
+- **Right panel placement** — Consistent with all structured content (plans, documents, comparison tables). Users already know to look right for interactive content.
+- **Non-linear completion** — Users can answer in any order. Some questions are easier; forcing sequential creates unnecessary friction.
+- **Suggestion chips reduce effort** — When the agent provides example options, rendering them as tappable chips dramatically reduces typing. This is especially valuable for non-technical users.
+- **Review before submit** — Prevents the "wait, what did I say for question 3?" problem. Builds confidence before sending.
+- **Voice-guided mode** — The avatar reads each question aloud and auto-advances, turning a wall of text into a guided conversation. This is the killer experience for voice-first users.
+- **Graceful threshold** — Single questions stay in normal flow. The card stack only activates for 2+ questions, avoiding unnecessary UI complexity for simple interactions.
+- **Avatar stays engaged** — Gentle idle animation during answering. If user pauses >15s on a card, avatar may offer encouragement: "Take your time — no wrong answers here."
+
+---
+
 ### Journey Patterns
 
 **Reusable patterns across all journeys:**
@@ -1242,6 +1430,7 @@ flowchart TD
 | **Progressive layout** | Layout complexity increases with workflow phase | Setup: center only. Conversation: center only. Decisions: center + left. Output: center + left + right. |
 | **Preference-aware defaults (FR51)** | Options reflect learned user preferences | Preferred option appears first or pre-selected with a "★ Your usual" indicator. Non-preferred options still available. Avatar may say "I know you usually pick Guided Questions — want to go with that again?" |
 | **External writeback (FR48–50)** | Output can be pushed to connected external systems | "Send to..." option appears alongside local save. MCP-discovered systems shown with connection status. Confirm-plan pattern before writeback. |
+| **Structured question input (FR57–59)** | Multi-question agent responses become interactive card stacks | Parser detects 2+ numbered questions → avatar speaks summary → right panel shows Question Card Stack with per-question input, suggestion chips, non-linear dot navigation, and review-before-submit overlay. Voice mode reads each question and captures spoken answers. |
 
 ### Preference Memory UX (FR51)
 

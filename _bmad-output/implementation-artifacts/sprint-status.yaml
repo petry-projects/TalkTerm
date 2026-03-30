@@ -1,5 +1,5 @@
 # generated: 2026-03-24
-# last_updated: 2026-03-24
+# last_updated: 2026-03-29
 # project: TalkTerm
 # project_key: NOKEY
 # tracking_system: file-system
@@ -20,7 +20,7 @@
 #   - done: Story completed
 
 generated: 2026-03-24
-last_updated: 2026-03-24
+last_updated: 2026-03-29
 project: TalkTerm
 project_key: NOKEY
 tracking_system: file-system
@@ -119,3 +119,12 @@ development_status:
   12-1-configure-ci-cd-pipeline-with-github-actions: done
   12-2-implement-auto-update-mechanism: done
   epic-12-retrospective: optional
+
+  # Epic 13: Structured Question Input
+  epic-13: backlog
+  13-1-implement-question-parser-and-detection: backlog
+  13-2-implement-question-card-stack-component: backlog
+  13-3-implement-review-overlay-and-aggregated-submission: backlog
+  13-4-implement-voice-guided-question-flow: backlog
+  13-5-integrate-question-card-stack-into-conversation-view: backlog
+  epic-13-retrospective: optional
