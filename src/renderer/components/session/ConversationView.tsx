@@ -168,7 +168,9 @@ export function ConversationView({
           setAvatarState((prev) => (prev === 'speaking' ? prev : 'ready'));
           break;
         case 'progress':
-          setCaption(`${event.step}: ${event.status}`);
+          // Keep avatar in thinking state during progress events (rate limits, tool use)
+          setAvatarState((prev) => (prev === 'speaking' ? prev : 'thinking'));
+          setCaption(event.step);
           setIsCaptionVisible(true);
           break;
         case 'confirm-request':
@@ -234,11 +236,15 @@ export function ConversationView({
     setIsCaptionVisible(true);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps -- handleSendInternal is stable
 
-  /** FR37 — Stop avatar talking (barge-in). Stops TTS and returns to ready. */
+  /** FR37 — Stop avatar talking (barge-in). Stops TTS/STT and cancels agent. */
   function handleStopTalking(): void {
     ttsRef.current?.stop();
     sttRef.current?.stop();
+    pendingTextRef.current = '';
+    setLiveMode(false);
     setAvatarState('ready');
+    setCaption(null);
+    setIsCaptionVisible(false);
     window.electronAPI.cancelAgent();
   }
 
