@@ -15,6 +15,7 @@ export default {
     '!src/**/*.d.ts',
   ],
   reporters: ['html', 'clear-text', 'progress'],
+  ignorePatterns: ['out', '.vite', '.stryker-tmp', 'node_modules'],
   thresholds: {
     high: 90,
     low: 80,
