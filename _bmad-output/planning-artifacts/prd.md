@@ -22,6 +22,10 @@ revisionHistory:
     revision: 'v2.1 — Added FR39 (admin privilege check on every launch), FR40 (guided API key setup with live validation), FR41 (API key state management), FR42 (combined launch state assessment), FR43 (live task progress display), FR44 (plan preview with confirm-plan integration), FR45 (multi-mode rich content rendering). Updated MVP scope to macOS + Windows. Added admin privilege requirement to platform requirements.'
   - date: '2026-03-23'
     revision: 'v2.2 — Strengthened FR8 (text input co-equal with voice). Added FR48-50 (external system writeback via MCP). Added FR51 (preference memory via context-scribe). Added FR52-53 (workspace selection). Added FR54 (contextual writeback: ADO→ADO, repo→PR, local→file based on session origin), FR55 (PR flow), FR56 (ADO writeback flow). Updated FR42 to include workspace in launch state assessment. Driven by UX review feedback.'
+  - date: '2026-03-29'
+    revision: 'v2.3 — Added FR57-FR59 (Structured Question Input): agent multi-question responses detected and presented as Question Card Stack with per-question input cards, suggestion chips, non-linear navigation, review overlay, and aggregated submission. Voice mode supports guided question-by-question flow. Driven by UX design review of agent question patterns.'
+  - date: '2026-03-29'
+    revision: 'v2.4 — Added FR60-FR62 (Native STT): replaced non-functional Web Speech API with sherpa-onnx local streaming speech recognition. Audio captured via getUserMedia in renderer, streamed as 16kHz PCM to main process via IPC, transcribed by sherpa-onnx OnlineRecognizer with Zipformer streaming model (~44 MB auto-download on first use). Driven by confirmed Electron Web Speech API limitation (network error: Google servers unreachable without Chrome API keys).'
 ---
 
 # Product Requirements Document - TalkTerm
@@ -319,6 +323,12 @@ The interaction model follows game-dialog UX — the avatar speaks context, grap
 - FR37: When the user speaks during avatar audio playback, system stops playback and captures the new user input (barge-in support)
 - FR38: When network connectivity is lost mid-session, system pauses the active workflow, displays a connectivity error via text overlay, and resumes the session automatically when connectivity is restored without requiring the user to restart
 
+### Native Speech-to-Text
+
+- FR60: The system must provide speech-to-text using a local, offline-capable speech recognition engine (sherpa-onnx with Zipformer streaming model) that runs in the Electron main process. The Web Speech API must not be used as it is non-functional in Electron. Audio is captured in the renderer via getUserMedia, streamed as 16kHz mono PCM Float32 to the main process via IPC, and transcribed in real-time with streaming partial results and endpoint detection.
+- FR61: On first launch or when speech model files are not present, the system must automatically download the sherpa-onnx streaming model files (~44 MB total) from HuggingFace to the application's userData directory. Download progress must be indicated to the user. The model must persist across app restarts.
+- FR62: Speech recognition must provide streaming interim results (partial transcriptions displayed in real-time as the user speaks) and emit a final result when an utterance endpoint is detected (silence after speech). The avatar must display the 'listening' animation state during active speech capture.
+
 ### System Prerequisites
 
 - FR39: On every launch, TalkTerm must verify that the application is running with administrator/elevated privileges (macOS: root or admin group; Windows: Run as Administrator). If the app is not running as admin, it must display a blocking error screen with platform-specific instructions to relaunch as admin. The app must not proceed past this check until admin privileges are confirmed.
@@ -357,6 +367,12 @@ The interaction model follows game-dialog UX — the avatar speaks context, grap
 - FR48: After a workflow produces an output artifact, the system must present a "Send to..." option alongside the local file save option, allowing the user to write the artifact back to a connected external system (e.g., Azure DevOps work item, GitHub issue/PR, Confluence page) via MCP tool integrations
 - FR49: The writeback flow must present the user with: (a) a list of available connected systems detected via MCP, (b) a target location picker appropriate to the selected system (e.g., project/board/work item type for Azure DevOps, repo/path for GitHub), and (c) a preview of the content that will be written before confirmation
 - FR50: Writeback actions must follow the confirm-plan pattern (FR20) — the user must approve the target system, location, and content before execution; the avatar must verbally describe what will be written and where before presenting the confirmation overlay
+
+### Structured Question Input
+
+- FR57: When the agent responds with a message containing two or more numbered questions, the system must detect the question structure (via renderer-side parsing of numbered patterns such as `1.`, `2.`, etc.), extract individual questions with their titles and body text, and present them as a Question Card Stack in the right panel — one card per question — instead of rendering the full response as a single text block. Single-question responses must remain in the standard caption and text input flow with no special treatment.
+- FR58: Each question card must contain: the question title (extracted from bold text or first sentence), full question body including sub-items, an auto-expanding text input for the user's answer, optional suggestion chips parsed from example options listed in the question body, a skip option for questions the user chooses not to answer, and dot navigation indicators showing completion state (answered, skipped, unanswered) for all questions in the set. Users must be able to answer questions in any order via dot navigation or Back/Next controls.
+- FR59: Before submission, the system must present a review overlay showing all answers (and skipped questions) in a compact list with edit affordances for each answer. On user confirmation, the system must aggregate all answers into a single structured message (numbered list format matching the original questions) and send it to the agent via the existing `sendAgentMessage` channel. In voice/live mode, the avatar must read each question aloud, capture the spoken answer via STT, auto-advance to the next question, and present the review overlay after the final question is answered.
 
 ### Repository-Aware Save Behavior
 
