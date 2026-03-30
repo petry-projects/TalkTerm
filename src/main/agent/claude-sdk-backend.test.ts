@@ -189,6 +189,33 @@ describe('ClaudeSdkBackend', () => {
       expect(auditRepo.append).toHaveBeenCalled();
     });
 
+    it('passes workspace path as cwd to SDK query', async () => {
+      const sdkMock = mockSdkModule([
+        {
+          type: 'assistant',
+          message: { content: [{ type: 'text', text: 'Response' }] },
+          session_id: 'sess-42',
+        },
+        {
+          type: 'result',
+          subtype: 'success',
+          result: 'Done',
+          total_cost_usd: 0.001,
+          num_turns: 1,
+          session_id: 'sess-42',
+        },
+      ]);
+      installSdkMock(sdkMock);
+
+      const backend = new ClaudeSdkBackend(createMockAuditRepo(), () => 'sk-ant-test-key');
+      await collectEvents(backend.sendMessage('sess-42', 'hello', '/home/user/project'));
+
+      const callArgs = sdkMock.query.mock.calls[0] as [
+        { prompt: string; options: Record<string, unknown> },
+      ];
+      expect(callArgs[0].options).toMatchObject({ cwd: '/home/user/project' });
+    });
+
     it('maps tool_use content blocks to tool-call events', async () => {
       const sdkMock = mockSdkModule([
         {

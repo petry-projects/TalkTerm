@@ -21,7 +21,11 @@ export class FakeAgentBackend implements AgentBackend {
     }
   }
 
-  *sendMessage(_sessionId: string, _message: string): Iterable<AgentEvent> {
+  *sendMessage(
+    _sessionId: string,
+    _message: string,
+    _workspacePath?: string,
+  ): Iterable<AgentEvent> {
     this._cancelled = false;
     for (const event of this.events) {
       if (this._cancelled as boolean) return;
