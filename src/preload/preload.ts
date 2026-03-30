@@ -64,4 +64,42 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Launch
   assessLaunchState: (): Promise<unknown> =>
     ipcRenderer.invoke(IPC_CHANNELS.LAUNCH_ASSESS_STATE) as Promise<unknown>,
+
+  // Audio / STT
+  startAudioCapture: (): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.AUDIO_START) as Promise<void>,
+  stopAudioCapture: (): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.AUDIO_STOP) as Promise<void>,
+  sendAudioData: (pcmFloat32: Float32Array): void => {
+    ipcRenderer.send(IPC_CHANNELS.AUDIO_DATA, pcmFloat32.buffer);
+  },
+  onAudioResult: (
+    callback: (result: { transcript: string; isFinal: boolean }) => void,
+  ): (() => void) => {
+    const handler = (_ipcEvent: unknown, data: unknown): void => {
+      callback(data as { transcript: string; isFinal: boolean });
+    };
+    ipcRenderer.on(IPC_CHANNELS.AUDIO_RESULT, handler);
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.AUDIO_RESULT, handler);
+    };
+  },
+  onAudioError: (callback: (error: string) => void): (() => void) => {
+    const handler = (_ipcEvent: unknown, data: unknown): void => {
+      callback(data as string);
+    };
+    ipcRenderer.on(IPC_CHANNELS.AUDIO_ERROR, handler);
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.AUDIO_ERROR, handler);
+    };
+  },
+  onAudioEnd: (callback: () => void): (() => void) => {
+    const handler = (): void => {
+      callback();
+    };
+    ipcRenderer.on(IPC_CHANNELS.AUDIO_END, handler);
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.AUDIO_END, handler);
+    };
+  },
 });

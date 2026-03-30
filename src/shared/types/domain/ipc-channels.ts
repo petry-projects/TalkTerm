@@ -27,6 +27,14 @@ export const IPC_CHANNELS = {
   LAUNCH_ASSESS_STATE: 'launch:assess-state',
   FILE_UPLOAD_DIALOG: 'file:upload-dialog',
   AUDIT_GET_SESSION_HISTORY: 'audit:get-session-history',
+
+  // Audio / STT (Renderer → Main invoke, Main → Renderer events)
+  AUDIO_START: 'audio:start',
+  AUDIO_STOP: 'audio:stop',
+  AUDIO_DATA: 'audio:data',
+  AUDIO_RESULT: 'audio:result',
+  AUDIO_ERROR: 'audio:error',
+  AUDIO_END: 'audio:end',
 } as const;
 
 export type IPCChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

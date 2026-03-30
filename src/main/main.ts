@@ -1,13 +1,15 @@
 import path from 'node:path';
-import { app, BrowserWindow, safeStorage } from 'electron';
+import { app, BrowserWindow, safeStorage, session } from 'electron';
 import type { AuthMode } from '../shared/types/ports/agent-backend';
 import { AgentMessageRouter } from './agent/agent-message-router';
 import { ClaudeSdkBackend } from './agent/claude-sdk-backend';
 import { AgentIPCHandler } from './ipc/agent-ipc-handler';
 import { SessionIPCHandler } from './ipc/session-ipc-handler';
 import { SettingsIPCHandler } from './ipc/settings-ipc-handler';
+import { SpeechIPCHandler } from './ipc/speech-ipc-handler';
 import { checkAdminPrivileges } from './security/admin-check';
 import { SafeStorageKeyManager } from './security/safe-storage-key-manager';
+import { SherpaOnnxStt } from './speech/sherpa-onnx-stt';
 import { initializeDatabase } from './storage/database-initializer';
 import { InMemoryConfigStore } from './storage/electron-config-store';
 import { MemoryIndexStore } from './storage/memory-index-store';
@@ -73,14 +75,38 @@ function bootstrap(): void {
   // 5. IPC handlers — register with ipcMain
   // eslint-disable-next-line @typescript-eslint/no-require-imports -- dynamic require for ipcMain in composition root
   const { ipcMain } = require('electron') as typeof import('electron');
-  const agentHandler = new AgentIPCHandler(agentRouter, () => mainWindow?.webContents ?? null);
+  const agentHandler = new AgentIPCHandler(
+    agentRouter,
+    () => mainWindow?.webContents ?? null,
+    sessionRepo,
+  );
   const settingsHandler = new SettingsIPCHandler(keyManager, configStore);
   const sessionHandler = new SessionIPCHandler(sessionRepo, configStore);
+  const sherpaOnnxStt = new SherpaOnnxStt();
+  const speechHandler = new SpeechIPCHandler(sherpaOnnxStt, () => mainWindow?.webContents ?? null);
   agentHandler.register(ipcMain);
   settingsHandler.register(ipcMain);
   sessionHandler.register(ipcMain);
+  speechHandler.register(ipcMain);
 
-  // 6. Create window
+  // 6. Grant microphone permission for Web Speech API (STT)
+  session.defaultSession.setPermissionCheckHandler((_webContents, permission) => {
+    // Allow media (microphone) checks — required before SpeechRecognition.start()
+    if (permission === 'media') {
+      return true;
+    }
+    return false;
+  });
+  session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => {
+    // Allow media (microphone/camera) for Web Speech API; deny others for security
+    if (permission === 'media') {
+      callback(true);
+    } else {
+      callback(false);
+    }
+  });
+
+  // 7. Create window
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,

@@ -1,0 +1,234 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call -- sherpa-onnx-node types not available */
+import fs from 'node:fs';
+import https from 'node:https';
+import path from 'node:path';
+import { app } from 'electron';
+
+/**
+ * SherpaOnnxStt — main-process speech-to-text using sherpa-onnx-node.
+ * Wraps the OnlineRecognizer for streaming transcription.
+ *
+ * Architecture boundary: Only this file imports sherpa-onnx-node.
+ */
+
+const MODEL_DIR_NAME = 'sherpa-onnx-model';
+const MODEL_FILES = [
+  'encoder-epoch-99-avg-1.int8.onnx',
+  'decoder-epoch-99-avg-1.int8.onnx',
+  'joiner-epoch-99-avg-1.int8.onnx',
+  'tokens.txt',
+] as const;
+const MODEL_BASE_URL =
+  'https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-en-20M-2023-02-17/resolve/main';
+
+interface SherpaResult {
+  transcript: string;
+  isFinal: boolean;
+}
+
+export type SherpaResultCallback = (result: SherpaResult) => void;
+export type SherpaErrorCallback = (error: string) => void;
+export type SherpaEndCallback = () => void;
+
+export class SherpaOnnxStt {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- sherpa-onnx-node types not available
+  private recognizer: any = null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private stream: any = null;
+  private _isListening = false;
+  private lastText = '';
+  private decodeTimer: ReturnType<typeof setInterval> | null = null;
+
+  onResult: SherpaResultCallback | null = null;
+  onError: SherpaErrorCallback | null = null;
+  onEnd: SherpaEndCallback | null = null;
+
+  get isListening(): boolean {
+    return this._isListening;
+  }
+
+  /** Ensure model files exist, downloading if needed. Returns model directory. */
+  async ensureModel(): Promise<string> {
+    const modelDir = path.join(app.getPath('userData'), MODEL_DIR_NAME);
+    if (!fs.existsSync(modelDir)) {
+      fs.mkdirSync(modelDir, { recursive: true });
+    }
+
+    for (const file of MODEL_FILES) {
+      const filePath = path.join(modelDir, file);
+      if (!fs.existsSync(filePath)) {
+        console.log(`[SherpaOnnxStt] Downloading ${file}...`);
+        await this.downloadFile(`${MODEL_BASE_URL}/${file}`, filePath);
+        console.log(`[SherpaOnnxStt] Downloaded ${file}`);
+      }
+    }
+
+    return modelDir;
+  }
+
+  /** Initialize the recognizer. Must be called before start(). */
+  async initialize(): Promise<void> {
+    if (this.recognizer !== null) return;
+
+    const modelDir = await this.ensureModel();
+
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- native module loaded at runtime
+    const sherpa = require('sherpa-onnx-node') as {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      OnlineRecognizer: new (config: any) => any;
+    };
+
+    const config = {
+      featConfig: {
+        sampleRate: 16000,
+        featureDim: 80,
+      },
+      modelConfig: {
+        transducer: {
+          encoder: path.join(modelDir, 'encoder-epoch-99-avg-1.int8.onnx'),
+          decoder: path.join(modelDir, 'decoder-epoch-99-avg-1.int8.onnx'),
+          joiner: path.join(modelDir, 'joiner-epoch-99-avg-1.int8.onnx'),
+        },
+        tokens: path.join(modelDir, 'tokens.txt'),
+        numThreads: 2,
+        provider: 'cpu',
+        debug: 0,
+      },
+      decodingMethod: 'greedy_search',
+      enableEndpoint: true,
+      rule1MinTrailingSilence: 2.4,
+      rule2MinTrailingSilence: 1.2,
+      rule3MinUtteranceLength: 20,
+    };
+
+    try {
+      this.recognizer = new sherpa.OnlineRecognizer(config);
+      console.log('[SherpaOnnxStt] Recognizer initialized');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('[SherpaOnnxStt] Failed to initialize:', msg);
+      this.onError?.(`Failed to initialize speech recognition: ${msg}`);
+    }
+  }
+
+  /** Start listening — creates a new stream and begins decode loop. */
+  start(): void {
+    if (this._isListening) return;
+    if (this.recognizer === null) {
+      this.onError?.('Speech recognizer not initialized. Call initialize() first.');
+      return;
+    }
+
+    this.stream = this.recognizer.createStream();
+    this._isListening = true;
+    this.lastText = '';
+
+    // Periodic decode loop — processes buffered audio every 100ms
+    this.decodeTimer = setInterval(() => {
+      this.processAudio();
+    }, 100);
+
+    console.debug('[SherpaOnnxStt] Started listening');
+  }
+
+  /** Accept PCM audio data (Float32Array, 16kHz mono). */
+  acceptAudio(samples: Float32Array): void {
+    if (this.stream === null || !this._isListening) return;
+
+    this.stream.acceptWaveform({ sampleRate: 16000, samples });
+  }
+
+  /** Stop listening and clean up the stream. */
+  stop(): void {
+    if (!this._isListening) return;
+    this._isListening = false;
+
+    if (this.decodeTimer !== null) {
+      clearInterval(this.decodeTimer);
+      this.decodeTimer = null;
+    }
+
+    // Flush remaining audio with tail padding
+    if (this.stream !== null) {
+      const tailPadding = new Float32Array(16000 * 0.3); // 300ms silence
+
+      this.stream.acceptWaveform({ sampleRate: 16000, samples: tailPadding });
+      this.processAudio();
+    }
+
+    this.stream = null;
+    console.debug('[SherpaOnnxStt] Stopped listening');
+    this.onEnd?.();
+  }
+
+  /** Process buffered audio — called by the decode timer. */
+  private processAudio(): void {
+    if (this.recognizer === null || this.stream === null) return;
+
+    while (this.recognizer.isReady(this.stream) as boolean) {
+      this.recognizer.decode(this.stream);
+    }
+
+    const isEndpoint = this.recognizer.isEndpoint(this.stream) as boolean;
+
+    const result = this.recognizer.getResult(this.stream) as { text: string };
+    const text = result.text.trim();
+
+    // Emit interim results when text changes
+    if (text.length > 0 && text !== this.lastText) {
+      this.lastText = text;
+      this.onResult?.({ transcript: text, isFinal: false });
+    }
+
+    // Endpoint detected — emit final result and reset stream
+    if (isEndpoint) {
+      if (text.length > 0) {
+        this.onResult?.({ transcript: text, isFinal: true });
+        this.lastText = '';
+      }
+
+      this.recognizer.reset(this.stream);
+    }
+  }
+
+  /** Download a file from URL to local path, following redirects. */
+  private async downloadFile(url: string, destPath: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const file = fs.createWriteStream(destPath);
+      const request = (reqUrl: string): void => {
+        https
+          .get(reqUrl, (response) => {
+            // Follow redirects (HuggingFace uses 302)
+            if (
+              (response.statusCode === 301 || response.statusCode === 302) &&
+              response.headers.location !== undefined
+            ) {
+              request(response.headers.location);
+              return;
+            }
+            if (response.statusCode !== 200) {
+              file.close();
+              fs.unlinkSync(destPath);
+              reject(
+                new Error(`HTTP ${String(response.statusCode ?? 'unknown')} downloading ${reqUrl}`),
+              );
+              return;
+            }
+            response.pipe(file);
+            file.on('finish', () => {
+              file.close();
+              resolve();
+            });
+          })
+          .on('error', (err) => {
+            file.close();
+            if (fs.existsSync(destPath)) {
+              fs.unlinkSync(destPath);
+            }
+            reject(err);
+          });
+      };
+      request(url);
+    });
+  }
+}
