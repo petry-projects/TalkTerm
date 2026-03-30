@@ -198,11 +198,9 @@ export class SherpaOnnxStt {
       const request = (reqUrl: string): void => {
         https
           .get(reqUrl, (response) => {
-            // Follow redirects (HuggingFace uses 302)
-            if (
-              (response.statusCode === 301 || response.statusCode === 302) &&
-              response.headers.location !== undefined
-            ) {
+            // Follow redirects (HuggingFace uses 301, 302, 303, 307, 308)
+            const code = response.statusCode ?? 0;
+            if (code >= 300 && code < 400 && response.headers.location !== undefined) {
               request(response.headers.location);
               return;
             }

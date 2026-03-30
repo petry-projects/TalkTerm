@@ -22,13 +22,15 @@ export function QuestionReview({
   const total = questionSet.questions.length;
 
   function formatAggregatedMessage(): string {
-    return questionSet.questions
+    const header = 'Here are my answers to your questions:\n\n';
+    const body = questionSet.questions
       .map((q, i) => {
         const answer =
           skipped[i] === true || answers[i]?.trim() === '' ? '(no answer provided)' : answers[i];
-        return `${String(q.index)}. ${q.title}: ${answer ?? '(no answer provided)'}`;
+        return `${String(q.index)}. **${q.title}** — ${q.body}\n   **Answer:** ${answer ?? '(no answer provided)'}`;
       })
-      .join('\n');
+      .join('\n\n');
+    return header + body;
   }
 
   return (
