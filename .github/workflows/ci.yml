@@ -58,9 +58,10 @@ jobs:
           cache: npm
       - run: npm ci --legacy-peer-deps
       - run: npx electron-forge make
+      - run: npx playwright install --with-deps
       - run: npx playwright test --config playwright.electron.config.ts
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CI: 'true'
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: failure()
         with:
