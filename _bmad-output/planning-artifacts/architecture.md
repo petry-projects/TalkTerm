@@ -136,7 +136,7 @@ Update `tsconfig.json`: add `"jsx": "react-jsx"` to `compilerOptions`.
 - MCP server support built in — no external bridge needed
 - Session persistence via session ID — resume conversations across app restarts
 - Permission control: `allowedTools` for auto-approval, permission callbacks for FR20 confirmation gate
-- Cost/turn limits: `maxTurns` and `maxBudgetUsd` prevent runaway agents
+- Cost/turn limits: `maxTurns` and `maxBudgetUsd` prevent runaway agents. Greeting queries use `maxTurns: 1` with `allowedTools: []` (no tool use). Conversational queries use `maxTurns: 25` to support multi-step agent workflows (FR46).
 - `settingSources: ["project"]` loads CLAUDE.md, skills, hooks from working directory
 - No Claude Code CLI installation required
 

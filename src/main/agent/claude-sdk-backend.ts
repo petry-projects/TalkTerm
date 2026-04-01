@@ -429,7 +429,7 @@ export class ClaudeSdkBackend implements AgentBackend {
       apiKey,
       {
         cwd: config.workspacePath,
-        maxTurns: config.maxTurns ?? 3,
+        maxTurns: 1,
         maxBudgetUsd: config.maxBudgetUsd,
         allowedTools: [],
       },
@@ -476,7 +476,7 @@ export class ClaudeSdkBackend implements AgentBackend {
         apiKey,
         {
           cwd: workspacePath,
-          maxTurns: 3,
+          maxTurns: 25,
           continue: useContinue,
         },
         bmadContext,
