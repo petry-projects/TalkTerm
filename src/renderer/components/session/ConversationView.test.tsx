@@ -605,16 +605,20 @@ describe('ConversationView', () => {
   it('OutputPanel close button dismisses the panel', () => {
     render(<ConversationView userName="DJ" avatarName="Mary" sessionId="s1" />);
 
-    // Simulate long document content
+    // Simulate long document content (must exceed 600-char DOCUMENT_THRESHOLD)
     const longContent =
       '# Long Document\n\n' +
-      'Paragraph one with details about the system.\n\n' +
+      'Paragraph one with details about the system. This section covers the overall architecture ' +
+      'and design decisions that were made during the initial planning phase of the project.\n\n' +
       '## Section Two\n\n' +
-      'More content here about various topics.\n\n' +
+      'More content here about various topics including performance optimization strategies, ' +
+      'caching layers, and database indexing approaches that improve query throughput.\n\n' +
       '## Section Three\n\n' +
-      'Even more content to ensure this qualifies as document content.\n\n' +
+      'Even more content to ensure this qualifies as document content. We discuss testing ' +
+      'methodologies, continuous integration pipelines, and deployment automation.\n\n' +
       '## Section Four\n\n' +
-      'Final section with concluding thoughts about the implementation.';
+      'Final section with concluding thoughts about the implementation. This wraps up the ' +
+      'discussion with recommendations for future improvements and maintenance guidelines.';
 
     simulateTextAndFlush(longContent);
 
