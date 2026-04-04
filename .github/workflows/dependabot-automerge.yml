@@ -1,3 +1,20 @@
+# Dependabot auto-merge workflow
+#
+# Requires repository secrets:
+#   APP_ID         — GitHub App ID with contents:write and pull-requests:write
+#   APP_PRIVATE_KEY — GitHub App private key
+#
+# Auto-approves and enables auto-merge for Dependabot PRs that are:
+#   - GitHub Actions updates (patch or minor version bumps)
+#   - Security updates for any ecosystem (patch or minor)
+#   - Indirect (transitive) dependency updates
+# Major version updates are always left for human review.
+# Uses --auto so the merge waits for all required CI checks to pass.
+#
+# Safety model: application ecosystems use open-pull-requests-limit: 0 in
+# dependabot.yml, so the only app-ecosystem PRs Dependabot can create are
+# security updates. This workflow adds defense-in-depth by also checking
+# the package ecosystem.
 name: Dependabot auto-merge
 
 on:
