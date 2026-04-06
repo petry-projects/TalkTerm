@@ -1,53 +1,22 @@
-# ─────────────────────────────────────────────────────────────────────────────
-# SOURCE OF TRUTH: petry-projects/.github/standards/workflows/feature-ideation.yml
-# Standard:        petry-projects/.github/standards/ci-standards.md#8-feature-ideation-feature-ideationyml--bmad-method-repos
-# Reusable:        petry-projects/.github/.github/workflows/feature-ideation-reusable.yml
+# Weekly feature research and ideation powered by the BMAD Analyst (Mary).
 #
-# AGENTS — READ BEFORE EDITING:
-#   • This file is a THIN CALLER STUB. The 5-phase ideation pipeline, the
-#     Opus 4.6 model selection, the github_token override, and the
-#     ANTHROPIC_MODEL env var all live in the reusable workflow above.
-#   • You MAY change: the `project_context` value (the only required edit
-#     per repo), and optionally the cron schedule.
-#   • You MUST NOT change: trigger event shape, the `uses:` line, the
-#     job-level `permissions:` block, or the `secrets:` block — these are
-#     required for the reusable to work.
-#   • If you need different behaviour, open a PR against the reusable in
-#     the central repo. The change will propagate everywhere on next run.
-# ─────────────────────────────────────────────────────────────────────────────
+# Gathers project context, market signals, user feedback, and codebase
+# opportunities, then creates or updates a Discussion per feature idea
+# in the "Ideas" category — building living ideation threads over time.
 #
-# Feature Ideation workflow stub — for BMAD Method-enabled repos.
+# Output: One GitHub Discussion per feature idea, updated with new
+# findings on subsequent runs as the market and project evolve.
 #
-# This is a thin caller for the org-wide reusable workflow at
-# petry-projects/.github/.github/workflows/feature-ideation-reusable.yml
-# All ideation logic, the multi-skill pipeline, the Opus 4.6 model
-# selection, and the github_token override live in the reusable workflow.
-#
-# To adopt:
-#   1. Copy this file to .github/workflows/feature-ideation.yml in your repo.
-#   2. Replace the `project_context` value with a 3-5 sentence description
-#      of your project, its target users, and the competitive landscape Mary
-#      should research. This is the only required customisation.
-#   3. (Optional) Copy standards/feature-ideation-sources.md from
-#      petry-projects/.github to .github/feature-ideation-sources.md in your
-#      repo and trim/extend it for your project. Mary uses YOUR copy — not the
-#      central template — so each repo controls its own source list.
-#      Pass `sources_file: path/to/your-list.md` to the reusable workflow if
-#      you prefer a different location.
-#   4. (Optional) Adjust the schedule cron if Friday morning UTC doesn't suit.
-#   5. Ensure GitHub Discussions is enabled with an "Ideas" category.
-#   6. Confirm the org-level secret CLAUDE_CODE_OAUTH_TOKEN is accessible.
-#
-# Standard: https://github.com/petry-projects/.github/blob/main/standards/ci-standards.md#8-feature-ideation-feature-ideationyml--bmad-method-repos
+# Schedule: Every Friday at 07:00 UTC (3 AM EDT / 2 AM EST).
 name: Feature Research & Ideation (BMAD Analyst)
 
 on:
   schedule:
-    - cron: '0 7 * * 5' # Friday 07:00 UTC (3 AM EDT / 2 AM EST)
+    - cron: '0 7 * * 5'   # Friday 07:00 UTC (3 AM EDT / 2 AM EST)
   workflow_dispatch:
     inputs:
       focus_area:
-        description: 'Optional focus area (e.g., "accessibility", "performance")'
+        description: 'Optional focus area (e.g., "accessibility", "voice UX", "performance")'
         required: false
         type: string
       research_depth:
@@ -59,11 +28,6 @@ on:
           - quick
           - standard
           - deep
-      dry_run:
-        description: 'Skip Discussion mutations and log them to a JSONL artifact instead. Use this on a fork to smoke-test before going live.'
-        required: false
-        default: false
-        type: boolean
 
 permissions: {}
 
@@ -72,19 +36,159 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  ideate:
-    # Permissions cascade from the calling job to the reusable workflow.
-    # The reusable workflow's two jobs (gather-signals + analyze) need:
-    #   - contents:      read   (checkout, file reads)
-    #   - issues:        read   (signal collection)
-    #   - pull-requests: read   (signal collection)
-    #   - discussions:   write  (CRITICAL — create/update Discussion threads)
-    #   - id-token:      write  (claude-code-action OIDC for GitHub App token)
-    #   - actions:       read   (feed checkpoint — last successful run query)
+  # ---------------------------------------------------------------------------
+  # Job 1: Gather signals — issues, discussions, releases, community feedback
+  # ---------------------------------------------------------------------------
+  gather-signals:
+    name: Gather Project Signals
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
       issues: read
       pull-requests: read
+      discussions: read
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    outputs:
+      signals_artifact: ${{ steps.collect.outputs.signals_artifact }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 1
+
+      - name: Collect project signals
+        id: collect
+        run: |
+          set -euo pipefail
+          REPO="${{ github.repository }}"
+          SIGNALS_FILE=$(mktemp)
+
+          # --- Open issues (exclude bot-generated, omit body to stay within output limits) ---
+          OPEN_ISSUES=$(gh issue list --repo "$REPO" --state open --limit 50 \
+            --json number,title,labels,createdAt,author \
+            -q '[.[] | select(.author.login != "dependabot[bot]" and .author.login != "github-actions[bot]")]' \
+            2>/dev/null || echo '[]')
+
+          # --- Recently closed issues (last 30 days) ---
+          THIRTY_DAYS_AGO=$(date -u -d '30 days ago' +%Y-%m-%d 2>/dev/null || date -u -v-30d +%Y-%m-%d)
+          CLOSED_ISSUES=$(gh issue list --repo "$REPO" --state closed --limit 30 \
+            --json number,title,labels,closedAt \
+            -q "[.[] | select(.closedAt >= \"${THIRTY_DAYS_AGO}\")]" \
+            2>/dev/null || echo '[]')
+
+          # --- Existing Ideas discussions (to detect what's already tracked) ---
+          # First resolve the Ideas category ID, then query filtered by category
+          IDEAS_CAT_ID=$(gh api graphql -f query='
+            query($repo: String!, $owner: String!) {
+              repository(name: $repo, owner: $owner) {
+                discussionCategories(first: 20) {
+                  nodes { id name }
+                }
+              }
+            }' -f owner="${{ github.repository_owner }}" \
+               -f repo="${{ github.event.repository.name }}" \
+            --jq '[.data.repository.discussionCategories.nodes[] | select(.name == "Ideas")][0].id' \
+            2>/dev/null || echo "")
+
+          if [ -n "$IDEAS_CAT_ID" ] && [ "$IDEAS_CAT_ID" != "null" ]; then
+            IDEAS_DISCUSSIONS=$(gh api graphql -f query='
+              query($repo: String!, $owner: String!, $categoryId: ID!) {
+                repository(name: $repo, owner: $owner) {
+                  discussions(first: 100, orderBy: {field: UPDATED_AT, direction: DESC},
+                              categoryId: $categoryId) {
+                    nodes {
+                      id number title
+                      createdAt updatedAt
+                      labels(first: 10) { nodes { name } }
+                      comments(first: 1) { totalCount }
+                    }
+                  }
+                }
+              }' -f owner="${{ github.repository_owner }}" \
+                 -f repo="${{ github.event.repository.name }}" \
+                 -f categoryId="$IDEAS_CAT_ID" \
+              --jq '.data.repository.discussions.nodes' \
+              2>/dev/null || echo '[]')
+          else
+            IDEAS_DISCUSSIONS='[]'
+          fi
+
+          # --- Recent releases ---
+          RELEASES=$(gh release list --repo "$REPO" --limit 5 \
+            --json tagName,name,publishedAt,isPrerelease \
+            2>/dev/null || echo '[]')
+
+          # --- PR activity (merged last 30 days — what's been shipping) ---
+          MERGED_PRS=$(gh pr list --repo "$REPO" --state merged --limit 30 \
+            --json number,title,labels,mergedAt \
+            -q "[.[] | select(.mergedAt >= \"${THIRTY_DAYS_AGO}\")]" \
+            2>/dev/null || echo '[]')
+
+          # --- Feature requests (issues labeled enhancement/feature) ---
+          FEATURE_REQUESTS=$(echo "$OPEN_ISSUES" | jq -c \
+            '[.[] | select(.labels | map(.name) | any(test("enhancement|feature|idea"; "i")))]')
+
+          # --- Bug patterns (open bugs — indicate pain points) ---
+          BUG_REPORTS=$(echo "$OPEN_ISSUES" | jq -c \
+            '[.[] | select(.labels | map(.name) | any(test("bug"; "i")))]')
+
+          # --- Compose signals ---
+          jq -n \
+            --arg scan_date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg repo "$REPO" \
+            --argjson open_issues "$OPEN_ISSUES" \
+            --argjson closed_issues "$CLOSED_ISSUES" \
+            --argjson ideas_discussions "$IDEAS_DISCUSSIONS" \
+            --argjson releases "$RELEASES" \
+            --argjson merged_prs "$MERGED_PRS" \
+            --argjson feature_requests "$FEATURE_REQUESTS" \
+            --argjson bug_reports "$BUG_REPORTS" \
+            '{
+              scan_date: $scan_date,
+              repo: $repo,
+              open_issues: { count: ($open_issues | length), items: $open_issues },
+              closed_issues_30d: { count: ($closed_issues | length), items: $closed_issues },
+              ideas_discussions: { count: ($ideas_discussions | length), items: $ideas_discussions },
+              releases: $releases,
+              merged_prs_30d: { count: ($merged_prs | length), items: $merged_prs },
+              feature_requests: { count: ($feature_requests | length), items: $feature_requests },
+              bug_reports: { count: ($bug_reports | length), items: $bug_reports }
+            }' > "$SIGNALS_FILE"
+
+          # Copy signals to a stable path for artifact upload
+          cp "$SIGNALS_FILE" "${{ runner.temp }}/signals.json"
+          echo "signals_artifact=signals" >> "$GITHUB_OUTPUT"
+
+          # Step summary
+          echo "## Signals Collected" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Open issues:** $(jq '.open_issues.count' "$SIGNALS_FILE")" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Feature requests:** $(jq '.feature_requests.count' "$SIGNALS_FILE")" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Bug reports:** $(jq '.bug_reports.count' "$SIGNALS_FILE")" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Merged PRs (30d):** $(jq '.merged_prs_30d.count' "$SIGNALS_FILE")" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Existing Ideas discussions:** $(jq '.ideas_discussions.count' "$SIGNALS_FILE")" >> "$GITHUB_STEP_SUMMARY"
+
+          rm -f "$SIGNALS_FILE"
+
+      - name: Upload signals artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: signals
+          path: ${{ runner.temp }}/signals.json
+          retention-days: 7
+
+  # ---------------------------------------------------------------------------
+  # Job 2: BMAD Analyst — Research, ideate, and post per-idea Discussions
+  # ---------------------------------------------------------------------------
+  analyze:
+    name: BMAD Analyst — Feature Ideation
+    needs: [gather-signals]
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
       discussions: write
       id-token: write
       actions: read
