@@ -7,12 +7,12 @@
 # Output: One GitHub Discussion per feature idea, updated with new
 # findings on subsequent runs as the market and project evolve.
 #
-# Schedule: Every Friday at 07:00 UTC (3 AM Eastern Daylight Time).
+# Schedule: Every Friday at 07:00 UTC (3 AM EDT / 2 AM EST).
 name: Feature Research & Ideation (BMAD Analyst)
 
 on:
   schedule:
-    - cron: '0 7 * * 5'   # Friday 07:00 UTC ≈ 3 AM ET
+    - cron: '0 7 * * 5'   # Friday 07:00 UTC (3 AM EDT / 2 AM EST)
   workflow_dispatch:
     inputs:
       focus_area:
@@ -45,10 +45,13 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
+      issues: read
+      pull-requests: read
+      discussions: read
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     outputs:
-      signals: ${{ steps.collect.outputs.signals }}
+      signals_artifact: ${{ steps.collect.outputs.signals_artifact }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -62,9 +65,9 @@ jobs:
           REPO="${{ github.repository }}"
           SIGNALS_FILE=$(mktemp)
 
-          # --- Open issues (exclude bot-generated) ---
+          # --- Open issues (exclude bot-generated, omit body to stay within output limits) ---
           OPEN_ISSUES=$(gh issue list --repo "$REPO" --state open --limit 50 \
-            --json number,title,labels,body,createdAt,author \
+            --json number,title,labels,createdAt,author \
             -q '[.[] | select(.author.login != "dependabot[bot]" and .author.login != "github-actions[bot]")]' \
             2>/dev/null || echo '[]')
 
@@ -76,24 +79,41 @@ jobs:
             2>/dev/null || echo '[]')
 
           # --- Existing Ideas discussions (to detect what's already tracked) ---
-          IDEAS_DISCUSSIONS=$(gh api graphql -f query='
+          # First resolve the Ideas category ID, then query filtered by category
+          IDEAS_CAT_ID=$(gh api graphql -f query='
             query($repo: String!, $owner: String!) {
               repository(name: $repo, owner: $owner) {
-                discussions(first: 50, orderBy: {field: UPDATED_AT, direction: DESC},
-                            categoryId: null) {
-                  nodes {
-                    id number title category { name }
-                    createdAt updatedAt
-                    labels(first: 10) { nodes { name } }
-                    body
-                    comments(first: 1) { totalCount }
-                  }
+                discussionCategories(first: 20) {
+                  nodes { id name }
                 }
               }
             }' -f owner="${{ github.repository_owner }}" \
                -f repo="${{ github.event.repository.name }}" \
-            --jq '[.data.repository.discussions.nodes[] | select(.category.name == "Ideas")]' \
-            2>/dev/null || echo '[]')
+            --jq '[.data.repository.discussionCategories.nodes[] | select(.name == "Ideas")][0].id' \
+            2>/dev/null || echo "")
+
+          if [ -n "$IDEAS_CAT_ID" ] && [ "$IDEAS_CAT_ID" != "null" ]; then
+            IDEAS_DISCUSSIONS=$(gh api graphql -f query='
+              query($repo: String!, $owner: String!, $categoryId: ID!) {
+                repository(name: $repo, owner: $owner) {
+                  discussions(first: 100, orderBy: {field: UPDATED_AT, direction: DESC},
+                              categoryId: $categoryId) {
+                    nodes {
+                      id number title
+                      createdAt updatedAt
+                      labels(first: 10) { nodes { name } }
+                      comments(first: 1) { totalCount }
+                    }
+                  }
+                }
+              }' -f owner="${{ github.repository_owner }}" \
+                 -f repo="${{ github.event.repository.name }}" \
+                 -f categoryId="$IDEAS_CAT_ID" \
+              --jq '.data.repository.discussions.nodes' \
+              2>/dev/null || echo '[]')
+          else
+            IDEAS_DISCUSSIONS='[]'
+          fi
 
           # --- Recent releases ---
           RELEASES=$(gh release list --repo "$REPO" --limit 5 \
@@ -137,22 +157,27 @@ jobs:
               bug_reports: { count: ($bug_reports | length), items: $bug_reports }
             }' > "$SIGNALS_FILE"
 
-          # Output (multiline)
-          SIGNALS=$(jq -c . "$SIGNALS_FILE")
-          echo "signals<<SIGNALS_EOF" >> "$GITHUB_OUTPUT"
-          echo "$SIGNALS" >> "$GITHUB_OUTPUT"
-          echo "SIGNALS_EOF" >> "$GITHUB_OUTPUT"
+          # Copy signals to a stable path for artifact upload
+          cp "$SIGNALS_FILE" "${{ runner.temp }}/signals.json"
+          echo "signals_artifact=signals" >> "$GITHUB_OUTPUT"
 
           # Step summary
           echo "## Signals Collected" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "- **Open issues:** $(echo "$OPEN_ISSUES" | jq 'length')" >> "$GITHUB_STEP_SUMMARY"
-          echo "- **Feature requests:** $(echo "$FEATURE_REQUESTS" | jq 'length')" >> "$GITHUB_STEP_SUMMARY"
-          echo "- **Bug reports:** $(echo "$BUG_REPORTS" | jq 'length')" >> "$GITHUB_STEP_SUMMARY"
-          echo "- **Merged PRs (30d):** $(echo "$MERGED_PRS" | jq 'length')" >> "$GITHUB_STEP_SUMMARY"
-          echo "- **Existing Ideas discussions:** $(echo "$IDEAS_DISCUSSIONS" | jq 'length')" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Open issues:** $(jq '.open_issues.count' "$SIGNALS_FILE")" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Feature requests:** $(jq '.feature_requests.count' "$SIGNALS_FILE")" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Bug reports:** $(jq '.bug_reports.count' "$SIGNALS_FILE")" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Merged PRs (30d):** $(jq '.merged_prs_30d.count' "$SIGNALS_FILE")" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Existing Ideas discussions:** $(jq '.ideas_discussions.count' "$SIGNALS_FILE")" >> "$GITHUB_STEP_SUMMARY"
 
           rm -f "$SIGNALS_FILE"
+
+      - name: Upload signals artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: signals
+          path: ${{ runner.temp }}/signals.json
+          retention-days: 7
 
   # ---------------------------------------------------------------------------
   # Job 2: BMAD Analyst — Research, ideate, and post per-idea Discussions
@@ -172,18 +197,18 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Write signals file
-        run: |
-          cat <<'SIGNALS_EOF' > ${{ runner.temp }}/signals.json
-          ${{ needs.gather-signals.outputs.signals }}
-          SIGNALS_EOF
+      - name: Download signals artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: signals
+          path: ${{ runner.temp }}
 
       - name: Run Claude Code — BMAD Analyst
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           FOCUS_AREA: ${{ inputs.focus_area || '' }}
           RESEARCH_DEPTH: ${{ inputs.research_depth || 'standard' }}
-        uses: anthropics/claude-code-action@bee87b3258c251f9279e5371b0cc3660f37f3f77 # v1
+        uses: anthropics/claude-code-action@6e2bd52842c65e914eba5c8badd17560bd26b5de # v1.0.89
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           timeout_minutes: 40
