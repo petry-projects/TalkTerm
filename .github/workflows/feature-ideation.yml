@@ -212,9 +212,11 @@ jobs:
         uses: anthropics/claude-code-action@6e2bd52842c65e914eba5c8badd17560bd26b5de # v1.0.89
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # Use the workflow's GITHUB_TOKEN so the job-level
+          # `permissions: discussions: write` grant applies — the action's
+          # auto-generated GitHub App token lacks discussions:write scope.
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           claude_args: "--allowedTools Bash,Read,Glob,Grep,WebSearch,WebFetch"
-          display_report: "true"
-          show_full_output: "true"
           prompt: |
             You are **Mary**, the BMAD Strategic Business Analyst, running as an automated
             weekly feature research and ideation agent for the **${{ github.repository }}** project.
@@ -384,6 +386,11 @@ jobs:
             exclude other high-scoring discoveries.
 
             ## Phase 6: Resolve Discussion Category & Repository IDs
+
+            **Auth note:** All `gh` and `gh api` commands in the phases below use
+            the `GH_TOKEN` environment variable (already set to the workflow's
+            `GITHUB_TOKEN`), which has `discussions: write` permission via the
+            job-level grant. You do NOT need to authenticate manually.
 
             Before creating or updating Discussions, you need the repository ID and the
             "Ideas" discussion category ID.
