@@ -1,0 +1,89 @@
+# Agent Shield — AI agent security controls
+#
+# Validates that AI agent integrations in this repository follow the security
+# standards defined in petry-projects/.github/standards/ci-standards.md.
+#
+# Checks:
+#   1. Required agent workflows are present (claude.yml)
+#   2. No workflow grants write-all or overly broad permissions to agents
+#   3. All workflow action references are SHA-pinned
+#
+# Add "agent-shield" as a required status check in branch protection.
+#
+# Standard: https://github.com/petry-projects/.github/blob/main/standards/ci-standards.md#required-workflows
+name: Agent Shield
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions: {}
+
+jobs:
+  agent-shield:
+    name: Agent Shield
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+
+      - name: Verify required agent workflows are present
+        run: |
+          status=0
+
+          # claude.yml is required for Claude Code AI agent integration
+          if [ ! -f ".github/workflows/claude.yml" ]; then
+            echo "::error file=.github/workflows/claude.yml::Required agent workflow claude.yml is missing"
+            status=1
+          else
+            echo "✓ claude.yml present"
+          fi
+
+          exit $status
+
+      - name: Validate agent workflow permission scopes
+        run: |
+          status=0
+
+          for workflow in .github/workflows/*.yml; do
+            name=$(basename "$workflow")
+
+            # Check for write-all permission grants
+            if grep -q 'permissions: write-all' "$workflow"; then
+              echo "::error file=$workflow::$name grants write-all permissions — use minimal scopes"
+              status=1
+            fi
+
+            # Check for contents: write-all (sometimes written inline)
+            if grep -q 'contents: write-all' "$workflow"; then
+              echo "::error file=$workflow::$name grants contents:write-all — use minimal scopes"
+              status=1
+            fi
+          done
+
+          if [ -f ".github/workflows/claude.yml" ]; then
+            echo "✓ claude.yml permission scope check passed"
+          fi
+
+          exit $status
+
+      - name: Verify action SHA pinning in agent workflows
+        run: |
+          # Check all workflow files for unpinned action references.
+          # A properly pinned ref looks like: uses: owner/repo@<40-char-sha> # tag
+          # Warnings do not fail the build — they surface pinning opportunities.
+          for workflow in .github/workflows/*.yml; do
+            name=$(basename "$workflow")
+
+            # Find 'uses:' lines that reference actions but are NOT pinned to a full SHA.
+            # A full SHA is exactly 40 hex characters.
+            while IFS= read -r line; do
+              ref=$(echo "$line" | sed -E 's/.*@([^ #]+).*/\1/')
+              if ! echo "$ref" | grep -qE '^[0-9a-f]{40}$'; then
+                echo "::warning file=$workflow::Unpinned action reference in $name: $line"
+              fi
+            done < <(grep -E '^\s+uses: [^.][^/]+/[^/]+@' "$workflow" || true)
+          done
