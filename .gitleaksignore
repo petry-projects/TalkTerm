@@ -17,8 +17,9 @@
 1f83957c8c8f61741b82581dee40e1a3dc7bf570:.gitleaksignore:generic-api-key:11
 
 # Commit e8cc0956: _bmad/tea/testarch/knowledge/api-testing-patterns.md L681
-# Contains `const expiredToken = '...'; // Expired token` in a test-design
-# knowledge article. The comment explicitly marks the value as expired/example.
+# Truncated JWT placeholder in a test-architecture documentation file.
+# The value ends with "..." indicating it was deliberately cropped for
+# illustration purposes. It is not a real credential.
 # Not a real credential — BMAD knowledge-base documentation only.
 e8cc0956c901e454aed61e7b10857e6a1a412881:_bmad/tea/testarch/knowledge/api-testing-patterns.md:generic-api-key:681
 
