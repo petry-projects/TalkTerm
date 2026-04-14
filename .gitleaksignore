@@ -8,10 +8,9 @@
 # Standard ref: standards/push-protection.md#developer-practices
 
 # ─── _bmad/tea/testarch/knowledge/api-testing-patterns.md:681 ─────────────
-# `const expiredToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...';`
-# This is a truncated JWT placeholder (ends with `...`) in test-architecture
-# documentation. It is not a real token — the trailing `...` indicates it
-# was deliberately cropped for illustration purposes.
+# Truncated JWT placeholder in a test-architecture documentation file.
+# The value ends with "..." indicating it was deliberately cropped for
+# illustration purposes. It is not a real credential.
 e8cc0956c901e454aed61e7b10857e6a1a412881:_bmad/tea/testarch/knowledge/api-testing-patterns.md:generic-api-key:681
 
 # ─── _bmad/_config/files-manifest.csv ────────────────────────────────────
