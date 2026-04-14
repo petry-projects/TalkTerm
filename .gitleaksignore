@@ -7,6 +7,13 @@
 #
 # Standard ref: standards/push-protection.md#developer-practices
 
+# ─── .gitleaksignore:11 (historical commit) ──────────────────────────────
+# An earlier version of this file quoted the truncated JWT placeholder in its
+# comment. That commit is in history and must be allowlisted here so the
+# full-history scan does not fail on a file whose sole purpose is to record
+# false positives. The value was never a real credential.
+1f83957c8c8f61741b82581dee40e1a3dc7bf570:.gitleaksignore:generic-api-key:11
+
 # ─── _bmad/tea/testarch/knowledge/api-testing-patterns.md:681 ─────────────
 # Truncated JWT placeholder in a test-architecture documentation file.
 # The value ends with "..." indicating it was deliberately cropped for
