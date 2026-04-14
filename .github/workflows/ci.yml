@@ -1,0 +1,142 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions: {}
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────────────
+  # Build, lint, type-check, and unit test (matrix across all target OSes)
+  # ─────────────────────────────────────────────────────────────────────────
+  build-and-test:
+    name: Build & Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+      - name: Checkout
+        # Pin to SHA per Action Pinning Policy (ci-standards.md#action-pinning-policy).
+        # Refresh with: gh api repos/actions/checkout/git/refs/tags/v4 --jq '.object.sha'
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Set up Node.js
+        # Refresh with: gh api repos/actions/setup-node/git/refs/tags/v4 --jq '.object.sha'
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Format check
+        run: npm run format:check
+
+      - name: Unit tests with coverage
+        run: npm run test:coverage
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Mutation testing — score gate; allowed to fail without blocking merge
+  # ─────────────────────────────────────────────────────────────────────────
+  mutation:
+    name: Mutation tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    continue-on-error: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Stryker mutation tests
+        run: npm run test:mutate
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # E2E tests via Playwright — macOS only (Electron requires a display);
+  # allowed to fail without blocking merge until E2E suite is stable
+  # ─────────────────────────────────────────────────────────────────────────
+  e2e:
+    name: E2E tests (macOS)
+    runs-on: macos-latest
+    permissions:
+      contents: read
+    continue-on-error: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
+      - name: Run E2E tests
+        run: npm run test:e2e
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Secret scan — full-history gitleaks scan (push-protection Layer 3)
+  # Required by: standards/push-protection.md#layer-3--ci-secret-scanning-secondary-defense
+  # ─────────────────────────────────────────────────────────────────────────
+  secret-scan:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout (full history)
+        # fetch-depth: 0 is required so gitleaks scans the full git history,
+        # not just the PR diff. Never remove this.
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          fetch-depth: 0
+
+      - name: Run gitleaks
+        # Pin to SHA per Action Pinning Policy.
+        # Refresh with: gh api repos/gitleaks/gitleaks-action/git/refs/tags/v2 --jq '.object.sha'
+        # then dereference if it points at an annotated tag:
+        #   gh api repos/gitleaks/gitleaks-action/git/tags/<sha> --jq '.object.sha'
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
+        with:
+          args: detect --source . --redact --verbose --exit-code 1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
