@@ -9,14 +9,14 @@
 #   3. Rotate any credential that might be real before adding the ignore.
 # ─────────────────────────────────────────────────────────────────────────────
 
-# Commit 1f83957: .gitleaksignore in a prior Claude branch contained a comment
-# line `# const expiredToken = '...';` explaining a false-positive exception.
-# The comment itself triggered generic-api-key because it quotes a test
-# string. Not a real credential — the commit is from a branch that was
-# never merged to main.
+# ─── .gitleaksignore:11 (historical commit) ──────────────────────────────
+# An earlier version of this file quoted the truncated JWT placeholder in its
+# comment. That commit is in history and must be allowlisted here so the
+# full-history scan does not fail on a file whose sole purpose is to record
+# false positives. The value was never a real credential.
 1f83957c8c8f61741b82581dee40e1a3dc7bf570:.gitleaksignore:generic-api-key:11
 
-# Commit e8cc0956: _bmad/tea/testarch/knowledge/api-testing-patterns.md L681
+# ─── _bmad/tea/testarch/knowledge/api-testing-patterns.md:681 ─────────────
 # Truncated JWT placeholder in a test-architecture documentation file.
 # The value ends with "..." indicating it was deliberately cropped for
 # illustration purposes. It is not a real credential.
