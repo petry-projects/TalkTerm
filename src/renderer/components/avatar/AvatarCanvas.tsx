@@ -30,14 +30,18 @@ export function AvatarCanvas({ state, riveAssetPath }: AvatarCanvasProps): React
     ready: 'bg-primary/20',
     listening: 'bg-primary/60',
     thinking: 'bg-primary/40',
+    'deep-thinking': 'bg-indigo-500/40',
     speaking: 'bg-primary-light/60',
+    error: 'bg-danger/40',
   };
 
   const stateAnimations: Record<AvatarAnimationState, string> = {
     ready: '',
     listening: 'animate-pulse',
     thinking: 'animate-bounce',
+    'deep-thinking': 'animate-pulse',
     speaking: 'animate-pulse',
+    error: '',
   };
 
   if (riveAssetPath !== undefined) {
@@ -64,7 +68,9 @@ export function AvatarCanvas({ state, riveAssetPath }: AvatarCanvasProps): React
             ? '👂'
             : state === 'thinking'
               ? '🤔'
-              : '🗣️'}
+              : state === 'deep-thinking'
+                ? '🧠'
+                : '🗣️'}
       </span>
     </div>
   );

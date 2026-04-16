@@ -23,28 +23,76 @@ export interface RecoveryOption {
 }
 
 export function classifyError(error: unknown): ErrorCategory {
-  if (error instanceof Error) {
-    const msg = error.message.toLowerCase();
-    if (msg.includes('network') || msg.includes('fetch') || msg.includes('econnrefused'))
-      return 'network-error';
-    if (msg.includes('401') || msg.includes('unauthorized') || msg.includes('api key'))
-      return 'auth-error';
-    if (msg.includes('credit') || msg.includes('balance') || msg.includes('billing'))
-      return 'billing-error';
-    if (msg.includes('429') || msg.includes('rate limit')) return 'rate-limit';
-    if (msg.includes('permission') || msg.includes('eacces')) return 'file-permission';
-    if (msg.includes('synthesis') || msg.includes('voice') || msg.includes('speak'))
-      return 'tts-error';
-    if (
-      msg.includes('recognition') ||
-      msg.includes('speech') ||
-      msg.includes('microphone') ||
-      msg.includes('listen')
-    )
-      return 'stt-error';
-    if (msg.includes('sdk') || msg.includes('agent')) return 'sdk-error';
-  }
+  const raw = error instanceof Error ? error.message : typeof error === 'string' ? error : '';
+  const msg = raw.toLowerCase();
+  if (msg === '') return 'unknown';
+
+  if (
+    msg.includes('network') ||
+    msg.includes('fetch') ||
+    msg.includes('econnrefused') ||
+    msg.includes('enotfound') ||
+    msg.includes('socket hang up') ||
+    msg.includes('timeout')
+  )
+    return 'network-error';
+  if (
+    msg.includes('401') ||
+    msg.includes('unauthorized') ||
+    msg.includes('api key') ||
+    msg.includes('invalid_api_key') ||
+    msg.includes('authentication')
+  )
+    return 'auth-error';
+  if (
+    msg.includes('credit') ||
+    msg.includes('balance') ||
+    msg.includes('billing') ||
+    msg.includes('insufficient') ||
+    msg.includes('payment')
+  )
+    return 'billing-error';
+  if (
+    msg.includes('429') ||
+    msg.includes('rate limit') ||
+    msg.includes('rate_limit') ||
+    msg.includes('overloaded') ||
+    msg.includes('capacity')
+  )
+    return 'rate-limit';
+  if (msg.includes('permission') || msg.includes('eacces')) return 'file-permission';
+  if (msg.includes('synthesis') || msg.includes('voice') || msg.includes('speak'))
+    return 'tts-error';
+  if (
+    msg.includes('recognition') ||
+    msg.includes('speech') ||
+    msg.includes('microphone') ||
+    msg.includes('listen')
+  )
+    return 'stt-error';
+  if (msg.includes('sdk') || msg.includes('agent')) return 'sdk-error';
+
   return 'unknown';
+}
+
+export function recoveryOptionsForCategory(category: ErrorCategory): RecoveryOption[] {
+  switch (category) {
+    case 'auth-error':
+      return [
+        { label: 'Re-enter API key', action: 'setup-key', description: 'Update your API key' },
+        { label: 'Try again', action: 'retry', description: 'Retry with current key' },
+      ];
+    case 'billing-error':
+      return [{ label: 'Try again', action: 'retry', description: 'Retry after adding credits' }];
+    case 'rate-limit':
+      return [{ label: 'Try again', action: 'retry', description: 'Retry after a moment' }];
+    case 'network-error':
+      return [
+        { label: 'Try again', action: 'retry', description: 'Retry when connection is restored' },
+      ];
+    default:
+      return [{ label: 'Try again', action: 'retry', description: 'Retry the last action' }];
+  }
 }
 
 export function createUserFriendlyMessage(category: ErrorCategory): string {

@@ -1,4 +1,10 @@
-import { classifyError, createUserFriendlyMessage } from '../../shared/types/domain/agent-error';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
+import {
+  classifyError,
+  createUserFriendlyMessage,
+  recoveryOptionsForCategory,
+} from '../../shared/types/domain/agent-error';
 import type { AgentEvent } from '../../shared/types/domain/agent-event';
 import { createAuditEntry } from '../../shared/types/domain/audit-entry';
 import type {
@@ -28,10 +34,13 @@ interface SdkQueryOptions {
     | string
     | { type: 'preset'; preset: 'claude_code'; append?: string | undefined }
     | undefined;
-  permissionMode?: 'default' | 'plan' | undefined;
+  permissionMode?: 'default' | 'acceptEdits' | 'bypassPermissions' | 'plan' | 'dontAsk' | undefined;
   persistSession?: boolean | undefined;
+  /** Continue the most recent conversation in the current directory. */
+  continue?: boolean | undefined;
   env?: Record<string, string | undefined> | undefined;
   forceLoginMethod?: 'claudeai' | 'console' | undefined;
+  promptSuggestions?: boolean | undefined;
 }
 
 /**
@@ -52,6 +61,8 @@ type SdkMessage =
   | SdkToolProgressMessage
   | SdkStatusMessage
   | SdkSystemMessage
+  | SdkAuthStatusMessage
+  | SdkPromptSuggestionMessage
   | SdkOtherMessage;
 
 interface SdkAssistantMessage {
@@ -96,6 +107,21 @@ interface SdkToolUseSummaryMessage {
 interface SdkToolProgressMessage {
   type: 'tool_progress';
   tool_name: string;
+  elapsed_time_seconds?: number;
+  session_id: string;
+}
+
+interface SdkAuthStatusMessage {
+  type: 'auth_status';
+  isAuthenticating: boolean;
+  output: string[];
+  error?: string;
+  session_id: string;
+}
+
+interface SdkPromptSuggestionMessage {
+  type: 'prompt_suggestion';
+  suggestion: string;
   session_id: string;
 }
 
@@ -135,6 +161,8 @@ export class ClaudeSdkBackend implements AgentBackend {
     private readonly auditRepo: AuditRepository,
     private readonly getApiKey: () => string | null,
     private readonly getAuthMode: () => AuthMode = () => 'api-key',
+    private readonly getUserName: () => string = () => 'User',
+    private readonly getMemoryContext: () => string | null = () => null,
   ) {}
 
   async *startSession(config: AgentSessionConfig): AsyncIterable<AgentEvent> {
@@ -251,6 +279,95 @@ export class ClaudeSdkBackend implements AgentBackend {
     return history;
   }
 
+  /**
+   * Try to read the BMAD agent definition from a candidate directory.
+   * Returns [agentContent, configContent] or null if agent file not found.
+   */
+  private async tryLoadBmadFromDir(
+    dir: string,
+  ): Promise<{ agent: string; config: string | null } | null> {
+    const agentPath = path.join(dir, '_bmad', 'bmm', 'agents', 'analyst.md');
+    const configPath = path.join(dir, '_bmad', 'bmm', 'config.yaml');
+
+    const [agentResult, configResult] = await Promise.allSettled([
+      readFile(agentPath, 'utf-8'),
+      readFile(configPath, 'utf-8'),
+    ]);
+
+    if (agentResult.status === 'rejected') {
+      console.log(`[SDK Debug] No BMAD agent at ${agentPath}`);
+      return null;
+    }
+
+    console.log(`[SDK Debug] Found BMAD agent at ${agentPath}`);
+    return {
+      agent: agentResult.value,
+      config: configResult.status === 'fulfilled' ? configResult.value : null,
+    };
+  }
+
+  /**
+   * Load the BMAD agent definition and config.
+   * Checks the workspace first, then falls back to app root (process.cwd()).
+   * Replaces {project-root} placeholders with the resolved project path.
+   */
+  async loadBmadContext(workspacePath?: string): Promise<string | null> {
+    const candidates: string[] = [];
+    if (workspacePath !== undefined) {
+      candidates.push(workspacePath);
+    }
+    // Fallback to app root (project root in dev, app path in prod)
+    const appRoot = process.cwd();
+    if (appRoot !== workspacePath) {
+      candidates.push(appRoot);
+    }
+
+    if (candidates.length === 0) {
+      console.log('[SDK Debug] No candidates for BMAD context loading');
+      return null;
+    }
+
+    let bmad: { agent: string; config: string | null } | null = null;
+    let resolvedRoot = workspacePath ?? appRoot;
+
+    for (const candidate of candidates) {
+      try {
+        bmad = await this.tryLoadBmadFromDir(candidate);
+        if (bmad !== null) {
+          resolvedRoot = candidate;
+          break;
+        }
+      } catch (err) {
+        console.log(
+          `[SDK Debug] Error checking BMAD in ${candidate}:`,
+          err instanceof Error ? err.message : String(err),
+        );
+      }
+    }
+
+    if (bmad === null) {
+      console.log('[SDK Debug] No BMAD files found in any candidate directory');
+      return null;
+    }
+
+    // Replace placeholders with actual values
+    const userName = this.getUserName();
+    const resolvePlaceholders = (text: string): string =>
+      text
+        .replace(/\{project-root\}/g, resolvedRoot)
+        .replace(/^user_name:\s*.+$/m, `user_name: ${userName}`);
+
+    let context = `<bmad-agent-definition>\n${resolvePlaceholders(bmad.agent)}\n</bmad-agent-definition>`;
+    if (bmad.config !== null) {
+      context += `\n<bmad-config>\n${resolvePlaceholders(bmad.config)}\n</bmad-config>`;
+    }
+
+    console.log(
+      `[SDK Debug] Loaded BMAD context (${String(context.length)} chars) from ${resolvedRoot}`,
+    );
+    return context;
+  }
+
   private buildSdkEnv(apiKey: string | null): Record<string, string | undefined> {
     const env = { ...process.env };
     if (apiKey !== null) {
@@ -262,22 +379,35 @@ export class ClaudeSdkBackend implements AgentBackend {
   private buildSdkOptions(
     apiKey: string | null,
     overrides: Partial<SdkQueryOptions> = {},
+    bmadContext?: string | null,
   ): SdkQueryOptions {
+    const basePrompt =
+      'You are loading a predefined agent and following its workflow. ' +
+      'IMPORTANT: Do NOT use tools, create files, run commands, or take any actions ' +
+      'unless the user explicitly asks you to. Ask clarifying questions instead of ' +
+      'assuming intent. Keep responses conversational and concise.';
+
+    // Include cross-session memory for personalization
+    const memoryContext = this.getMemoryContext();
+    let appendPrompt = basePrompt;
+    if (bmadContext !== undefined && bmadContext !== null) {
+      appendPrompt = `${bmadContext}\n\n${basePrompt}`;
+    }
+    if (memoryContext !== null) {
+      appendPrompt = `${appendPrompt}\n\n<cross-session-memory>\n${memoryContext}\n</cross-session-memory>`;
+    }
+
     const opts: SdkQueryOptions = {
       abortController: this.abortController ?? undefined,
-      persistSession: false,
+      persistSession: true,
       env: this.buildSdkEnv(apiKey),
-      // Default to conversational mode — no autonomous tool use
       systemPrompt: {
         type: 'preset',
         preset: 'claude_code',
-        append:
-          'You are a helpful conversational assistant inside the TalkTerm desktop app. ' +
-          'IMPORTANT: Do NOT use tools, create files, run commands, or take any actions ' +
-          'unless the user explicitly asks you to. Ask clarifying questions instead of ' +
-          'assuming intent. Keep responses conversational and concise.',
+        append: appendPrompt,
       },
-      permissionMode: 'plan',
+      permissionMode: 'acceptEdits',
+      promptSuggestions: true,
       ...overrides,
     };
     if (this.getAuthMode() === 'claude-subscription') {
@@ -293,15 +423,32 @@ export class ClaudeSdkBackend implements AgentBackend {
   ): AsyncIterable<AgentEvent> {
     this.abortController = new AbortController();
 
-    const queryObj = sdk.query({
-      prompt: 'Hello — I just opened a new session. Please introduce yourself briefly.',
-      options: this.buildSdkOptions(apiKey, {
+    const bmadContext = await this.loadBmadContext(config.workspacePath);
+    const prompt = 'Hello — I just opened a new session. Please introduce yourself briefly.';
+    const options = this.buildSdkOptions(
+      apiKey,
+      {
         cwd: config.workspacePath,
-        maxTurns: config.maxTurns ?? 3,
+        maxTurns: 1,
         maxBudgetUsd: config.maxBudgetUsd,
         allowedTools: [],
-      }),
-    });
+      },
+      bmadContext,
+    );
+
+    console.log(
+      '[SDK Debug] startSession query()',
+      JSON.stringify(
+        {
+          prompt,
+          options: { ...options, env: '[redacted]', abortController: '[AbortController]' },
+        },
+        null,
+        2,
+      ),
+    );
+
+    const queryObj = sdk.query({ prompt, options });
 
     this.activeQuery = queryObj;
     yield* this.consumeSdkStream(queryObj, 'session-init');
@@ -315,19 +462,67 @@ export class ClaudeSdkBackend implements AgentBackend {
     message: string,
     workspacePath?: string,
   ): AsyncIterable<AgentEvent> {
-    this.abortController = new AbortController();
+    const maxRetries = 3;
+    const bmadContext = await this.loadBmadContext(workspacePath);
+    const history = this.sessionHistory.get(sessionId);
+    const hasPriorTurns = history !== undefined && history.length > 1;
 
-    const queryObj = sdk.query({
-      prompt: message,
-      options: this.buildSdkOptions(apiKey, {
-        cwd: workspacePath,
-        maxTurns: 3,
-      }),
-    });
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      this.abortController = new AbortController();
 
-    this.activeQuery = queryObj;
-    yield* this.consumeSdkStream(queryObj, sessionId);
-    this.activeQuery = null;
+      // On retry, disable continue to avoid session resume errors
+      const useContinue = hasPriorTurns && attempt === 0;
+      const options = this.buildSdkOptions(
+        apiKey,
+        {
+          cwd: workspacePath,
+          maxTurns: 25,
+          continue: useContinue,
+        },
+        bmadContext,
+      );
+
+      console.log(
+        `[SDK Debug] sendMessage query() attempt=${String(attempt + 1)}/${String(maxRetries + 1)}`,
+        JSON.stringify(
+          {
+            prompt: message,
+            sessionId,
+            continue: useContinue,
+            options: { ...options, env: '[redacted]', abortController: '[AbortController]' },
+          },
+          null,
+          2,
+        ),
+      );
+
+      const queryObj = sdk.query({ prompt: message, options });
+      this.activeQuery = queryObj;
+
+      let hadError = false;
+      for await (const event of this.consumeSdkStream(queryObj, sessionId)) {
+        if (event.type === 'error' && attempt < maxRetries) {
+          // Swallow error and retry
+          hadError = true;
+          console.warn(
+            `[SDK Debug] Error on attempt ${String(attempt + 1)}, retrying...`,
+            event.userMessage,
+          );
+          yield {
+            type: 'progress',
+            step: `Retrying (${String(attempt + 1)}/${String(maxRetries)})...`,
+            status: 'in-progress',
+          };
+          break;
+        }
+        yield event;
+      }
+
+      this.activeQuery = null;
+      if (!hadError) {
+        return;
+      }
+    }
   }
 
   /**
@@ -346,13 +541,10 @@ export class ClaudeSdkBackend implements AgentBackend {
         }
 
         const msgType = `${msg.type}${(msg as { subtype?: string }).subtype !== undefined ? `:${(msg as { subtype?: string }).subtype ?? ''}` : ''}`;
-        console.log(`[SDK →] ${msgType}`, msg.type === 'assistant' ? '(content blocks)' : '');
+        console.log(`[SDK Debug] ← ${msgType}`, JSON.stringify(msg, null, 2));
         const events = this.mapSdkMessage(msg, sessionId);
         for (const event of events) {
-          console.log(
-            `[SDK → UI] ${event.type}`,
-            event.type === 'text' ? `"${event.content.slice(0, 80)}..."` : '',
-          );
+          console.log(`[SDK Debug] → UI event: ${event.type}`, JSON.stringify(event));
           yield event;
         }
       }
@@ -362,9 +554,7 @@ export class ClaudeSdkBackend implements AgentBackend {
       yield {
         type: 'error',
         userMessage: createUserFriendlyMessage(category),
-        recoveryOptions: [
-          { label: 'Try again', action: 'retry', description: 'Retry the last action' },
-        ],
+        recoveryOptions: recoveryOptionsForCategory(category),
       };
     }
   }
@@ -421,6 +611,31 @@ export class ClaudeSdkBackend implements AgentBackend {
               toolName: toolBlock.name,
               toolInput: toolBlock.input,
             });
+          } else if (block.type === 'thinking') {
+            const thinkBlock = block as { type: 'thinking'; thinking: string };
+            const truncated =
+              thinkBlock.thinking.length > 100
+                ? `${thinkBlock.thinking.slice(0, 100)}...`
+                : thinkBlock.thinking;
+            events.push({ type: 'thinking', summary: truncated });
+          } else if (block.type === 'tool_result') {
+            const resultBlock = block as {
+              type: 'tool_result';
+              tool_use_id: string;
+              content: string;
+              is_error?: boolean;
+            };
+            const preview =
+              resultBlock.content.length > 80
+                ? `${resultBlock.content.slice(0, 80)}...`
+                : resultBlock.content;
+            if (preview.trim() !== '') {
+              events.push({
+                type: 'progress',
+                step: resultBlock.is_error === true ? `Tool error: ${preview}` : preview,
+                status: resultBlock.is_error === true ? 'failed' : 'completed',
+              });
+            }
           }
         }
         break;
@@ -436,12 +651,41 @@ export class ClaudeSdkBackend implements AgentBackend {
           });
         } else {
           const error = resultMsg as SdkResultError;
-          const errorDetail = error.errors?.join('; ') ?? 'An error occurred';
-          events.push({
-            type: 'error',
-            userMessage: 'Something went wrong, but we can work through it.',
-            recoveryOptions: [{ label: 'Try again', action: 'retry', description: errorDetail }],
-          });
+          if (resultMsg.subtype === 'error_max_turns') {
+            events.push({
+              type: 'error',
+              userMessage:
+                "I've reached the maximum number of steps for this request. Try breaking it into smaller parts.",
+              recoveryOptions: [
+                {
+                  label: 'Try again',
+                  action: 'retry',
+                  description: 'Retry with a simpler request',
+                },
+              ],
+            });
+          } else if (resultMsg.subtype === 'error_max_budget_usd') {
+            events.push({
+              type: 'error',
+              userMessage: "This request exceeded the cost budget. Let's try a simpler approach.",
+              recoveryOptions: [
+                {
+                  label: 'Try again',
+                  action: 'retry',
+                  description: 'Retry with a simpler request',
+                },
+              ],
+            });
+          } else {
+            const rawDetail = error.errors?.join('; ') ?? '';
+            const category = classifyError(new Error(rawDetail));
+            const friendlyMessage = createUserFriendlyMessage(category);
+            events.push({
+              type: 'error',
+              userMessage: friendlyMessage,
+              recoveryOptions: recoveryOptionsForCategory(category),
+            });
+          }
         }
         break;
       }
@@ -466,8 +710,24 @@ export class ClaudeSdkBackend implements AgentBackend {
         break;
       }
 
+      case 'auth_status': {
+        const authMsg = msg as SdkAuthStatusMessage;
+        const authText = authMsg.error ?? authMsg.output.join(' ');
+        if (authText.trim() !== '') {
+          events.push({ type: 'auth-status', message: authText });
+        }
+        break;
+      }
+
+      case 'prompt_suggestion': {
+        const sugMsg = msg as SdkPromptSuggestionMessage;
+        events.push({ type: 'suggestion', suggestions: [sugMsg.suggestion] });
+        break;
+      }
+
       default:
-        // Surface rate limits and task notifications so the user isn't staring at a frozen screen
+        // Surface rate limits and task notifications so the user isn't staring at a frozen screen.
+        // Note: `user` type messages are SDK-internal (turn confirmations) — intentionally not mapped.
         if (msg.type === 'rate_limit_event') {
           console.warn('[ClaudeSdkBackend] Rate limited — SDK is waiting');
           events.push({
@@ -476,12 +736,47 @@ export class ClaudeSdkBackend implements AgentBackend {
             status: 'in-progress',
           });
         } else if (msg.type === 'system') {
-          const sysMsg = msg as { type: 'system'; subtype?: string };
+          const sysMsg = msg as {
+            type: 'system';
+            subtype?: string;
+            description?: string;
+            status?: string;
+            summary?: string;
+            last_tool_name?: string;
+          };
           if (sysMsg.subtype === 'task_started') {
-            events.push({ type: 'progress', step: 'Processing...', status: 'in-progress' });
+            events.push({
+              type: 'progress',
+              step: sysMsg.description ?? 'Processing...',
+              status: 'in-progress',
+            });
           } else if (sysMsg.subtype === 'task_notification') {
-            events.push({ type: 'progress', step: 'Working...', status: 'in-progress' });
+            const taskStatus = sysMsg.status ?? 'completed';
+            if (taskStatus === 'completed') {
+              events.push({ type: 'complete', summary: sysMsg.summary ?? 'Task completed' });
+            } else {
+              events.push({
+                type: 'error',
+                userMessage: sysMsg.summary ?? 'A background task did not complete successfully.',
+                recoveryOptions: [
+                  { label: 'Try again', action: 'retry', description: 'Retry the last action' },
+                ],
+              });
+            }
+          } else if (sysMsg.subtype === 'task_progress') {
+            // Feed last_tool_name into TaskProgress panel when available
+            if (sysMsg.last_tool_name !== undefined) {
+              events.push({
+                type: 'tool-call',
+                toolName: sysMsg.last_tool_name,
+                toolInput: {},
+              });
+            }
+          } else if (sysMsg.subtype === 'api_retry') {
+            // Silent — SDK handles retries internally. Log only.
+            console.log('[ClaudeSdkBackend] SDK API retry:', JSON.stringify(msg));
           }
+          // session_state_changed, compact_boundary, files_persisted, hooks — log only
         }
         break;
     }

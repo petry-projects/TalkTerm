@@ -29,6 +29,11 @@ describe('StatusIndicator', () => {
     expect(screen.getByText('Speaking')).toBeInTheDocument();
   });
 
+  it('shows Deep thinking in deep-thinking state', () => {
+    render(<StatusIndicator state="deep-thinking" />);
+    expect(screen.getByText('Deep thinking...')).toBeInTheDocument();
+  });
+
   it('has role=status for accessibility', () => {
     render(<StatusIndicator state="listening" />);
     expect(screen.getByRole('status')).toBeInTheDocument();

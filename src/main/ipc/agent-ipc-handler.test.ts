@@ -168,7 +168,7 @@ describe('AgentIPCHandler', () => {
       IPC_CHANNELS.AGENT_MESSAGE,
       expect.objectContaining({
         type: 'error',
-        userMessage: expect.stringContaining('Backend failure') as string,
+        userMessage: 'Something went wrong, but we can work through it.',
       }),
     );
   });

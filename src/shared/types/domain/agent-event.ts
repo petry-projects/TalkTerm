@@ -7,6 +7,9 @@ export type AgentEvent =
   | { type: 'confirm-request'; action: string; description: string }
   | { type: 'error'; userMessage: string; recoveryOptions: RecoveryOption[] }
   | { type: 'complete'; summary: string }
-  | { type: 'progress'; step: string; status: 'pending' | 'in-progress' | 'completed' | 'failed' };
+  | { type: 'progress'; step: string; status: 'pending' | 'in-progress' | 'completed' | 'failed' }
+  | { type: 'suggestion'; suggestions: string[] }
+  | { type: 'auth-status'; message: string }
+  | { type: 'thinking'; summary: string };
 
 export type { RecoveryOption } from './agent-error';
