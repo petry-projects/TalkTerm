@@ -35,4 +35,10 @@ describe('AvatarCanvas', () => {
     rerender(<AvatarCanvas state="thinking" />);
     expect(screen.getByText('🤔')).toBeInTheDocument();
   });
+
+  it('renders brain emoji for deep-thinking state', () => {
+    render(<AvatarCanvas state="deep-thinking" />);
+    expect(screen.getByText('🧠')).toBeInTheDocument();
+    expect(screen.getByLabelText('Avatar is deep-thinking')).toBeInTheDocument();
+  });
 });

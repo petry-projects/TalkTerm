@@ -33,6 +33,14 @@ describe('useAvatarState', () => {
     expect(result.current.animationState).toBe('speaking');
   });
 
+  it('transitions to deep-thinking', () => {
+    const { result } = renderHook(() => useAvatarState());
+    act(() => {
+      result.current.setDeepThinking();
+    });
+    expect(result.current.animationState).toBe('deep-thinking');
+  });
+
   it('transitions back to ready', () => {
     const { result } = renderHook(() => useAvatarState());
     act(() => {

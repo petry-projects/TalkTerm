@@ -1,3 +1,5 @@
+import { execSync } from 'node:child_process';
+
 export interface AdminCheckResult {
   isAdmin: boolean;
   platform: NodeJS.Platform;
@@ -30,11 +32,20 @@ function getInstructionsForPlatform(platform: NodeJS.Platform): string {
   }
 }
 
-function checkUnixAdmin(): boolean {
+function checkUnixRoot(): boolean {
   if (typeof process.getuid === 'function') {
     return process.getuid() === 0;
   }
   return false;
+}
+
+function checkMacOsAdminGroup(): boolean {
+  try {
+    const groups = execSync('groups', { encoding: 'utf-8', timeout: 3000 });
+    return groups.split(/\s+/).includes('admin');
+  } catch {
+    return false;
+  }
 }
 
 export function checkAdminPrivileges(options?: AdminCheckOptions): AdminCheckResult {
@@ -44,8 +55,10 @@ export function checkAdminPrivileges(options?: AdminCheckOptions): AdminCheckRes
 
   if (platform === 'win32') {
     isAdmin = options?.isElevated === true;
+  } else if (platform === 'darwin') {
+    isAdmin = checkUnixRoot() || checkMacOsAdminGroup();
   } else {
-    isAdmin = checkUnixAdmin();
+    isAdmin = checkUnixRoot();
   }
 
   return {
