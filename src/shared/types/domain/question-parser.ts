@@ -1,3 +1,21 @@
+/**
+ * Strip markdown formatting from a string, returning plain text.
+ */
+export function stripMarkdown(text: string): string {
+  return text
+    .replace(/\*\*(.+?)\*\*/g, '$1') // bold
+    .replace(/\*(.+?)\*/g, '$1') // italic
+    .replace(/__(.+?)__/g, '$1') // bold (underscore)
+    .replace(/_(.+?)_/g, '$1') // italic (underscore)
+    .replace(/~~(.+?)~~/g, '$1') // strikethrough
+    .replace(/`(.+?)`/g, '$1') // inline code
+    .replace(/^#{1,6}\s+/gm, '') // headings
+    .replace(/^\s*[-*+]\s+/gm, '') // list items
+    .replace(/^\s*\d+[.)]\s+/gm, '') // numbered items
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // links
+    .trim();
+}
+
 export interface Question {
   index: number;
   title: string;
@@ -6,6 +24,7 @@ export interface Question {
 }
 
 export interface QuestionSet {
+  kind?: 'questions' | 'menu';
   preamble: string;
   questions: Question[];
 }

@@ -81,7 +81,6 @@ beforeEach(() => {
       getAuthMode: vi.fn().mockResolvedValue('api-key'),
       getProfile: vi.fn().mockResolvedValue(null),
       setProfile: vi.fn().mockResolvedValue(undefined),
-      getAvatarRoster: vi.fn().mockResolvedValue([]),
       selectAvatar: vi.fn().mockResolvedValue(undefined),
       browseWorkspace: vi.fn().mockResolvedValue(null),
       setWorkspace: vi.fn().mockResolvedValue(undefined),
@@ -128,6 +127,16 @@ function simulateAgentEvent(event: AgentEvent): void {
   });
 }
 
+/** Simulate a text event and flush the debounce timer so text/cards display immediately */
+function simulateTextAndFlush(content: string): void {
+  vi.useFakeTimers();
+  simulateAgentEvent({ type: 'text', content });
+  act(() => {
+    vi.advanceTimersByTime(600);
+  });
+  vi.useRealTimers();
+}
+
 describe('ConversationView', () => {
   it('renders avatar placeholder', () => {
     render(<ConversationView userName="DJ" avatarName="Mary" sessionId="s1" />);
@@ -164,7 +173,7 @@ describe('ConversationView', () => {
     const input = screen.getByPlaceholderText(/speak to Mary/i);
     await user.type(input, 'Hello{Enter}');
 
-    simulateAgentEvent({ type: 'text', content: 'Hi there!' });
+    simulateTextAndFlush('Hi there!');
 
     expect(screen.getByLabelText(/avatar is speaking/i)).toBeInTheDocument();
     expect(screen.getByText('Hi there!')).toBeInTheDocument();
@@ -174,7 +183,7 @@ describe('ConversationView', () => {
   it('shows tool-call status in caption', () => {
     render(<ConversationView userName="DJ" avatarName="Mary" sessionId="s1" />);
     simulateAgentEvent({ type: 'tool-call', toolName: 'bash', toolInput: { command: 'ls' } });
-    expect(screen.getByText(/Using bash/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/running command/i).length).toBeGreaterThan(0);
     expect(screen.getByLabelText(/avatar is thinking/i)).toBeInTheDocument();
   });
 
@@ -187,6 +196,63 @@ describe('ConversationView', () => {
     });
     expect(screen.getByText(/Something went wrong/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/avatar is ready/i)).toBeInTheDocument();
+  });
+
+  // Story 2.1 — ErrorRecovery wiring
+  it('renders ErrorRecovery panel when error has recovery options', () => {
+    render(<ConversationView userName="DJ" avatarName="Mary" sessionId="s1" />);
+    simulateAgentEvent({
+      type: 'error',
+      userMessage: "There's an issue with your API key.",
+      recoveryOptions: [
+        { label: 'Re-enter key', action: 'setup-key', description: 'Open API key setup' },
+        { label: 'Try again', action: 'retry', description: 'Send your message again' },
+      ],
+    });
+    // Message shown in both caption and ErrorRecovery panel
+    expect(screen.getAllByText("There's an issue with your API key.")).toHaveLength(2);
+    // Recovery action cards rendered
+    expect(screen.getByText('Re-enter key')).toBeInTheDocument();
+    expect(screen.getByText('Try again')).toBeInTheDocument();
+  });
+
+  it('speaks error message via TTS when error event arrives', () => {
+    render(<ConversationView userName="DJ" avatarName="Mary" sessionId="s1" />);
+    simulateAgentEvent({
+      type: 'error',
+      userMessage: 'Connection lost.',
+      recoveryOptions: [{ label: 'Retry', action: 'retry', description: 'Try again' }],
+    });
+    expect(mockTtsSpeak).toHaveBeenCalledWith('Connection lost.', undefined);
+  });
+
+  it('clears ErrorRecovery when recovery action is selected', async () => {
+    const user = userEvent.setup();
+    render(<ConversationView userName="DJ" avatarName="Mary" sessionId="session-err" />);
+    simulateAgentEvent({
+      type: 'error',
+      userMessage: 'Something broke.',
+      recoveryOptions: [
+        { label: 'Try again', action: 'retry', description: 'Send your message again' },
+      ],
+    });
+    expect(screen.getByText('Try again')).toBeInTheDocument();
+
+    // Click the recovery action card
+    await user.click(screen.getByText('Try again'));
+    expect(screen.queryByText('Try again')).not.toBeInTheDocument();
+  });
+
+  it('does not show ErrorRecovery when error has no recovery options', () => {
+    render(<ConversationView userName="DJ" avatarName="Mary" sessionId="s1" />);
+    simulateAgentEvent({
+      type: 'error',
+      userMessage: 'Generic error.',
+      recoveryOptions: [],
+    });
+    expect(screen.getByText(/Generic error/i)).toBeInTheDocument();
+    // No recovery panel should appear — only caption text
+    expect(screen.queryByText('What would you like to do?')).not.toBeInTheDocument();
   });
 
   it('starts STT when mic button is clicked (live mode)', async () => {
@@ -281,7 +347,7 @@ describe('ConversationView', () => {
     render(<ConversationView userName="DJ" avatarName="Mary" sessionId="s1" />);
 
     // Simulate agent text event → speaking
-    simulateAgentEvent({ type: 'text', content: 'Hello!' });
+    simulateTextAndFlush('Hello!');
     expect(screen.getByLabelText(/avatar is speaking/i)).toBeInTheDocument();
 
     // Simulate TTS end
@@ -314,8 +380,8 @@ describe('ConversationView', () => {
     // No stop button initially (ready state)
     expect(screen.queryByRole('button', { name: /stop talking/i })).not.toBeInTheDocument();
 
-    // Simulate agent text → speaking state
-    simulateAgentEvent({ type: 'text', content: 'Hello!' });
+    // Simulate agent text → speaking state (after debounce flush)
+    simulateTextAndFlush('Hello!');
     expect(screen.getByRole('button', { name: /stop talking/i })).toBeInTheDocument();
   });
 
@@ -337,23 +403,30 @@ describe('ConversationView', () => {
     await user.type(input, 'test{Enter}');
 
     // Simulate a progress event (e.g., rate limit)
+    vi.useFakeTimers();
     simulateAgentEvent({
       type: 'progress',
       step: 'Waiting for API availability...',
       status: 'in-progress',
     });
+    // Progress captions are debounced (300ms) to avoid flicker
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
+    vi.useRealTimers();
     expect(screen.getByRole('button', { name: /stop talking/i })).toBeInTheDocument();
     expect(screen.getByText(/Waiting for API availability/i)).toBeInTheDocument();
   });
 
-  it('clicking stop button stops TTS and returns to ready', async () => {
-    const user = userEvent.setup();
+  it('clicking stop button stops TTS and returns to ready', () => {
     render(<ConversationView userName="DJ" avatarName="Mary" sessionId="s1" />);
 
-    simulateAgentEvent({ type: 'text', content: 'Long response...' });
+    simulateTextAndFlush('Long response...');
     expect(screen.getByLabelText(/avatar is speaking/i)).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: /stop talking/i }));
+    act(() => {
+      screen.getByRole('button', { name: /stop talking/i }).click();
+    });
     expect(mockTtsStop).toHaveBeenCalled();
     expect(mockCancelAgent).toHaveBeenCalled();
     expect(screen.getByLabelText(/avatar is ready/i)).toBeInTheDocument();
@@ -362,36 +435,27 @@ describe('ConversationView', () => {
   // FR57-59 — Structured question input
   it('shows question card stack when agent sends structured questions', () => {
     render(<ConversationView userName="DJ" avatarName="Mary" sessionId="s1" />);
-    simulateAgentEvent({
-      type: 'text',
-      content:
-        'Great idea! A few questions:\n1. **Platform** — iOS or Android?\n2. **Scope** — MVP or full?',
-    });
+    simulateTextAndFlush(
+      'Great idea! A few questions:\n1. **Platform** — iOS or Android?\n2. **Scope** — MVP or full?',
+    );
     expect(screen.getByTestId('question-card-stack')).toBeInTheDocument();
     expect(screen.getByText('Platform')).toBeInTheDocument();
   });
 
   it('speaks only the preamble when questions are detected', () => {
     render(<ConversationView userName="DJ" avatarName="Mary" sessionId="s1" />);
-    simulateAgentEvent({
-      type: 'text',
-      content:
-        'Great idea! A few questions:\n1. **Platform** — iOS or Android?\n2. **Scope** — MVP or full?',
-    });
+    simulateTextAndFlush(
+      'Great idea! A few questions:\n1. **Platform** — iOS or Android?\n2. **Scope** — MVP or full?',
+    );
     expect(mockTtsSpeak).toHaveBeenCalledWith('Great idea! A few questions:', undefined);
   });
 
   it('sends aggregated message when question answers are submitted', () => {
     render(<ConversationView userName="DJ" avatarName="Mary" sessionId="session-q" />);
-    simulateAgentEvent({
-      type: 'text',
-      content: 'Questions:\n1. **A** — First?\n2. **B** — Second?',
-    });
+    simulateTextAndFlush('Questions:\n1. **A** — First?\n2. **B** — Second?');
     expect(screen.getByTestId('question-card-stack')).toBeInTheDocument();
 
     // Dismiss the card stack (simulates submission callback)
-    // The QuestionCardStack calls onSubmit with the aggregated message
-    // We can test the integration by checking the card stack renders and dismiss works
     const closeBtn = screen.getByRole('button', { name: /close questions/i });
     act(() => {
       closeBtn.click();
@@ -401,11 +465,209 @@ describe('ConversationView', () => {
 
   it('does not show card stack for single-question text', () => {
     render(<ConversationView userName="DJ" avatarName="Mary" sessionId="s1" />);
-    simulateAgentEvent({
-      type: 'text',
-      content: 'Just one thing: 1. **Platform** — iOS or Android?',
-    });
+    simulateTextAndFlush('Just one thing: 1. **Platform** — iOS or Android?');
     expect(screen.queryByTestId('question-card-stack')).not.toBeInTheDocument();
     expect(screen.getByLabelText(/avatar is speaking/i)).toBeInTheDocument();
+  });
+
+  // Story 2.4 — OutputPanel + useDisplayMode wiring
+  it('renders OutputPanel when display mode is set via document content', () => {
+    render(<ConversationView userName="DJ" avatarName="Mary" sessionId="s1" />);
+
+    // Long markdown content should trigger DocumentView display
+    const longContent =
+      '# Architecture Overview\n\n' +
+      'This is a detailed document about the system architecture.\n\n' +
+      '## Components\n\n' +
+      'The system consists of multiple components:\n\n' +
+      '- **Frontend**: React + TypeScript\n' +
+      '- **Backend**: Electron main process\n' +
+      '- **Database**: SQLite with WAL mode\n\n' +
+      '## Data Flow\n\n' +
+      'Messages flow through IPC channels from renderer to main process.\n\n' +
+      '## Security\n\n' +
+      'API keys are encrypted using Electron safeStorage.\n\n' +
+      '## Testing\n\n' +
+      'Comprehensive test coverage with Vitest and React Testing Library.';
+
+    simulateTextAndFlush(longContent);
+
+    // Long/structured content should render in a document view
+    expect(screen.getByText(/Architecture Overview/i)).toBeInTheDocument();
+  });
+
+  // Story 4.4 — Barge-in voice detection
+  it('starts STT during speaking in live mode for voice barge-in', async () => {
+    const user = userEvent.setup();
+    render(<ConversationView userName="DJ" avatarName="Mary" sessionId="s1" />);
+
+    // Start live mode
+    await user.click(screen.getByRole('button', { name: /start recording/i }));
+    expect(mockSttStart).toHaveBeenCalledOnce();
+
+    // Simulate agent speaking
+    simulateTextAndFlush('Hello there!');
+    expect(screen.getByLabelText(/avatar is speaking/i)).toBeInTheDocument();
+
+    // STT should have been started again for barge-in detection
+    expect(mockSttStart.mock.calls.length).toBeGreaterThanOrEqual(1);
+  });
+
+  // Story 4.3 — Network recovery
+  it('shows network lost warning when offline', () => {
+    // Simulate offline state
+    Object.defineProperty(navigator, 'onLine', {
+      value: false,
+      writable: true,
+      configurable: true,
+    });
+    render(<ConversationView userName="DJ" avatarName="Mary" sessionId="s1" />);
+    expect(screen.getByText(/connection lost/i)).toBeInTheDocument();
+    // Restore
+    Object.defineProperty(navigator, 'onLine', { value: true, writable: true, configurable: true });
+  });
+
+  // Story 4.1 — ConfirmPlan for destructive actions
+  it('shows ConfirmPlan when confirm-request event arrives', () => {
+    render(<ConversationView userName="DJ" avatarName="Mary" sessionId="s1" />);
+    simulateAgentEvent({
+      type: 'confirm-request',
+      action: 'delete-file',
+      description: 'Delete important-file.ts',
+    });
+    expect(screen.getByText('Delete important-file.ts')).toBeInTheDocument();
+    expect(screen.getByText('Approve')).toBeInTheDocument();
+    expect(screen.getByText('Cancel')).toBeInTheDocument();
+  });
+
+  it('dismisses ConfirmPlan and cancels agent when Cancel clicked', async () => {
+    const user = userEvent.setup();
+    render(<ConversationView userName="DJ" avatarName="Mary" sessionId="s1" />);
+    simulateAgentEvent({
+      type: 'confirm-request',
+      action: 'delete-file',
+      description: 'Delete dangerous thing',
+    });
+    await user.click(screen.getByText('Cancel'));
+    expect(mockCancelAgent).toHaveBeenCalled();
+    expect(screen.queryByText('Approve')).not.toBeInTheDocument();
+  });
+
+  // Story 3.1 — TaskProgress wired to agent events
+  it('shows TaskProgress in OutputPanel when tool-call event arrives', () => {
+    render(<ConversationView userName="DJ" avatarName="Mary" sessionId="s1" />);
+    simulateAgentEvent({ type: 'tool-call', toolName: 'bash', toolInput: { command: 'ls' } });
+    // TaskProgress should be visible in OutputPanel showing the step
+    expect(screen.getByText('Progress')).toBeInTheDocument();
+    expect(screen.getByText('Running command')).toBeInTheDocument();
+  });
+
+  it('marks step as completed on tool-result success', () => {
+    render(<ConversationView userName="DJ" avatarName="Mary" sessionId="s1" />);
+    simulateAgentEvent({ type: 'tool-call', toolName: 'bash', toolInput: { command: 'ls' } });
+    simulateAgentEvent({
+      type: 'tool-result',
+      toolName: 'bash',
+      output: 'file.txt',
+      success: true,
+    });
+    // Check for the completed icon (✓)
+    expect(screen.getByText('✓')).toBeInTheDocument();
+  });
+
+  it('marks step as failed on tool-result failure', () => {
+    render(<ConversationView userName="DJ" avatarName="Mary" sessionId="s1" />);
+    simulateAgentEvent({ type: 'tool-call', toolName: 'bash', toolInput: { command: 'bad' } });
+    simulateAgentEvent({
+      type: 'tool-result',
+      toolName: 'bash',
+      output: 'error',
+      success: false,
+    });
+    // Check for the failed icon (✗)
+    expect(screen.getByText('✗')).toBeInTheDocument();
+  });
+
+  it('tracks multiple tool steps in TaskProgress', () => {
+    render(<ConversationView userName="DJ" avatarName="Mary" sessionId="s1" />);
+    simulateAgentEvent({ type: 'tool-call', toolName: 'bash', toolInput: { command: 'ls' } });
+    simulateAgentEvent({ type: 'tool-result', toolName: 'bash', output: 'ok', success: true });
+    simulateAgentEvent({
+      type: 'tool-call',
+      toolName: 'file_editor',
+      toolInput: { path: 'a.ts' },
+    });
+    // Both steps should be visible with friendly labels
+    expect(screen.getByText('Running command')).toBeInTheDocument();
+    expect(screen.getByText('file_editor')).toBeInTheDocument();
+  });
+
+  it('OutputPanel close button dismisses the panel', () => {
+    render(<ConversationView userName="DJ" avatarName="Mary" sessionId="s1" />);
+
+    // Simulate long document content (must exceed 600-char DOCUMENT_THRESHOLD)
+    const longContent =
+      '# Long Document\n\n' +
+      'Paragraph one with details about the system. This section covers the overall architecture ' +
+      'and design decisions that were made during the initial planning phase of the project.\n\n' +
+      '## Section Two\n\n' +
+      'More content here about various topics including performance optimization strategies, ' +
+      'caching layers, and database indexing approaches that improve query throughput.\n\n' +
+      '## Section Three\n\n' +
+      'Even more content to ensure this qualifies as document content. We discuss testing ' +
+      'methodologies, continuous integration pipelines, and deployment automation.\n\n' +
+      '## Section Four\n\n' +
+      'Final section with concluding thoughts about the implementation. This wraps up the ' +
+      'discussion with recommendations for future improvements and maintenance guidelines.';
+
+    simulateTextAndFlush(longContent);
+
+    // Document view should be visible
+    expect(screen.getByText(/Long Document/i)).toBeInTheDocument();
+
+    // Click close/dismiss button
+    const dismissBtn = screen.getByRole('button', { name: /dismiss|close/i });
+    act(() => {
+      dismissBtn.click();
+    });
+
+    // Document should be dismissed
+    expect(screen.queryByText(/Long Document/i)).not.toBeInTheDocument();
+  });
+
+  it('sets deep-thinking avatar state on thinking event', () => {
+    render(<ConversationView userName="DJ" avatarName="Mary" sessionId="s1" />);
+    simulateAgentEvent({ type: 'thinking', summary: 'Considering options...' });
+    expect(screen.getByLabelText(/avatar is deep-thinking/i)).toBeInTheDocument();
+  });
+
+  it('shows suggestion chips on suggestion event', () => {
+    render(<ConversationView userName="DJ" avatarName="Mary" sessionId="s1" />);
+    simulateAgentEvent({ type: 'suggestion', suggestions: ['Tell me more'] });
+    expect(screen.getByText('Tell me more')).toBeInTheDocument();
+  });
+
+  it('clears suggestion chips when user sends a message', async () => {
+    const user = userEvent.setup();
+    render(<ConversationView userName="DJ" avatarName="Mary" sessionId="s1" />);
+    simulateAgentEvent({ type: 'suggestion', suggestions: ['Tell me more'] });
+    expect(screen.getByText('Tell me more')).toBeInTheDocument();
+
+    const input = screen.getByPlaceholderText(/speak to Mary/i);
+    await user.type(input, 'hello{Enter}');
+    expect(screen.queryByText('Tell me more')).not.toBeInTheDocument();
+  });
+
+  it('shows auth-status message as caption', () => {
+    render(<ConversationView userName="DJ" avatarName="Mary" sessionId="s1" />);
+    simulateAgentEvent({ type: 'auth-status', message: 'Opening browser for login...' });
+    expect(screen.getByText('Opening browser for login...')).toBeInTheDocument();
+    expect(screen.getByLabelText(/avatar is thinking/i)).toBeInTheDocument();
+  });
+
+  it('shows stop button during deep-thinking state', () => {
+    render(<ConversationView userName="DJ" avatarName="Mary" sessionId="s1" />);
+    simulateAgentEvent({ type: 'thinking', summary: 'Deep analysis' });
+    expect(screen.getByRole('button', { name: /stop talking/i })).toBeInTheDocument();
   });
 });

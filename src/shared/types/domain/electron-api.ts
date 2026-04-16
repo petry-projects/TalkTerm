@@ -35,6 +35,18 @@ export interface ElectronAPI {
   // Launch
   assessLaunchState: () => Promise<LaunchState>;
 
+  // Admin
+  onAdminCheckResult: (
+    callback: (result: { isAdmin: boolean; platform: string; instructions?: string }) => void,
+  ) => () => void;
+  retryAdminCheck: () => Promise<{ isAdmin: boolean; platform: string; instructions?: string }>;
+  quitApp: () => void;
+
+  // Session resume
+  getIncompleteSessions: (
+    workspacePath: string,
+  ) => Promise<Array<{ id: string; workspacePath: string; updatedAt: string }>>;
+
   // Audio / STT
   startAudioCapture: () => Promise<void>;
   stopAudioCapture: () => Promise<void>;

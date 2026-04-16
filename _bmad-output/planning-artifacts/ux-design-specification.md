@@ -330,7 +330,7 @@ TalkTerm combines familiar patterns in an innovative way:
 - For actions that modify files or systems, avatar presents the plan for approval
 
 **3. Feedback — "Your team member keeping you posted"**
-- Avatar's animation state changes: listening → thinking → speaking
+- Avatar's animation states: listening → thinking → deep-thinking (extended reasoning) → speaking. The `deep-thinking` state triggers a distinct visual (brain emoji/indigo glow) when the model uses extended thinking blocks.
 - During agent work, avatar provides natural status updates: "I'm looking at your project structure now" / "I've found three approaches, let me organize them"
 - No progress bars, no spinners — the avatar IS the progress indicator
 - Text captions accompany all avatar speech for accessibility
@@ -1312,6 +1312,15 @@ When the agent's question includes enumerated options (e.g., "Competition discov
 - **Selected chip:** Primary (#EB8C00) border, Primary Light (#FFB600) background at 20% opacity
 - **Behavior:** Toggle on/off. Selected chips are included in the answer. User can also type freely in the text area — chips and text are combined in the aggregated response.
 - **Chip source:** Parsed from dash-list items, slash-separated lists, or comma-separated options within the question body
+
+**Prompt suggestion chips (below text input):**
+
+After an agent turn completes, the SDK may emit a `prompt_suggestion` message with a suggested next prompt. These appear as clickable chips directly above the text input area:
+
+- **Position:** Below the center stage, above the text input, horizontally scrollable
+- **Behavior:** Click-to-send (not toggle). Clicking a chip sends it as the next user message immediately.
+- **Lifecycle:** Chips appear after agent turn completes, cleared when user sends any message (typed, voiced, or chip-clicked).
+- **Chip style:** Same as question suggestion chips (Surface Elevated background, rounded-full)
 
 #### Review Overlay — Before Submission
 

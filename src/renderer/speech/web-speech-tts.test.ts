@@ -45,4 +45,40 @@ describe('WebSpeechTts', () => {
     expect(tts.isSpeaking).toBe(false);
     expect(window.speechSynthesis.cancel).toHaveBeenCalled();
   });
+
+  it('sets voice when voiceName matches an available voice', () => {
+    const mockVoice = { name: 'Samantha', lang: 'en-US' };
+    (window.speechSynthesis.getVoices as ReturnType<typeof vi.fn>).mockReturnValue([mockVoice]);
+
+    const tts = new WebSpeechTts();
+    tts.speak('Hello', 'Samantha');
+
+    expect(tts.isSpeaking).toBe(true);
+    expect(window.speechSynthesis.speak).toHaveBeenCalled();
+  });
+
+  it('fires onEnd callback when utterance ends', () => {
+    const tts = new WebSpeechTts();
+    const onEnd = vi.fn();
+    tts.onEnd = onEnd;
+
+    // Capture the utterance to trigger its onend
+    const captured: {
+      utterance: { text: string; voice: unknown; onend: (() => void) | null } | null;
+    } = { utterance: null };
+    (window.speechSynthesis.speak as ReturnType<typeof vi.fn>).mockImplementation(
+      (u: { text: string; voice: unknown; onend: (() => void) | null }) => {
+        captured.utterance = u;
+      },
+    );
+
+    tts.speak('Hello');
+    expect(tts.isSpeaking).toBe(true);
+
+    // Simulate utterance ending
+    captured.utterance?.onend?.();
+
+    expect(tts.isSpeaking).toBe(false);
+    expect(onEnd).toHaveBeenCalledTimes(1);
+  });
 });
