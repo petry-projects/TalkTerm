@@ -29,7 +29,8 @@ jobs:
       security-events: write
     steps:
       - name: Checkout (full history)
-        # Pin to SHA per Action Pinning Policy (ci-standards.md#action-pinning-policy).
+        # Pin to SHA per Action Pinning Policy
+        # (petry-projects/.github/standards/ci-standards.md#action-pinning-policy).
         # Refresh: gh api repos/actions/checkout/git/refs/tags/v6.0.2 --jq '.object.sha'
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -38,9 +39,12 @@ jobs:
       # Required for compliance check: secret_scan_ci_job_present looks for
       # `uses: gitleaks/gitleaks-action@` in this file. continue-on-error
       # prevents a license-missing failure from blocking CI; the CLI step
-      # below enforces the actual scan.
+      # below enforces the actual scan with explicit --redact.
+      # Note: gitleaks-action v2 does not expose a --redact input; the CLI
+      # step below handles redaction for the enforcement scan.
       - name: Run gitleaks (action)
-        # Pinned to SHA per Action Pinning Policy (ci-standards.md#action-pinning-policy).
+        # Pinned to SHA per Action Pinning Policy
+        # (petry-projects/.github/standards/ci-standards.md#action-pinning-policy).
         # Refresh: gh api repos/gitleaks/gitleaks-action/git/refs/tags/v2.3.9 --jq '.object.sha'
         uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
         continue-on-error: true
