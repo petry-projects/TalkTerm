@@ -1,0 +1,113 @@
+# Continuous Integration
+#
+# Tech stack: TypeScript + Electron (npm) — Tier 2 per-repo workflow
+# Standard:   https://github.com/petry-projects/.github/blob/main/standards/ci-standards.md#1-ci-pipeline-ciyml
+# Pattern:    TypeScript + Electron (npm) — see ci-standards.md "Workflow Patterns by Tech Stack"
+#
+# Quality gates (per AGENTS.md §7):
+#   typecheck   → tsc --noEmit             zero errors
+#   lint        → eslint --max-warnings 0  zero warnings
+#   format      → prettier --check         all files formatted
+#   test        → vitest run               all tests pass
+#   coverage    → vitest --coverage        ≥90% branch/fn/line/stmt
+#   mutation    → stryker run              ≥80% score (continue-on-error)
+#   e2e         → playwright test          macOS + Windows (continue-on-error)
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions: {}
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Build & test (matrix: ubuntu · macOS · Windows) ────────────────────────
+  build-and-test:
+    name: Build & Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Format check
+        run: npm run format:check
+
+      - name: Test
+        run: npm test
+
+      - name: Coverage
+        run: npm run test:coverage
+
+  # ── Mutation testing (ubuntu only, non-blocking) ───────────────────────────
+  mutation:
+    name: Mutation Testing
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run mutation tests
+        run: npm run test:mutate
+        continue-on-error: true
+
+  # ── E2E tests (macOS + Windows, non-blocking) ─────────────────────────────
+  e2e:
+    name: E2E (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
+      - name: Run E2E tests
+        run: npm run test:e2e
+        continue-on-error: true
