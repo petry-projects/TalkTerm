@@ -1,0 +1,33 @@
+# .gitleaksignore — false-positive allowlist for the gitleaks secret scan
+#
+# Format: one fingerprint per line (commit:file:rule:line).
+# Every entry here MUST include a comment explaining why it is safe.
+# Adding a fingerprint without a justification comment is treated as a
+# policy violation on review.
+#
+# Standard ref: standards/push-protection.md#developer-practices
+
+# ─── .gitleaksignore:11 (historical commit) ──────────────────────────────
+# An earlier version of this file quoted the truncated JWT placeholder in its
+# comment. That commit is in history and must be allowlisted here so the
+# full-history scan does not fail on a file whose sole purpose is to record
+# false positives. The value was never a real credential.
+1f83957c8c8f61741b82581dee40e1a3dc7bf570:.gitleaksignore:generic-api-key:11
+
+# ─── _bmad/tea/testarch/knowledge/api-testing-patterns.md:681 ─────────────
+# Truncated JWT placeholder in a test-architecture documentation file.
+# The value ends with "..." indicating it was deliberately cropped for
+# illustration purposes. It is not a real credential.
+e8cc0956c901e454aed61e7b10857e6a1a412881:_bmad/tea/testarch/knowledge/api-testing-patterns.md:generic-api-key:681
+
+# ─── _bmad/_config/files-manifest.csv ────────────────────────────────────
+# These lines are SHA-256 content-integrity hashes stored in the BMAD files
+# manifest CSV. They have high entropy (expected for hashes) and match the
+# generic-api-key heuristic, but they are not credentials — they are
+# deterministic digests of documentation files with no secret material.
+e8cc0956c901e454aed61e7b10857e6a1a412881:_bmad/_config/files-manifest.csv:generic-api-key:281
+e8cc0956c901e454aed61e7b10857e6a1a412881:_bmad/_config/files-manifest.csv:generic-api-key:282
+e8cc0956c901e454aed61e7b10857e6a1a412881:_bmad/_config/files-manifest.csv:generic-api-key:284
+e8cc0956c901e454aed61e7b10857e6a1a412881:_bmad/_config/files-manifest.csv:generic-api-key:300
+e8cc0956c901e454aed61e7b10857e6a1a412881:_bmad/_config/files-manifest.csv:generic-api-key:409
+e8cc0956c901e454aed61e7b10857e6a1a412881:_bmad/_config/files-manifest.csv:generic-api-key:433
