@@ -1,0 +1,30 @@
+# Repository settings for TalkTerm
+# Format: https://github.com/repository-settings/app
+#
+# This file documents the required repository settings per the petry-projects
+# organization standard:
+# https://github.com/petry-projects/.github/blob/main/standards/github-settings.md
+#
+# These settings are enforced via the GitHub API (scripts/apply-repo-settings.sh).
+# If the Probot GitHub Settings app is ever installed, this file will also
+# automatically enforce them.
+
+repository:
+  # --- General ---
+  has_issues: true
+  has_wiki: false
+  has_discussions: true
+
+  # --- Merge settings ---
+  # Standard: https://github.com/petry-projects/.github/blob/main/standards/github-settings.md#merge-settings
+  allow_squash_merge: true
+  allow_merge_commit: true
+  allow_rebase_merge: true
+  allow_auto_merge: true
+
+  # Automatically delete head branches after merge (compliance: delete_branch_on_merge)
+  delete_branch_on_merge: true
+
+  # Squash merge commit format
+  squash_merge_commit_title: PR_TITLE
+  squash_merge_commit_message: COMMIT_MESSAGES
