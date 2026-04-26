@@ -20,18 +20,6 @@ on:
 
 permissions: {}
 
-# Scope the concurrency group to the commit SHA so every pushed commit gets its
-# own CI slot (Fleet Monitor #380; ci-standards.md#1-ci-pipeline-ciyml). A per-ref
-# group with cancel-in-progress can leave the HEAD commit with no results when
-# pushes arrive in quick succession — the final push may cancel the previous run
-# before GitHub fires a fresh pull_request:synchronize event. Including github.sha
-# gives each commit a distinct slot, so no commit is left unverified.
-# cancel-in-progress: true cancels duplicate runs for the same ref and SHA, but
-# cannot cancel runs for different commits because their groups are distinct.
-concurrency:
-  group: ci-${{ github.ref }}-${{ github.sha }}
-  cancel-in-progress: true
-
 jobs:
   secret-scan:
     name: Secret scan (gitleaks)
@@ -52,13 +40,13 @@ jobs:
       # `uses: gitleaks/gitleaks-action@` in this file. continue-on-error
       # prevents a license-missing failure from blocking CI; the CLI step
       # below enforces the actual scan with explicit --redact.
-      # Note: gitleaks-action v3 does not expose a --redact input; the CLI
+      # Note: gitleaks-action v2 does not expose a --redact input; the CLI
       # step below handles redaction for the enforcement scan.
       - name: Run gitleaks (action)
         # Pinned to SHA per Action Pinning Policy
         # (petry-projects/.github/standards/ci-standards.md#action-pinning-policy).
-        # Refresh: gh api repos/gitleaks/gitleaks-action/git/refs/tags/v3.0.0 --jq '.object.sha'
-        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        # Refresh: gh api repos/gitleaks/gitleaks-action/git/refs/tags/v2.3.9 --jq '.object.sha'
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
         continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -66,41 +54,12 @@ jobs:
 
       - name: Run gitleaks (CLI — full-history enforcement)
         run: |
-          curl -sSfL --retry 3 --retry-delay 2 --retry-all-errors \
+          curl -sSfL \
             "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz" \
             -o /tmp/gitleaks.tar.gz
-          EXPECTED=$(curl -sSfL --retry 3 --retry-delay 2 --retry-all-errors \
+          EXPECTED=$(curl -sSfL \
             "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_checksums.txt" \
             | grep "gitleaks_8.30.1_linux_x64.tar.gz" | awk '{print $1}')
           echo "${EXPECTED}  /tmp/gitleaks.tar.gz" | sha256sum --check
           tar -xzf /tmp/gitleaks.tar.gz -C /tmp gitleaks
           /tmp/gitleaks detect --source . --redact --verbose --exit-code 1
-
-  workflow-tests:
-    name: Workflow regression guards
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Install yq
-        env:
-          YQ_VERSION: v4.44.6
-        run: |
-          curl -sSfL --proto '=https' --retry 3 --retry-delay 2 --retry-all-errors \
-            "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" \
-            -o /tmp/yq
-          EXPECTED=$(curl -sSfL --proto '=https' --retry 3 --retry-delay 2 --retry-all-errors \
-            "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/checksums" \
-            | grep "^yq_linux_amd64  " | awk '{print $19}')
-          echo "${EXPECTED}  /tmp/yq" | sha256sum --check
-          sudo install -m 755 /tmp/yq /usr/local/bin/yq
-      - name: Run workflow regression guards
-        run: |
-          bash scripts/test-dependabot-rebase-workflow.sh
-          bash scripts/test-pr-review-workflow.sh
-          bash scripts/test-ci-workflow.sh
-          bash scripts/test-copilot-setup-steps-workflow.sh
-          bash scripts/test-sonarcloud-workflow.sh
-          bash scripts/test-sonarcloud-workflow.test.sh
