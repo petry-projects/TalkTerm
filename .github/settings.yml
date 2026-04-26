@@ -28,28 +28,3 @@ repository:
   # Squash merge commit format
   squash_merge_commit_title: PR_TITLE
   squash_merge_commit_message: COMMIT_MESSAGES
-
-# --- Check suite auto-trigger ---
-# Standard: https://github.com/petry-projects/.github/blob/main/standards/github-settings.md
-#
-# CodeRabbit (app_id 347564) and Claude (app_id 1236702) auto-trigger are
-# disabled to prevent GitHub from creating queued check suites on every push
-# that are never completed and would permanently block auto-merge.
-#
-# Applied via scripts/apply-repo-settings.sh (PATCH /repos/{owner}/{repo}/check-suites/preferences).
-#   check_suite_auto_trigger: app_id 347564 → false
-#   check_suite_auto_trigger: app_id 1236702 → false
-
-# --- Security and analysis ---
-# Standard: https://github.com/petry-projects/.github/blob/main/standards/push-protection.md#required-repo-level-settings
-#
-# NOTE: The Probot GitHub Settings app does not support security_and_analysis fields.
-# These settings are applied via scripts/apply-repo-settings.sh, which is called by
-# the apply-repo-settings workflow on every push to main.
-#
-# Required settings (all must be "enabled"):
-#   secret_scanning:                   enabled
-#   secret_scanning_push_protection:   enabled
-#   secret_scanning_ai_detection:          enabled   ← compliance: secret_scanning_ai_detection
-#   secret_scanning_non_provider_patterns: enabled   ← compliance: secret_scanning_non_provider_patterns
-#   dependabot_security_updates:       enabled
