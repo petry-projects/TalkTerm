@@ -3,16 +3,16 @@
 # See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
 
 # Default owner for all files
-* @don-petry
+* @don-petry @petry-projects-pr-review-agent @dependabot-automerge-petry
 
 # GitHub configuration and workflows
-/.github/ @don-petry
+/.github/ @don-petry @petry-projects-pr-review-agent @dependabot-automerge-petry
 
 # Planning artifacts
-/_bmad-output/ @don-petry
+/_bmad-output/ @don-petry @petry-projects-pr-review-agent @dependabot-automerge-petry
 
 # Documentation
-/docs/ @don-petry
+/docs/ @don-petry @petry-projects-pr-review-agent @dependabot-automerge-petry
 
 # Security policy
-/SECURITY.md @don-petry
+/SECURITY.md @don-petry @petry-projects-pr-review-agent @dependabot-automerge-petry
