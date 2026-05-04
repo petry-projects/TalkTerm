@@ -1,18 +1,5 @@
 # CODEOWNERS
-# This file defines code owners for review enforcement.
-# See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+# Standard: use the @petry-projects/org-leads team for all code owner
+# assignments. See petry-projects/.github standards/codeowners-standard.md
 
-# Default owner for all files
-* @don-petry @petry-projects-pr-review-agent @dependabot-automerge-petry
-
-# GitHub configuration and workflows
-/.github/ @don-petry @petry-projects-pr-review-agent @dependabot-automerge-petry
-
-# Planning artifacts
-/_bmad-output/ @don-petry @petry-projects-pr-review-agent @dependabot-automerge-petry
-
-# Documentation
-/docs/ @don-petry @petry-projects-pr-review-agent @dependabot-automerge-petry
-
-# Security policy
-/SECURITY.md @don-petry @petry-projects-pr-review-agent @dependabot-automerge-petry
+* @petry-projects/org-leads
