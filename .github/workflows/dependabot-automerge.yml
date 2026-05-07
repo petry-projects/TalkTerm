@@ -35,5 +35,5 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
-    uses: petry-projects/.github/.github/workflows/dependabot-automerge-reusable.yml@ee22b427cbce9ecadcf2b436acb57c3adf0cb63d # v1
+    uses: petry-projects/.github/.github/workflows/dependabot-automerge-reusable.yml@0bba48104323486ac3b003ba3eba0ef747d9a7db # v1
     secrets: inherit
