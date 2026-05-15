@@ -20,7 +20,6 @@ name: Dev-Lead Agent
 
 on:
   pull_request:
-    branches: [main]
     types: [opened, reopened, synchronize]
   pull_request_review:
     types: [submitted]
@@ -33,13 +32,9 @@ on:
   check_run:
     types: [completed]
   repository_dispatch:
-    types: [dev-lead-ci-failure, dev-lead-reviews-retry, dev-lead-issue-retry]
+    types: [dev-lead-ci-failure, dev-lead-reviews-retry]
 
 permissions: {}
-
-# Concurrency is centralised in the reusable workflow (dev-lead-reusable.yml) with
-# per-issue / per-PR lanes, so issue pickups are never cancelled by PR follow-up
-# traffic and the grouping can't drift per-repo. See petry-projects/.github#402.
 
 jobs:
   dev-lead:
