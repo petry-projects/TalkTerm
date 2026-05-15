@@ -33,13 +33,9 @@ on:
   check_run:
     types: [completed]
   repository_dispatch:
-    types: [dev-lead-ci-failure, dev-lead-reviews-retry, dev-lead-issue-retry]
+    types: [dev-lead-ci-failure]
 
 permissions: {}
-
-# Concurrency is centralised in the reusable workflow (dev-lead-reusable.yml) with
-# per-issue / per-PR lanes, so issue pickups are never cancelled by PR follow-up
-# traffic and the grouping can't drift per-repo. See petry-projects/.github#402.
 
 jobs:
   dev-lead:
@@ -58,4 +54,3 @@ jobs:
       issues: write
       actions: read
       checks: read
-      statuses: read
