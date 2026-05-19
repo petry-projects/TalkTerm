@@ -37,5 +37,5 @@ jobs:
   pr-review-mention:
     permissions:
       pull-requests: write
-    uses: petry-projects/.github/.github/workflows/pr-review-mention-reusable.yml@d3d768dabb7f28cc63283cdfe48630da53700e50 # main
+    uses: petry-projects/.github/.github/workflows/pr-review-mention-reusable.yml@v1
     secrets: inherit
