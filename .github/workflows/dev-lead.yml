@@ -39,7 +39,7 @@ permissions: {}
 
 jobs:
   dev-lead:
-    uses: petry-projects/.github-private/.github/workflows/dev-lead-reusable.yml@main
+    uses: petry-projects/.github-private/.github/workflows/dev-lead-reusable.yml@2f97e6911c81cea268eff6cc62e11f414bb0c983 # main
     secrets: inherit
     permissions:
       contents: write
