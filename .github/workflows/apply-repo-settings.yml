@@ -2,15 +2,11 @@
 # Standard: petry-projects/.github/standards/push-protection.md#required-repo-level-settings
 #
 # Applies repository-level security settings (secret_scanning_ai_detection, etc.)
-# via scripts/apply-repo-settings.sh on every push to main and on a weekly
-# schedule (Mon 03:00 UTC) so that security_and_analysis settings documented
-# in .github/settings.yml stay in effect and drift is caught between compliance
-# audits. Also triggerable manually for out-of-band remediation.
+# via scripts/apply-repo-settings.sh on every push to main so that
+# security_and_analysis settings documented in .github/settings.yml stay in
+# effect. Also triggerable manually for out-of-band remediation.
 #
-# Token: GH_PAT_WORKFLOWS (classic PAT with repo scope).
-# `administration` is not a valid GITHUB_TOKEN scope in Actions; and the
-# check-suites/preferences endpoint requires a classic PAT (OAuth tokens are
-# rejected). See standards/github-settings.md#check-suite-auto-trigger-preferences.
+# Required permission: administration:write (granted below to GITHUB_TOKEN).
 # ─────────────────────────────────────────────────────────────────────────────
 name: Apply repo settings
 
@@ -20,24 +16,16 @@ on:
     paths:
       - .github/settings.yml
       - scripts/apply-repo-settings.sh
-      - .github/workflows/apply-repo-settings.yml
-  schedule:
-    # Reinforce settings weekly (Mon 03:00 UTC) so drift is caught between compliance audits.
-    - cron: '0 3 * * 1'
   workflow_dispatch:
 
 permissions: {}
-
-concurrency:
-  group: apply-repo-settings
-  cancel-in-progress: false
 
 jobs:
   apply:
     name: Apply security_and_analysis settings
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      administration: write
     steps:
       - name: Checkout
         # Pinned to SHA per Action Pinning Policy
@@ -47,6 +35,6 @@ jobs:
 
       - name: Apply settings
         env:
-          GH_TOKEN: ${{ secrets.GH_PAT_WORKFLOWS }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: bash scripts/apply-repo-settings.sh
