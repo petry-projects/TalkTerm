@@ -6,10 +6,7 @@
 # security_and_analysis settings documented in .github/settings.yml stay in
 # effect. Also triggerable manually for out-of-band remediation.
 #
-# Token: GH_PAT_WORKFLOWS (classic PAT with repo scope).
-# `administration` is not a valid GITHUB_TOKEN scope in Actions; and the
-# check-suites/preferences endpoint requires a classic PAT (OAuth tokens are
-# rejected). See standards/github-settings.md#check-suite-auto-trigger-preferences.
+# Required permission: administration:write (granted below to GITHUB_TOKEN).
 # ─────────────────────────────────────────────────────────────────────────────
 name: Apply repo settings
 
@@ -19,9 +16,6 @@ on:
     paths:
       - .github/settings.yml
       - scripts/apply-repo-settings.sh
-      - .github/workflows/apply-repo-settings.yml
-  schedule:
-    - cron: '0 6 * * 1'  # weekly Monday 06:00 UTC — reinforce settings to prevent drift
   workflow_dispatch:
 
 permissions: {}
@@ -31,7 +25,7 @@ jobs:
     name: Apply security_and_analysis settings
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      administration: write
     steps:
       - name: Checkout
         # Pinned to SHA per Action Pinning Policy
@@ -41,6 +35,6 @@ jobs:
 
       - name: Apply settings
         env:
-          GH_TOKEN: ${{ secrets.GH_PAT_WORKFLOWS }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: bash scripts/apply-repo-settings.sh
