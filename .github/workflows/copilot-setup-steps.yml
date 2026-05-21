@@ -32,7 +32,7 @@
 #   • fetch-depth on checkout is always overridden by the agent — do not rely on it here
 #   • This file MUST be present on the default branch to take effect
 #
-# STACK: Node.js / npm (TypeScript + Electron desktop app)
+# STACK: documentation / scripts only — no build dependencies to install
 # ─────────────────────────────────────────────────────────────────────────────
 
 name: "Copilot Setup Steps"
@@ -54,7 +54,7 @@ jobs:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false
 
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 10
 
     permissions:
       contents: read
@@ -91,8 +91,6 @@ jobs:
           echo "--- Installed tool versions ---"
           git   --version
           gh    --version 2>/dev/null | head -1 || echo "gh: not installed"
-          node  --version
-          npm   --version
           echo ""
           echo "--- Agent instruction files ---"
           if [ -f "AGENTS.md" ]; then
