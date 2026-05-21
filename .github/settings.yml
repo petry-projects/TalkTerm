@@ -29,6 +29,16 @@ repository:
   squash_merge_commit_title: PR_TITLE
   squash_merge_commit_message: COMMIT_MESSAGES
 
+# --- Check suite auto-trigger ---
+# Standard: https://github.com/petry-projects/.github/blob/main/standards/github-settings.md
+#
+# CodeRabbit (app_id 347564) auto-trigger is disabled to prevent GitHub from
+# creating queued check suites on every push that are never completed and
+# would permanently block auto-merge.
+#
+# Applied via scripts/apply-repo-settings.sh (PATCH /repos/{owner}/{repo}/check-suites/preferences).
+#   check_suite_auto_trigger: app_id 347564 → false
+
 # --- Security and analysis ---
 # Standard: https://github.com/petry-projects/.github/blob/main/standards/push-protection.md#required-repo-level-settings
 #
