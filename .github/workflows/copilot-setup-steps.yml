@@ -50,8 +50,7 @@ permissions: {}
 
 jobs:
   copilot-setup-steps:
-    # Skip on fork-origin pull requests — forks cannot access org secrets required for private packages.
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false
+    if: github.event.repository.fork == false
 
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -61,20 +60,13 @@ jobs:
 
     steps:
       - name: Checkout code
-        # Pin to SHA per Action Pinning Policy
-        # (petry-projects/.github/standards/ci-standards.md#action-pinning-policy).
-        # Refresh: gh api repos/actions/checkout/git/refs/tags/v6.0.2 --jq '.object.sha'
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Set up Node.js
-        # Pin to SHA per Action Pinning Policy
-        # (petry-projects/.github/standards/ci-standards.md#action-pinning-policy).
-        # Refresh: gh api repos/actions/setup-node/git/refs/tags/v6.4.0 --jq '.object.sha'
-        # Note: cache: "npm" is intentionally omitted — it requires package-lock.json
-        # and would fail until that file is committed. Re-enable once the npm project is initialised.
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "24"
+          cache: "npm"
 
       - name: Install Node.js dependencies
         # npm ci requires a package-lock.json — skip gracefully until one is committed.
@@ -106,10 +98,7 @@ jobs:
           else
             echo "ℹ️  .github/copilot-instructions.md — not present (optional but recommended)"
           fi
-          INSTR_COUNT=0
-          if [ -d ".github/instructions" ]; then
-            INSTR_COUNT=$(find .github/instructions -name "*.instructions.md" | wc -l)
-          fi
+          INSTR_COUNT=$(find .github/instructions -name "*.instructions.md" 2>/dev/null | wc -l)
           echo "ℹ️  .github/instructions/: ${INSTR_COUNT} file(s)"
           echo ""
           echo "✅ Setup complete — Copilot cloud agent is ready to work"
