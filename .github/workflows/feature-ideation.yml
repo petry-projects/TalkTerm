@@ -88,16 +88,22 @@ jobs:
       discussions: write
       id-token: write
       actions: read
-    uses: petry-projects/.github/.github/workflows/feature-ideation-reusable.yml@0bba48104323486ac3b003ba3eba0ef747d9a7db # v1
+    uses: petry-projects/.github/.github/workflows/feature-ideation-reusable.yml@ee22b427cbce9ecadcf2b436acb57c3adf0cb63d # v1
     with:
       # === CUSTOMISE THIS PER REPO — the only required edit ===
       # Replace this paragraph with a 3-5 sentence description of your project,
       # its target users, and the competitive landscape. The more specific you
       # are, the more useful the proposals.
       project_context: |
-        TODO: Replace this with a description of the project and its market.
-        Example: "ProjectX is a [type of product] for [target user]. Competitors
-        include A, B, C. Key emerging trends in this space: X, Y, Z."
+        TalkTerm is a desktop AI agent interface (Electron + React + TypeScript)
+        that makes CLI-based agentic workflows accessible to non-technical users
+        through voice-enabled animated avatars, with the Claude Agent SDK running
+        in-process in the Electron main process. Target users are non-technical
+        knowledge workers who need AI assistance without command-line expertise.
+        Competitors include voice-first AI assistants (e.g., Siri, Copilot,
+        Gemini) and developer-focused CLI tools (e.g., Claude Code, GitHub
+        Copilot CLI). Key emerging trends: multimodal AI interfaces, ambient
+        computing, and agentic task automation.
       # === OPTIONAL: repo-local reputable source list ===
       # Copy standards/feature-ideation-sources.md from petry-projects/.github
       # to .github/feature-ideation-sources.md and customise it. The reusable
