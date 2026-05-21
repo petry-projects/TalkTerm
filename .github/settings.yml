@@ -29,6 +29,16 @@ repository:
   squash_merge_commit_title: PR_TITLE
   squash_merge_commit_message: COMMIT_MESSAGES
 
+# --- Check suite preferences ---
+# Standard: https://github.com/petry-projects/.github/blob/main/standards/github-settings.md
+#
+# NOTE: The Probot GitHub Settings app does not support check-suite preferences.
+# Applied via scripts/apply-repo-settings.sh.
+#
+# Claude (app 1236702) auto-trigger is disabled: it creates a queued check suite
+# on every push that is never completed, permanently blocking auto-merge.
+#   check_suite_auto_trigger_claude_1236702: false
+
 # --- Security and analysis ---
 # Standard: https://github.com/petry-projects/.github/blob/main/standards/push-protection.md#required-repo-level-settings
 #

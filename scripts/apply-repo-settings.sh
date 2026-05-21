@@ -27,4 +27,17 @@ gh api -X PATCH "repos/${REPO}" \
 }
 JSON
 
+echo "Disabling check-suite auto-trigger for Claude app (1236702) ..."
+
+# Claude (app 1236702) auto-trigger creates a queued check suite on every push
+# that is never completed, permanently blocking auto-merge. Disable it.
+gh api -X PATCH "repos/${REPO}/check-suites/preferences" \
+  --input - <<'JSON'
+{
+  "auto_trigger_checks": [
+    { "app_id": 1236702, "setting": false }
+  ]
+}
+JSON
+
 echo "Done."
