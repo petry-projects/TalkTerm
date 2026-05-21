@@ -36,6 +36,13 @@ on:
 
 permissions: {}
 
+# One run per PR/issue at a time; cancel superseded runs to stay within
+# Claude API quota and prevent the .gitignore dirty-checkout failure that
+# occurs when the reusable workflow tries to branch-switch mid-run.
+concurrency:
+  group: dev-lead-${{ github.event.pull_request.number || github.event.issue.number || github.sha }}
+  cancel-in-progress: true
+
 jobs:
   dev-lead:
     # Pinned to the moving dev-lead/stable channel tag, not @main, so a broken
