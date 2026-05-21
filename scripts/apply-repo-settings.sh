@@ -27,16 +27,17 @@ gh api -X PATCH "repos/${REPO}" \
 }
 JSON
 
-echo "Disabling CodeRabbit (app 347564) check-suite auto-trigger ..."
+echo "Disabling CodeRabbit (app 347564) and Claude (app 1236702) check-suite auto-trigger ..."
 
-# CodeRabbit's queued check suites are never completed, which permanently
-# blocks auto-merge. Disabling auto-trigger prevents GitHub from creating
-# those ghost check suites on every push.
+# These apps create queued check suites on every push that are never completed,
+# which permanently blocks auto-merge. Disabling auto-trigger prevents GitHub
+# from creating those ghost check suites.
 gh api -X PATCH "repos/${REPO}/check-suites/preferences" \
   --input - <<'JSON'
 {
   "auto_trigger_checks": [
-    { "app_id": 347564, "setting": false }
+    { "app_id": 347564, "setting": false },
+    { "app_id": 1236702, "setting": false }
   ]
 }
 JSON
