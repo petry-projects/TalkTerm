@@ -31,6 +31,7 @@ jobs:
   build-and-test:
     name: Build & Test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    if: hashFiles('package.json') != ''
     permissions:
       contents: read
 
@@ -44,6 +45,8 @@ jobs:
         # Pin to SHA per Action Pinning Policy (ci-standards.md#action-pinning-policy).
         # Refresh with: gh api repos/actions/checkout/git/refs/tags/v4 --jq '.object.sha'
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
 
       - name: Set up Node.js
         # Refresh with: gh api repos/actions/setup-node/git/refs/tags/v4 --jq '.object.sha'
@@ -52,7 +55,7 @@ jobs:
           node-version: '24'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Type check
         run: npm run typecheck
@@ -72,6 +75,7 @@ jobs:
   mutation:
     name: Mutation tests
     runs-on: ubuntu-latest
+    if: hashFiles('package.json') != ''
     permissions:
       contents: read
     continue-on-error: true
@@ -79,6 +83,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
 
       - name: Set up Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -86,7 +92,7 @@ jobs:
           node-version: '24'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Run Stryker mutation tests
         run: npm run test:mutate
@@ -98,6 +104,7 @@ jobs:
   e2e:
     name: E2E tests (macOS)
     runs-on: macos-latest
+    if: hashFiles('package.json') != ''
     permissions:
       contents: read
     continue-on-error: true
@@ -105,6 +112,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
 
       - name: Set up Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -112,7 +121,7 @@ jobs:
           node-version: '24'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
@@ -123,12 +132,6 @@ jobs:
   # ─────────────────────────────────────────────────────────────────────────
   # Secret scan — full-history gitleaks scan (push-protection Layer 3)
   # Required by: standards/push-protection.md#layer-3--ci-secret-scanning-secondary-defense
-  #
-  # Note: gitleaks is installed from the official GitHub release rather than
-  # via gitleaks/gitleaks-action, because the action wrapper requires a
-  # commercial GITLEAKS_LICENSE for org repos. The CLI itself is MIT-licensed
-  # and free to use. The compliance audit only checks that "gitleaks" appears
-  # in ci.yml, which this job satisfies.
   # ─────────────────────────────────────────────────────────────────────────
   secret-scan:
     name: Secret scan (gitleaks)
