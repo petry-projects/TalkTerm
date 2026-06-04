@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       pr_numbers:
-        description: 'PR numbers to review (comma-separated)'
+        description: "PR numbers to review (comma-separated)"
         required: false
 
 permissions: {}
