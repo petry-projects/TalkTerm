@@ -37,16 +37,14 @@ on:
 
 permissions: {}
 
-# One run per PR/issue at a time; cancel superseded runs to stay within
-# Claude API quota and prevent the .gitignore dirty-checkout failure that
-# occurs when the reusable workflow tries to branch-switch mid-run.
-concurrency:
-  group: dev-lead-${{ github.event.pull_request.number || github.event.issue.number || github.sha }}
-  cancel-in-progress: true
+# Concurrency is centralised in the reusable workflow (dev-lead-reusable.yml) with
+# per-issue / per-PR lanes (cancel-in-progress: false, so same-lane runs queue rather
+# than overlap — preserving the dirty-checkout protection without cancelling issue
+# pickups, the bug this repo previously hit). See petry-projects/.github#402.
 
 jobs:
   dev-lead:
-    uses: petry-projects/.github-private/.github/workflows/dev-lead-reusable.yml@2f97e6911c81cea268eff6cc62e11f414bb0c983 # main
+    uses: petry-projects/.github-private/.github/workflows/dev-lead-reusable.yml@main
     secrets: inherit
     permissions:
       contents: write
@@ -54,3 +52,4 @@ jobs:
       issues: write
       actions: read
       checks: read
+      statuses: read   # required by dev-lead-reusable.yml since #435
