@@ -22,7 +22,7 @@
 # Dependabot update-and-merge — thin caller for the org-level reusable.
 # To adopt: copy this file to .github/workflows/dependabot-rebase.yml in your repo.
 # Required org secrets (passed explicitly):
-#   APP_ID         — GitHub App ID with contents:write and pull-requests:write
+#   APP_ID         — GitHub App ID with contents:write, pull-requests:write, and workflows:write
 #   APP_PRIVATE_KEY — GitHub App private key
 name: Dependabot update and merge
 
@@ -44,7 +44,9 @@ jobs:
   dependabot-rebase:
     permissions:
       pull-requests: write # call update-branch API on behind PRs and merge when ready
-    uses: petry-projects/.github/.github/workflows/dependabot-rebase-reusable.yml@b51e2edf830ea085be0277bcf3174c7b3ec8f958 # v1
+      contents: read       # required for gh api compare endpoint (compare PR branch vs main)
+      workflows: write     # allow branch-update when Dependabot PR contains workflow-file changes
+    uses: petry-projects/.github/.github/workflows/dependabot-rebase-reusable.yml@v1
     secrets:
       APP_ID: ${{ secrets.APP_ID }}
       APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
