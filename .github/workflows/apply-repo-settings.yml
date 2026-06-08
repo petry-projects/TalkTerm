@@ -34,6 +34,7 @@ jobs:
     name: Apply security_and_analysis settings
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       administration: write
     steps:
       - name: Checkout
