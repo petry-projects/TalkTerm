@@ -19,6 +19,8 @@ on:
     paths:
       - .github/settings.yml
       - scripts/apply-repo-settings.sh
+  schedule:
+    - cron: '0 6 * * 1'  # Weekly Monday 06:00 UTC — prevents settings drift
   workflow_dispatch:
 
 permissions: {}

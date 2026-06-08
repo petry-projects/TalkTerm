@@ -12,6 +12,9 @@ set -euo pipefail
 
 REPO="${GITHUB_REPOSITORY:?GITHUB_REPOSITORY must be set (e.g. petry-projects/TalkTerm)}"
 
+# Settings: secret_scanning, secret_scanning_push_protection, secret_scanning_ai_detection,
+#           secret_scanning_non_provider_patterns, dependabot_security_updates
+# Standard: https://github.com/petry-projects/.github/blob/main/standards/push-protection.md
 echo "Applying security_and_analysis settings to ${REPO} ..."
 
 gh api -X PATCH "repos/${REPO}" \
