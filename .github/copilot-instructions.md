@@ -24,9 +24,7 @@ Clean Architecture — dependencies point inward; inner layers never import from
 
 ```
 src/
-  shared/types/     Domain layer — entities, value objects, port interfaces (importable by both processes)
-    domain/         Aggregate roots, branded types, domain events
-    ports/          Repository and service interfaces
+  shared/types/     Cross-process types (types only, no logic — importable by both processes)
   main/             Application + Infrastructure layer (Electron main process)
     agent/          Use case: agent session lifecycle
     storage/        Infrastructure: SQLite persistence adapters
