@@ -2,17 +2,21 @@
 
 ## About
 
-TalkTerm is a desktop AI agent interface (Electron + React + TypeScript) that makes CLI-based agentic workflows accessible to non-technical users through voice-enabled animated avatars; the Claude Agent SDK runs in-process in the Electron main process.
+TalkTerm is a desktop AI agent interface (Electron + React + TypeScript) that makes CLI-based agentic workflows accessible to non-technical users through voice-enabled animated avatars, running the Claude Agent SDK in-process in the Electron main process.
 
 ## Tech Stack
 
-- **Runtime:** Node.js 24 (bundled with Electron 41 / Chromium 144)
-- **Framework:** Electron 41 · React · Vite
-- **Language:** TypeScript (`strict`, plus `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noImplicitOverride`)
+- **Runtime:** Node.js 24 (bundled with Electron 41 + Chromium 144)
+- **Framework:** React · Electron 41 · Vite
+- **Language:** TypeScript (strict mode — `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noImplicitOverride`)
 - **Styling:** Tailwind CSS
-- **Testing:** Vitest · React Testing Library · Playwright (Electron E2E) · Stryker (mutation)
-- **Linting:** ESLint (zero-warnings policy) + Prettier
-- **Key libraries:** Claude Agent SDK (`@anthropic-ai/claude-agent-sdk`), Rive (avatar animation), better-sqlite3, electron-store, Web Speech API
+- **Avatar animation:** Rive
+- **Persistence:** better-sqlite3 · electron-store
+- **AI backend:** Claude Agent SDK (`@anthropic-ai/claude-agent-sdk`)
+- **Voice:** Web Speech API (STT/TTS)
+- **Testing:** Vitest · React Testing Library · Playwright (E2E) · Stryker (mutation)
+- **Linting:** ESLint (zero-warnings policy, flat config) · Prettier
+- **Packaging:** Electron Forge
 
 ## Project Structure
 
@@ -20,21 +24,22 @@ Clean Architecture — dependencies point inward; inner layers never import from
 
 ```
 src/
-  shared/types/      Domain layer: entities, value objects, domain events
-    domain/          Aggregate roots, value objects, domain events
-    ports/           Repository and service interfaces (ports)
-  main/              Application + infrastructure layer
-    agent/           Use case: agent session management
-    storage/         Infrastructure: persistence adapters
-    security/        Infrastructure: credential management
-    ipc/             Infrastructure: IPC handler adapters
-    main.ts          Composition root (manual constructor injection)
-  renderer/          Presentation layer
-    components/      React UI components
-    hooks/           React hooks (consume preload bridge)
-    context/         State management (useReducer)
-    speech/          STT/TTS abstraction implementations
-  preload/           Gateway: Electron contextBridge exposing main ports to renderer
+  shared/types/     Domain layer — entities, value objects, port interfaces (importable by both processes)
+    domain/         Aggregate roots, branded types, domain events
+    ports/          Repository and service interfaces
+  main/             Application + Infrastructure layer (Electron main process)
+    agent/          Use case: agent session lifecycle
+    storage/        Infrastructure: SQLite persistence adapters
+    security/       Infrastructure: API key lifecycle, admin privilege check
+    ipc/            Infrastructure: IPC handler adapters
+    main.ts         Composition root
+  renderer/         Presentation layer (Chromium renderer process)
+    components/     React UI components (avatar/, overlay/, voice/, session/, display/, setup/)
+    hooks/          React hooks consuming the preload bridge
+    context/        State management via useReducer
+    speech/         STT/TTS abstraction implementations
+  preload/
+    preload.ts      contextBridge gateway — the only architectural seam between main and renderer
 ```
 
 DDD bounded contexts: **Agent**, **Storage**, **Security**, **Voice**, **Avatar**, **Overlay**. Use branded types (`SessionId`, `WorkspacePath`, `ApiKey`) to prevent wrong-string bugs. Never import from `src/main/` in renderer code or from `src/renderer/` in main code — the preload bridge (`window.electronAPI`) is the only seam, and `src/shared/` is the only code importable by both processes.
@@ -54,18 +59,23 @@ DDD bounded contexts: **Agent**, **Storage**, **Security**, **Voice**, **Avatar*
 
 ## Required Environment Variables
 
-- None at build/dev time. The Claude API key is supplied by the user at runtime through the in-app setup flow and stored via Electron `safeStorage` (Security context) — never hardcode it or read it from `process.env` in committed code.
+- `ANTHROPIC_API_KEY`: Anthropic API key for the Claude Agent SDK (stored via Electron `safeStorage` after first-run setup; not required in the environment for production use)
 
 ## Testing Framework
 
-- Runner: Vitest, with three workspaces — `main` (`node` env), `renderer` (`jsdom` env), `shared` (`node` env).
-- Coverage threshold: 90% branch / function / line / statement (CI-enforced).
-- Mutation testing: Stryker — 80% minimum score (CI gate), 90%+ target for domain/repos/use cases.
-- TDD is mandatory: write tests before implementation. Test against interfaces/ports, not implementations — use `Fake*` doubles (e.g. `FakeAgentBackend`) and `:memory:` SQLite for repositories. Never use `.skip()` or coverage-ignore.
+- **Runner:** Vitest (three workspaces: `main` / `renderer` / `shared`)
+- **Coverage threshold:** 90% branch / function / line / statement (CI gate)
+- **Mutation testing:** Stryker — 80% minimum score (CI gate), 90%+ target for domain/repos/use cases
+- **E2E:** Playwright with Electron support (`test/e2e/`)
+- **Integration tests:** `test/integration/` using in-memory SQLite
+- **TDD is mandatory:** write tests before implementation. Test against interfaces/ports — use `Fake*` doubles (e.g. `FakeAgentBackend`) and `:memory:` SQLite for repositories. Never use `.skip()` or coverage-ignore.
 
 ## Repo-Specific Overrides
 
-None. This repo follows the org-level defaults; project specifics above add detail rather than override.
+- IPC channels follow `namespace:verb` naming (`agent:message`, `session:resume`, `settings:get`)
+- Renderer tests must never import from `src/main/` — mock `window.electronAPI` (the preload bridge) instead
+- `FakeAgentBackend` (implementing `AgentBackend`) is the test double for the Claude Agent SDK — use it rather than mocking the SDK directly
+- Bounded contexts: Agent · Storage · Security · Voice · Avatar · Overlay
 
 ## Org Standards
 
