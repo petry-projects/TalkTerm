@@ -40,12 +40,12 @@ jobs:
       # `uses: gitleaks/gitleaks-action@` in this file. continue-on-error
       # prevents a license-missing failure from blocking CI; the CLI step
       # below enforces the actual scan with explicit --redact.
-      # Note: gitleaks-action v2 does not expose a --redact input; the CLI
+      # Note: gitleaks-action v3 does not expose a --redact input; the CLI
       # step below handles redaction for the enforcement scan.
       - name: Run gitleaks (action)
         # Pinned to SHA per Action Pinning Policy
         # (petry-projects/.github/standards/ci-standards.md#action-pinning-policy).
-        # Refresh: gh api repos/gitleaks/gitleaks-action/git/refs/tags/v2.3.9 --jq '.object.sha'
+        # Refresh: gh api repos/gitleaks/gitleaks-action/git/refs/tags/v3.0.0 --jq '.object.sha'
         uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
         continue-on-error: true
         env:
