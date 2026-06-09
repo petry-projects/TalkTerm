@@ -18,18 +18,18 @@ fi
 echo "PASS: $WORKFLOW exists"
 
 # ── Check 2: npm ci uses --ignore-scripts ─────────────────────────────────
-if grep -qE 'npm ci\b' "$WORKFLOW" && ! grep -qE 'npm ci\s+--ignore-scripts' "$WORKFLOW"; then
+if grep -qE 'npm ci([[:space:]]|$)' "$WORKFLOW" && ! grep -qE 'npm ci.*--ignore-scripts' "$WORKFLOW"; then
   echo "FAIL: 'npm ci' found without '--ignore-scripts' in $WORKFLOW"
   echo "      Update the step to: run: npm ci --ignore-scripts"
   PASS=false
-elif grep -qE 'npm ci\s+--ignore-scripts' "$WORKFLOW"; then
+elif grep -qE 'npm ci.*--ignore-scripts' "$WORKFLOW"; then
   echo "PASS: 'npm ci --ignore-scripts' present in $WORKFLOW"
 else
   echo "INFO: no 'npm ci' call found (step may be absent — OK if no package-lock.json guard)"
 fi
 
 # ── Check 3: install step has the hashFiles guard ─────────────────────────
-if ! grep -q "hashFiles('package-lock.json')" "$WORKFLOW"; then
+if ! grep -qE "hashFiles\([[:space:]]*['\"]package-lock\.json['\"][[:space:]]*\)" "$WORKFLOW"; then
   echo "FAIL: hashFiles guard missing from $WORKFLOW — 'npm ci' must be conditional"
   PASS=false
 else
