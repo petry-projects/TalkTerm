@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Apply repository-level security settings via the GitHub API.
 #
-# Called by the apply-repo-settings workflow on every push to main so that
-# settings documented in .github/settings.yml stay in effect even if they
-# are reset manually.
+# Called by the apply-repo-settings workflow on path-filtered pushes to main,
+# on a weekly schedule (Mondays 06:00 UTC), and via manual dispatch.
+# This ensures settings documented in .github/settings.yml stay in effect
+# even if they are reset manually or drift over time.
 #
 # Required token scope: administration:write
 # Usage (local): GH_TOKEN=<token> GITHUB_REPOSITORY=petry-projects/TalkTerm \

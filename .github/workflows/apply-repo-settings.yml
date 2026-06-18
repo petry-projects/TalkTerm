@@ -2,9 +2,10 @@
 # Standard: petry-projects/.github/standards/push-protection.md#required-repo-level-settings
 #
 # Applies repository-level security settings (secret_scanning_ai_detection, etc.)
-# via scripts/apply-repo-settings.sh on every push to main so that
+# via scripts/apply-repo-settings.sh on path-filtered pushes to main, on a
+# weekly schedule (Mondays 06:00 UTC), and via manual dispatch. This ensures
 # security_and_analysis settings documented in .github/settings.yml stay in
-# effect. Also triggerable manually for out-of-band remediation.
+# effect and prevents drift over time.
 #
 # Token: GH_PAT_WORKFLOWS (classic PAT with repo scope).
 # `administration` is not a valid GITHUB_TOKEN scope in Actions; and the
