@@ -37,13 +37,14 @@ src/
   preload/           Gateway: Electron contextBridge exposing main ports to renderer
 ```
 
-DDD bounded contexts: **Agent**, **Storage**, **Security**, **Voice**, **Avatar**, **Overlay**. Use branded types (`SessionId`, `WorkspacePath`, `ApiKey`) to prevent wrong-string bugs. The renderer must never import from `src/main/` — the preload bridge (`window.electronAPI`) is the only seam.
+DDD bounded contexts: **Agent**, **Storage**, **Security**, **Voice**, **Avatar**, **Overlay**. Use branded types (`SessionId`, `WorkspacePath`, `ApiKey`) to prevent wrong-string bugs. Never import from `src/main/` in renderer code or from `src/renderer/` in main code — the preload bridge (`window.electronAPI`) is the only seam, and `src/shared/` is the only code importable by both processes.
 
 ## Local Dev Commands
 
 - Install:    `npm install`
 - Dev run:    `npm run dev`
 - Test:       `npm test`
+- Test (watch): `npm run test:watch`
 - Test (E2E): `npm run test:e2e`
 - Mutation:   `npm run test:mutate`
 - Lint:       `npm run lint`
