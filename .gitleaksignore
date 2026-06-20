@@ -22,13 +22,13 @@
 # Not a real credential — BMAD knowledge-base documentation only.
 e8cc0956c901e454aed61e7b10857e6a1a412881:_bmad/tea/testarch/knowledge/api-testing-patterns.md:generic-api-key:681
 
-# Commit e8cc0956: _bmad/_config/files-manifest.csv (lines 281, 282, 284, 300,
-# 409, 433) — CSV rows of the form "<file-path>","<sha256-hash>". The hash
-# column is a content-addressable fingerprint of BMAD skill files; gitleaks'
-# generic-api-key rule flags high-entropy hex strings. These are file-content
-# checksums, not API keys. The file paths make the context unambiguous:
-#   api-request.md, api-testing-patterns.md, auth-session.md, email-auth.md,
-#   step-03a-subagent-api.md, step-04a-subagent-api-failing.md
+# Commits e8cc0956, aec934f9: _bmad/_config/files-manifest.csv (lines 281, 282,
+# 284, 300, 409, 433) — CSV rows of the form "<file-path>","<sha256-hash>".
+# The hash column is a content-addressable fingerprint of BMAD skill files;
+# gitleaks' generic-api-key rule flags high-entropy hex strings. These are
+# file-content checksums, not API keys. The file paths make the context
+# unambiguous: api-request.md, api-testing-patterns.md, auth-session.md,
+# email-auth.md, step-03a-subagent-api.md, step-04a-subagent-api-failing.md
 e8cc0956c901e454aed61e7b10857e6a1a412881:_bmad/_config/files-manifest.csv:generic-api-key:281
 e8cc0956c901e454aed61e7b10857e6a1a412881:_bmad/_config/files-manifest.csv:generic-api-key:282
 e8cc0956c901e454aed61e7b10857e6a1a412881:_bmad/_config/files-manifest.csv:generic-api-key:284
