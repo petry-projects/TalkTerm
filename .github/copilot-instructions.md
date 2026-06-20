@@ -24,7 +24,7 @@ Clean Architecture — dependencies point inward; inner layers never import from
 
 ```
 src/
-  shared/types/     Cross-process types (types only, no logic — importable by both processes)
+  shared/types/     Domain layer — cross-process code importable by both processes: type guards, validators, branded type constructors, invariant checks, repository port interfaces (ports/), and domain events
   main/             Application + Infrastructure layer (Electron main process)
     agent/          Use case: agent session lifecycle
     storage/        Infrastructure: SQLite persistence adapters
@@ -44,6 +44,8 @@ DDD bounded contexts: **Agent**, **Storage**, **Security**, **Voice**, **Avatar*
 
 ## Local Dev Commands
 
+> **Note:** The Electron app scaffold (`package.json`, `src/`) has not yet been committed. These commands reflect the intended setup once the npm project is initialized and will not work until that scaffold is in place.
+
 - Install:    `npm install`
 - Dev run:    `npm run dev`
 - Test:       `npm test`
@@ -55,15 +57,15 @@ DDD bounded contexts: **Agent**, **Storage**, **Security**, **Voice**, **Avatar*
 - Typecheck:  `npm run typecheck`
 - Build:      `npm run build`
 
-## Required Environment Variables
+## Environment Variables
 
-- `ANTHROPIC_API_KEY`: Anthropic API key for the Claude Agent SDK (stored via Electron `safeStorage` after first-run setup; not required in the environment for production use)
+- `ANTHROPIC_API_KEY` *(optional development override)*: The app implements BYOK via a first-run setup flow that validates and stores the key through Electron `safeStorage`. This variable is **not** required at runtime; it is only useful as a local override during development before the setup flow is implemented.
 
 ## Testing Framework
 
 - **Runner:** Vitest (three workspaces: `main` / `renderer` / `shared`)
-- **Coverage threshold:** 90% branch / function / line / statement (CI gate)
-- **Mutation testing:** Stryker — 80% minimum score (CI gate), 90%+ target for domain/repos/use cases
+- **Coverage threshold:** 90% branch / function / line / statement (target; CI enforcement planned once Vitest pipeline is added)
+- **Mutation testing:** Stryker — 80% minimum score (target; CI enforcement planned), 90%+ target for domain/repos/use cases
 - **E2E:** Playwright with Electron support (`test/e2e/`)
 - **Integration tests:** `test/integration/` using in-memory SQLite
 - **TDD is mandatory:** write tests before implementation. Test against interfaces/ports — use `Fake*` doubles (e.g. `FakeAgentBackend`) and `:memory:` SQLite for repositories. Never use `.skip()` or coverage-ignore.
