@@ -36,9 +36,9 @@ e8cc0956c901e454aed61e7b10857e6a1a412881:_bmad/_config/files-manifest.csv:generi
 e8cc0956c901e454aed61e7b10857e6a1a412881:_bmad/_config/files-manifest.csv:generic-api-key:409
 e8cc0956c901e454aed61e7b10857e6a1a412881:_bmad/_config/files-manifest.csv:generic-api-key:433
 
-# Commit aec934f9: same _bmad/_config/files-manifest.csv CSV rows as above
-# (SHA256 content checksums of BMAD skill files) appearing in a later commit
-# that re-introduced the same content. Same false-positive rationale applies.
+# Commit aec934f9: same _bmad/_config/files-manifest.csv SHA256-checksum rows as
+# e8cc0956 above — identical false-positive pattern (file-content checksums, not
+# API keys). Full-history CLI scan flags this ancestor commit independently.
 aec934f92f4174b89944ee57a3d5cf68737f71c9:_bmad/_config/files-manifest.csv:generic-api-key:281
 aec934f92f4174b89944ee57a3d5cf68737f71c9:_bmad/_config/files-manifest.csv:generic-api-key:282
 aec934f92f4174b89944ee57a3d5cf68737f71c9:_bmad/_config/files-manifest.csv:generic-api-key:284
