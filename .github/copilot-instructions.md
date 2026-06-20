@@ -24,7 +24,8 @@ Clean Architecture — dependencies point inward; inner layers never import from
 
 ```
 src/
-  shared/types/     Domain layer — cross-process code importable by both processes: type guards, validators, branded type constructors, invariant checks, repository port interfaces (ports/), and domain events
+  shared/types/     Cross-process types (types only, no logic — importable by both processes)
+    agent.ts, session.ts, audit.ts, ipc.ts, avatar.ts, voice.ts, errors.ts
   main/             Application + Infrastructure layer (Electron main process)
     agent/          Use case: agent session lifecycle
     storage/        Infrastructure: SQLite persistence adapters
@@ -40,7 +41,7 @@ src/
     preload.ts      contextBridge gateway — the only architectural seam between main and renderer
 ```
 
-DDD bounded contexts: **Agent**, **Storage**, **Security**, **Voice**, **Avatar**, **Overlay**. Use branded types (`SessionId`, `WorkspacePath`, `ApiKey`) to prevent wrong-string bugs. Never import from `src/main/` in renderer code or from `src/renderer/` in main code — the preload bridge (`window.electronAPI`) is the only seam, and `src/shared/` is the only code importable by both processes.
+**Key architectural rule:** `src/shared/types/` contains **flat, type-only files with no business logic**. Never import from `src/main/` in renderer code or from `src/renderer/` in main code — the preload bridge (`window.electronAPI`) is the only seam, and `src/shared/types/` is the only code importable by both processes.
 
 ## Local Dev Commands
 
