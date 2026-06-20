@@ -50,6 +50,7 @@ jobs:
       pull-requests: read
       checks: read
       actions: read
+      statuses: read   # required by pr-auto-review-reusable.yml since #435
     uses: petry-projects/.github/.github/workflows/pr-auto-review-reusable.yml@v2
     secrets:
       GH_PAT_WORKFLOWS: ${{ secrets.GH_PAT_WORKFLOWS }}
