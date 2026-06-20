@@ -38,9 +38,8 @@ on:
 permissions: {}
 
 # Concurrency is centralised in the reusable workflow (dev-lead-reusable.yml) with
-# per-issue / per-PR lanes (cancel-in-progress: false, so same-lane runs queue rather
-# than overlap — preserving the dirty-checkout protection without cancelling issue
-# pickups, the bug this repo previously hit). See petry-projects/.github#402.
+# per-issue / per-PR lanes, so issue pickups are never cancelled by PR follow-up
+# traffic and the grouping can't drift per-repo. See petry-projects/.github#402.
 
 jobs:
   dev-lead:
@@ -59,4 +58,4 @@ jobs:
       issues: write
       actions: read
       checks: read
-      statuses: read   # required by dev-lead-reusable.yml since #435
+      statuses: read
