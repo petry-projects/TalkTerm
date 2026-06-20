@@ -7,7 +7,7 @@
 # in .github/settings.yml stay in effect and drift is caught between compliance
 # audits. Also triggerable manually for out-of-band remediation.
 #
-# Required permission: administration:write (granted below to GITHUB_TOKEN).
+# TODO: Migrate to GitHub App or PAT token to enable admin-level modifications.
 # ─────────────────────────────────────────────────────────────────────────────
 name: Apply repo settings
 
@@ -35,7 +35,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      administration: write
     steps:
       - name: Checkout
         # Pinned to SHA per Action Pinning Policy
