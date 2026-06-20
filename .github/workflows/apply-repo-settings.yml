@@ -7,7 +7,8 @@
 # in .github/settings.yml stay in effect and drift is caught between compliance
 # audits. Also triggerable manually for out-of-band remediation.
 #
-# TODO: Migrate to GitHub App or PAT token to enable admin-level modifications.
+# Note: Currently limited to GITHUB_TOKEN permissions. Use GitHub App or PAT token with
+# admin scope for unrestricted repository-level settings modifications.
 # ─────────────────────────────────────────────────────────────────────────────
 name: Apply repo settings
 
