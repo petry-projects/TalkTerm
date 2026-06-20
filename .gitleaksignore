@@ -78,8 +78,9 @@ aec934f92f4174b89944ee57a3d5cf68737f71c9:_bmad/_config/files-manifest.csv:generi
 146f8e140e166da953907450a3e10985772933ea:_bmad/_config/files-manifest.csv:generic-api-key:409
 146f8e140e166da953907450a3e10985772933ea:_bmad/_config/files-manifest.csv:generic-api-key:433
 
-# Commit c5099d1d: same _bmad/_config/files-manifest.csv CSV rows as above
-# (SHA256 content checksums of BMAD skill files). Same false-positive rationale.
+# Commit c5099d1d: _bmad/_config/files-manifest.csv (lines 281, 282, 284, 300,
+# 409, 433) — same false positives as e8cc0956, aec934f, 45b6a8ef, 58a86a1c,
+# and 146f8e14: SHA256 content checksums in a CSV manifest, not API keys.
 c5099d1dfbc58bd65ddd0e4efd267666260bb3f6:_bmad/_config/files-manifest.csv:generic-api-key:281
 c5099d1dfbc58bd65ddd0e4efd267666260bb3f6:_bmad/_config/files-manifest.csv:generic-api-key:282
 c5099d1dfbc58bd65ddd0e4efd267666260bb3f6:_bmad/_config/files-manifest.csv:generic-api-key:284
