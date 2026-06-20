@@ -35,7 +35,9 @@ permissions: {}
 
 jobs:
   pr-review-mention:
+    if: github.event.sender.type != 'Bot'
     permissions:
       pull-requests: write
+      statuses: read
     uses: petry-projects/.github/.github/workflows/pr-review-mention-reusable.yml@v2
     secrets: inherit
