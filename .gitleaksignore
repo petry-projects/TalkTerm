@@ -36,9 +36,9 @@ e8cc0956c901e454aed61e7b10857e6a1a412881:_bmad/_config/files-manifest.csv:generi
 e8cc0956c901e454aed61e7b10857e6a1a412881:_bmad/_config/files-manifest.csv:generic-api-key:409
 e8cc0956c901e454aed61e7b10857e6a1a412881:_bmad/_config/files-manifest.csv:generic-api-key:433
 
-# Commit aec934f: _bmad/_config/files-manifest.csv (lines 281, 282, 284, 300,
-# 409, 433) — same false positives as e8cc0956, same justification: SHA256
-# content checksums in a CSV manifest, not API keys.
+# Commit aec934f9: same _bmad/_config/files-manifest.csv CSV rows as above
+# (SHA256 content checksums of BMAD skill files) appearing in a later commit
+# that re-introduced the same content. Same false-positive rationale applies.
 aec934f92f4174b89944ee57a3d5cf68737f71c9:_bmad/_config/files-manifest.csv:generic-api-key:281
 aec934f92f4174b89944ee57a3d5cf68737f71c9:_bmad/_config/files-manifest.csv:generic-api-key:282
 aec934f92f4174b89944ee57a3d5cf68737f71c9:_bmad/_config/files-manifest.csv:generic-api-key:284
@@ -46,9 +46,11 @@ aec934f92f4174b89944ee57a3d5cf68737f71c9:_bmad/_config/files-manifest.csv:generi
 aec934f92f4174b89944ee57a3d5cf68737f71c9:_bmad/_config/files-manifest.csv:generic-api-key:409
 aec934f92f4174b89944ee57a3d5cf68737f71c9:_bmad/_config/files-manifest.csv:generic-api-key:433
 
-# Commit 45b6a8ef: _bmad/_config/files-manifest.csv (lines 281, 282, 284, 300,
-# 409, 433) — same false positives as e8cc0956 and aec934f, same justification:
-# SHA256 content checksums in a CSV manifest, not API keys.
+# Commit 45b6a8ef: same _bmad/_config/files-manifest.csv CSV rows as above
+# (SHA256 content checksums of BMAD skill files) appearing in another commit.
+# The CSV contains rows like "<file-path>","<sha256-hash>" where the hash
+# column is a content-addressable fingerprint (not an API key). Gitleaks'
+# generic-api-key rule flags high-entropy hex strings; these are file checksums.
 45b6a8ef162096dae42b2a8194334f24a6576f69:_bmad/_config/files-manifest.csv:generic-api-key:281
 45b6a8ef162096dae42b2a8194334f24a6576f69:_bmad/_config/files-manifest.csv:generic-api-key:282
 45b6a8ef162096dae42b2a8194334f24a6576f69:_bmad/_config/files-manifest.csv:generic-api-key:284
