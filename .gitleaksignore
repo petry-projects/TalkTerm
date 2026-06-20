@@ -107,3 +107,15 @@ c5099d1dfbc58bd65ddd0e4efd267666260bb3f6:_bmad/_config/files-manifest.csv:generi
 4c9852dcd788730edfb9aaac3c7cca3a6777df9f:_bmad/_config/files-manifest.csv:generic-api-key:300
 4c9852dcd788730edfb9aaac3c7cca3a6777df9f:_bmad/_config/files-manifest.csv:generic-api-key:409
 4c9852dcd788730edfb9aaac3c7cca3a6777df9f:_bmad/_config/files-manifest.csv:generic-api-key:433
+
+# Commit c086341f: _bmad/_config/files-manifest.csv (lines 281, 282, 284, 300,
+# 409, 433) and _bmad/tea/testarch/knowledge/api-testing-patterns.md (line 681)
+# — same false positives as previous commits, same justification: SHA256
+# content checksums in a CSV manifest and example token in documentation.
+c086341f8666d695ac145cfa704f91ffd113a1cc:_bmad/_config/files-manifest.csv:generic-api-key:281
+c086341f8666d695ac145cfa704f91ffd113a1cc:_bmad/_config/files-manifest.csv:generic-api-key:282
+c086341f8666d695ac145cfa704f91ffd113a1cc:_bmad/_config/files-manifest.csv:generic-api-key:284
+c086341f8666d695ac145cfa704f91ffd113a1cc:_bmad/_config/files-manifest.csv:generic-api-key:300
+c086341f8666d695ac145cfa704f91ffd113a1cc:_bmad/_config/files-manifest.csv:generic-api-key:409
+c086341f8666d695ac145cfa704f91ffd113a1cc:_bmad/_config/files-manifest.csv:generic-api-key:433
+c086341f8666d695ac145cfa704f91ffd113a1cc:_bmad/tea/testarch/knowledge/api-testing-patterns.md:generic-api-key:681
