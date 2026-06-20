@@ -61,17 +61,16 @@ aec934f92f4174b89944ee57a3d5cf68737f71c9:_bmad/_config/files-manifest.csv:generi
 45b6a8ef162096dae42b2a8194334f24a6576f69:_bmad/_config/files-manifest.csv:generic-api-key:409
 45b6a8ef162096dae42b2a8194334f24a6576f69:_bmad/_config/files-manifest.csv:generic-api-key:433
 
-# Commit 58a86a1: same _bmad/_config/files-manifest.csv CSV rows as above
-# (SHA256 content checksums of BMAD skill files). Same false-positive rationale.
+# Commits 58a86a1c and 146f8e14: _bmad/_config/files-manifest.csv (lines 281,
+# 282, 284, 300, 409, 433) — same false positives as e8cc0956, aec934f, and
+# 45b6a8ef: SHA256 content checksums in a CSV manifest, not API keys. These
+# are additional commit refs for the same file/lines as the entries above.
 58a86a1cd7a8f64efbe0139ecb88184ddf10710a:_bmad/_config/files-manifest.csv:generic-api-key:281
 58a86a1cd7a8f64efbe0139ecb88184ddf10710a:_bmad/_config/files-manifest.csv:generic-api-key:282
 58a86a1cd7a8f64efbe0139ecb88184ddf10710a:_bmad/_config/files-manifest.csv:generic-api-key:284
 58a86a1cd7a8f64efbe0139ecb88184ddf10710a:_bmad/_config/files-manifest.csv:generic-api-key:300
 58a86a1cd7a8f64efbe0139ecb88184ddf10710a:_bmad/_config/files-manifest.csv:generic-api-key:409
 58a86a1cd7a8f64efbe0139ecb88184ddf10710a:_bmad/_config/files-manifest.csv:generic-api-key:433
-
-# Commit 146f8e14: same _bmad/_config/files-manifest.csv CSV rows as above
-# (SHA256 content checksums of BMAD skill files). Same false-positive rationale.
 146f8e140e166da953907450a3e10985772933ea:_bmad/_config/files-manifest.csv:generic-api-key:281
 146f8e140e166da953907450a3e10985772933ea:_bmad/_config/files-manifest.csv:generic-api-key:282
 146f8e140e166da953907450a3e10985772933ea:_bmad/_config/files-manifest.csv:generic-api-key:284
