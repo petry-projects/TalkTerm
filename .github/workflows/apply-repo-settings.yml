@@ -35,6 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      administration: write
     steps:
       - name: Checkout
         # Pinned to SHA per Action Pinning Policy
