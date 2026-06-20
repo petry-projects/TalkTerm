@@ -79,7 +79,7 @@ jobs:
       - name: Install Node.js dependencies
         # npm ci requires a package-lock.json — skip gracefully until one is committed.
         if: hashFiles('package-lock.json') != ''
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Verify environment
         run: |
