@@ -13,6 +13,12 @@ set -euo pipefail
 
 REPO="${GITHUB_REPOSITORY:?GITHUB_REPOSITORY must be set (e.g. petry-projects/TalkTerm)}"
 
+# Validate REPO format (owner/repo) to prevent injection attacks
+if ! [[ "${REPO}" =~ ^[a-zA-Z0-9_-]+/[a-zA-Z0-9_-]+$ ]]; then
+  echo "Error: GITHUB_REPOSITORY must be in format 'owner/repo', got: ${REPO}" >&2
+  exit 1
+fi
+
 # Settings: secret_scanning, secret_scanning_push_protection, secret_scanning_ai_detection,
 #           secret_scanning_non_provider_patterns, dependabot_security_updates
 # Standard: https://github.com/petry-projects/.github/blob/main/standards/push-protection.md
