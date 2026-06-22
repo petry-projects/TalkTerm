@@ -110,3 +110,16 @@ c5099d1dfbc58bd65ddd0e4efd267666260bb3f6:_bmad/_config/files-manifest.csv:generi
 4c9852dcd788730edfb9aaac3c7cca3a6777df9f:_bmad/_config/files-manifest.csv:generic-api-key:300
 4c9852dcd788730edfb9aaac3c7cca3a6777df9f:_bmad/_config/files-manifest.csv:generic-api-key:409
 4c9852dcd788730edfb9aaac3c7cca3a6777df9f:_bmad/_config/files-manifest.csv:generic-api-key:433
+
+# Commit 38e9f74: _bmad/_config/files-manifest.csv (lines 281, 282, 284, 300,
+# 409, 433) — same false positives as previous commits: SHA256 content checksums
+# in a CSV manifest file, not API keys. Gitleaks' generic-api-key rule flags
+# high-entropy hex strings; these are content-addressable checksums of BMAD
+# skill files (api-request.md, api-testing-patterns.md, auth-session.md,
+# email-auth.md, step-03a-subagent-api.md, step-04a-subagent-api-failing.md).
+38e9f74523fb9c79fa465831381c3ce9ac050c29:_bmad/_config/files-manifest.csv:generic-api-key:281
+38e9f74523fb9c79fa465831381c3ce9ac050c29:_bmad/_config/files-manifest.csv:generic-api-key:282
+38e9f74523fb9c79fa465831381c3ce9ac050c29:_bmad/_config/files-manifest.csv:generic-api-key:284
+38e9f74523fb9c79fa465831381c3ce9ac050c29:_bmad/_config/files-manifest.csv:generic-api-key:300
+38e9f74523fb9c79fa465831381c3ce9ac050c29:_bmad/_config/files-manifest.csv:generic-api-key:409
+38e9f74523fb9c79fa465831381c3ce9ac050c29:_bmad/_config/files-manifest.csv:generic-api-key:433
