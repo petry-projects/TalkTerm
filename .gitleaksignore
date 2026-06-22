@@ -22,6 +22,16 @@
 # Not a real credential — BMAD knowledge-base documentation only.
 e8cc0956c901e454aed61e7b10857e6a1a412881:_bmad/tea/testarch/knowledge/api-testing-patterns.md:generic-api-key:681
 
+# Commit 7c4a65a: Re-encountered in history as part of PR #309 merge.
+# Same false positives as earlier commits — BMAD knowledge-base files.
+7c4a65aac014dadd180b55a10b5f460326d3fe41:_bmad/tea/testarch/knowledge/api-testing-patterns.md:generic-api-key:681
+7c4a65aac014dadd180b55a10b5f460326d3fe41:_bmad/_config/files-manifest.csv:generic-api-key:281
+7c4a65aac014dadd180b55a10b5f460326d3fe41:_bmad/_config/files-manifest.csv:generic-api-key:282
+7c4a65aac014dadd180b55a10b5f460326d3fe41:_bmad/_config/files-manifest.csv:generic-api-key:284
+7c4a65aac014dadd180b55a10b5f460326d3fe41:_bmad/_config/files-manifest.csv:generic-api-key:300
+7c4a65aac014dadd180b55a10b5f460326d3fe41:_bmad/_config/files-manifest.csv:generic-api-key:409
+7c4a65aac014dadd180b55a10b5f460326d3fe41:_bmad/_config/files-manifest.csv:generic-api-key:433
+
 # Commit e8cc0956: _bmad/_config/files-manifest.csv (lines 281, 282, 284, 300,
 # 409, 433) — CSV rows of the form "<file-path>","<sha256-hash>". The hash
 # column is a content-addressable fingerprint of BMAD skill files; gitleaks'
