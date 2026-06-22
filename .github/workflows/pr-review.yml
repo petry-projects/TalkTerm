@@ -47,7 +47,7 @@ jobs:
       contents: read
       pull-requests: write
       checks: read
-    uses: petry-projects/.github-private/.github/workflows/pr-review.yml@29e5974836bf2dbfe02f4ae9911ab2bdd4e6ef5b # pr-review/stable
+    uses: petry-projects/.github-private/.github/workflows/pr-review.yml@ceab48a1c64d1e06a87d41ea5cf590c8e6a780bf # pr-review/stable (v1.7.0)
     with:
       agent_ref: pr-review/stable
       pr_url: ${{ inputs.pr_url || '' }}
