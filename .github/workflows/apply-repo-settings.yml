@@ -2,10 +2,9 @@
 # Standard: petry-projects/.github/standards/push-protection.md#required-repo-level-settings
 #
 # Applies repository-level security settings (secret_scanning_ai_detection, etc.)
-# via scripts/apply-repo-settings.sh on every push to main and on a weekly
-# schedule (Mon 03:00 UTC) so that security_and_analysis settings documented
-# in .github/settings.yml stay in effect and drift is caught between compliance
-# audits. Also triggerable manually for out-of-band remediation.
+# via scripts/apply-repo-settings.sh when .github/settings.yml or scripts/apply-repo-settings.sh
+# change, or manually via workflow_dispatch. Triggered narrowly to avoid excess runs while a
+# PAT/GitHub App token with admin rights is configured for repository settings modifications.
 #
 # Note: Currently limited to GITHUB_TOKEN permissions. Use GitHub App or PAT token with
 # admin scope for unrestricted repository-level settings modifications.
@@ -20,15 +19,10 @@ on:
       - scripts/apply-repo-settings.sh
       - .github/workflows/apply-repo-settings.yml
   schedule:
-    # Reinforce settings weekly (Mon 03:00 UTC) so drift is caught between compliance audits.
-    - cron: '0 3 * * 1'
+    - cron: '0 6 * * 1'  # weekly Monday 06:00 UTC — reinforce settings to prevent drift
   workflow_dispatch:
 
 permissions: {}
-
-concurrency:
-  group: apply-repo-settings
-  cancel-in-progress: false
 
 jobs:
   apply:
