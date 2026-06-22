@@ -175,3 +175,15 @@ b395845f46a5b39d97a0f6f1dd5ec63915c25ada:_bmad/_config/files-manifest.csv:generi
 b395845f46a5b39d97a0f6f1dd5ec63915c25ada:_bmad/_config/files-manifest.csv:generic-api-key:282
 b395845f46a5b39d97a0f6f1dd5ec63915c25ada:_bmad/_config/files-manifest.csv:generic-api-key:284
 b395845f46a5b39d97a0f6f1dd5ec63915c25ada:_bmad/_config/files-manifest.csv:generic-api-key:300
+
+# Commit f57f0350: same _bmad/_config/files-manifest.csv CSV rows as above
+# (SHA256 content checksums of BMAD skill files). Commit message:
+# "chore: add ECC integration, TEA module, and slim CLAUDE.md".
+# Same false-positive rationale: high-entropy hex strings are file-content
+# checksums, not API keys.
+f57f0350a41b516a0c37bd87943ed6d67842980c:_bmad/_config/files-manifest.csv:generic-api-key:281
+f57f0350a41b516a0c37bd87943ed6d67842980c:_bmad/_config/files-manifest.csv:generic-api-key:282
+f57f0350a41b516a0c37bd87943ed6d67842980c:_bmad/_config/files-manifest.csv:generic-api-key:284
+f57f0350a41b516a0c37bd87943ed6d67842980c:_bmad/_config/files-manifest.csv:generic-api-key:300
+f57f0350a41b516a0c37bd87943ed6d67842980c:_bmad/_config/files-manifest.csv:generic-api-key:409
+f57f0350a41b516a0c37bd87943ed6d67842980c:_bmad/_config/files-manifest.csv:generic-api-key:433
