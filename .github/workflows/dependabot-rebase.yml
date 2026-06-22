@@ -6,16 +6,17 @@
 # AGENTS — READ BEFORE EDITING:
 #   • This file is a THIN CALLER STUB. All rebase/merge serialization logic
 #     lives in the reusable workflow above.
-#   • You MAY change: the SHA in the `uses:` line when upgrading to a new
-#     version of the reusable workflow (update to latest commit SHA from main in
-#     petry-projects/.github). You MUST NOT change: the concurrency group name,
-#     the explicit secrets block, or the job-level `permissions:` block —
-#     reusable workflows can be granted no more permissions than the calling job
-#     has, so removing the stanza breaks the reusable's gh API calls. Do not
-#     remove any trigger (`push` keeps the self-sustaining chain; `schedule` is
-#     the safety net when no PR merges have occurred recently; `workflow_dispatch`
-#     allows manual queue flushes). Always use a pinned commit SHA, never a moving
-#     tag like `@main` or `@stable`, to prevent supply chain attacks.
+#   • You MUST NOT change: the `uses:` ref — it is pinned to the
+#     `dependabot-rebase/stable` channel, a moving tag advanced centrally.
+#     Never repoint it to `@main`, a SHA, or a frozen `@vX` (see
+#     ci-standards.md → Reusable workflow versioning). Also do not change the
+#     concurrency group name, the explicit secrets
+#     block, or the job-level `permissions:` block — reusable workflows can be
+#     granted no more permissions than the calling job has, so removing the
+#     stanza breaks the reusable's gh API calls. Do not remove any trigger
+#     (`push` keeps the self-sustaining chain; `schedule` is the safety net
+#     when no PR merges have occurred recently; `workflow_dispatch` allows
+#     manual queue flushes).
 #   • If you need different behaviour, open a PR against the reusable in the
 #     central repo.
 # ─────────────────────────────────────────────────────────────────────────────
@@ -49,7 +50,7 @@ jobs:
     permissions:
       contents: write   # update-branch via GITHUB_TOKEN (may touch .github/workflows/)
       pull-requests: write  # re-approve PRs after branch update
-    uses: petry-projects/.github/.github/workflows/dependabot-rebase-reusable.yml@0bba48104323486ac3b003ba3eba0ef747d9a7db # v1
+    uses: petry-projects/.github/.github/workflows/dependabot-rebase-reusable.yml@dependabot-rebase/stable
     secrets:
       APP_ID: ${{ secrets.APP_ID }}
       APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
