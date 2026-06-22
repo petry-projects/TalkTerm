@@ -43,7 +43,8 @@ permissions: {}
 
 jobs:
   dev-lead:
-    uses: petry-projects/.github-private/.github/workflows/dev-lead-reusable.yml@5a9a2476575cfcf0e730993f589587db054219f1 # main
+    # First-party channel tag — do NOT SHA-pin (AGENTS.md mutable-ref exception; rings #499/#500/#871).
+    uses: petry-projects/.github-private/.github/workflows/dev-lead-reusable.yml@dev-lead/ring1
     secrets: inherit
     permissions:
       contents: write
