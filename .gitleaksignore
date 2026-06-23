@@ -242,3 +242,17 @@ edb82932580a2ac446db7a79dba0ff3911f62183:_bmad/_config/files-manifest.csv:generi
 720229a321e7c25faba82e19d3a099b9cc5499d6:_bmad/_config/files-manifest.csv:generic-api-key:300
 720229a321e7c25faba82e19d3a099b9cc5499d6:_bmad/_config/files-manifest.csv:generic-api-key:409
 720229a321e7c25faba82e19d3a099b9cc5499d6:_bmad/_config/files-manifest.csv:generic-api-key:433
+
+# Commit a956f62e: GitHub PR merge-preview commit (refs/pull/264/merge) that merges
+# de27222f into edf35287 for CI purposes. Contains the same false-positive pattern as
+# all sibling entries above: lines 281, 282, 284, 300, 409, 433 of
+# _bmad/_config/files-manifest.csv are SHA256 content-addressable checksums of BMAD
+# skill files, not credentials. Line 681 of api-testing-patterns.md is an example
+# expired token in test-design documentation. Not a real credential.
+a956f62e677a07bc3a8cbc7c6b288fc07ea68795:_bmad/_config/files-manifest.csv:generic-api-key:281
+a956f62e677a07bc3a8cbc7c6b288fc07ea68795:_bmad/_config/files-manifest.csv:generic-api-key:282
+a956f62e677a07bc3a8cbc7c6b288fc07ea68795:_bmad/_config/files-manifest.csv:generic-api-key:284
+a956f62e677a07bc3a8cbc7c6b288fc07ea68795:_bmad/_config/files-manifest.csv:generic-api-key:300
+a956f62e677a07bc3a8cbc7c6b288fc07ea68795:_bmad/_config/files-manifest.csv:generic-api-key:409
+a956f62e677a07bc3a8cbc7c6b288fc07ea68795:_bmad/_config/files-manifest.csv:generic-api-key:433
+a956f62e677a07bc3a8cbc7c6b288fc07ea68795:_bmad/tea/testarch/knowledge/api-testing-patterns.md:generic-api-key:681
