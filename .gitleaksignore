@@ -261,3 +261,20 @@ a956f62e677a07bc3a8cbc7c6b288fc07ea68795:_bmad/_config/files-manifest.csv:generi
 a956f62e677a07bc3a8cbc7c6b288fc07ea68795:_bmad/_config/files-manifest.csv:generic-api-key:409
 a956f62e677a07bc3a8cbc7c6b288fc07ea68795:_bmad/_config/files-manifest.csv:generic-api-key:433
 a956f62e677a07bc3a8cbc7c6b288fc07ea68795:_bmad/tea/testarch/knowledge/api-testing-patterns.md:generic-api-key:681
+
+# Commits 7f87a9bb, a7c7e060: _bmad/_config/files-manifest.csv (lines 281, 282, 284, 300, 409, 433)
+# — same BMAD content-addressable file checksums as documented above. These commits appear
+# on dev-lead branches and were not yet suppressed. Pattern is identical to all earlier entries:
+# SHA256 file-content checksums in CSV manifest rows, not API keys.
+7f87a9bb29faa938ce55b6375fac0039b08d4573:_bmad/_config/files-manifest.csv:generic-api-key:281
+7f87a9bb29faa938ce55b6375fac0039b08d4573:_bmad/_config/files-manifest.csv:generic-api-key:282
+7f87a9bb29faa938ce55b6375fac0039b08d4573:_bmad/_config/files-manifest.csv:generic-api-key:284
+7f87a9bb29faa938ce55b6375fac0039b08d4573:_bmad/_config/files-manifest.csv:generic-api-key:300
+7f87a9bb29faa938ce55b6375fac0039b08d4573:_bmad/_config/files-manifest.csv:generic-api-key:409
+7f87a9bb29faa938ce55b6375fac0039b08d4573:_bmad/_config/files-manifest.csv:generic-api-key:433
+a7c7e060359d709d21bc62fe80ba7504cf240c3e:_bmad/_config/files-manifest.csv:generic-api-key:281
+a7c7e060359d709d21bc62fe80ba7504cf240c3e:_bmad/_config/files-manifest.csv:generic-api-key:282
+a7c7e060359d709d21bc62fe80ba7504cf240c3e:_bmad/_config/files-manifest.csv:generic-api-key:284
+a7c7e060359d709d21bc62fe80ba7504cf240c3e:_bmad/_config/files-manifest.csv:generic-api-key:300
+a7c7e060359d709d21bc62fe80ba7504cf240c3e:_bmad/_config/files-manifest.csv:generic-api-key:409
+a7c7e060359d709d21bc62fe80ba7504cf240c3e:_bmad/_config/files-manifest.csv:generic-api-key:433
