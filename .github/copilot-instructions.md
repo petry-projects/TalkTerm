@@ -22,10 +22,10 @@ TalkTerm is a desktop AI agent interface (Electron + React + TypeScript) that ma
 
 Clean Architecture — dependencies point inward; inner layers never import from outer layers.
 
-```
+```text
 src/
-  shared/types/     Cross-process domain types & ports (pure functions, no external dependencies — importable by both processes)
-    domain/         Aggregate roots, value objects, domain events, branded types
+  shared/types/     Cross-process domain logic & ports (validators, type guards, branded-type constructors, domain events, invariant checks — pure functions, no external dependencies)
+    domain/         Aggregate roots, value objects, domain events, branded types, validators
     ports/          Repository and service interfaces (extension points)
   main/             Application + Infrastructure layer (Electron main process)
     agent/          Use case: agent session lifecycle
@@ -42,7 +42,7 @@ src/
     preload.ts      contextBridge gateway — the only architectural seam between main and renderer
 ```
 
-**Key architectural rule:** `src/shared/types/` contains domain types, validators, branded types, and ports — organized into `domain/` (aggregate roots, value objects, domain events with pure logic) and `ports/` (repository and service interfaces). All code must be pure functions with no external dependencies or side effects. Never import from `src/main/` in renderer code or from `src/renderer/` in main code — the preload bridge (`window.electronAPI`) is the only seam, and `src/shared/types/` is the only code importable by both processes.
+**Key architectural rule:** `src/shared/types/` contains domain logic (aggregate roots, value objects, domain events, validators, type guards, branded-type constructors, invariant checks) and ports — organized into `domain/` (pure entities and event logic) and `ports/` (repository and service interfaces). All code must be pure functions with no external dependencies or side effects. Never import from `src/main/` in renderer code or from `src/renderer/` in main code — the preload bridge (`window.electronAPI`) is the only seam, and `src/shared/types/` is the only code importable by both processes.
 
 ## Local Dev Commands
 
