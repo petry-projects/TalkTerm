@@ -3,3 +3,11 @@
 
 [extend]
 useDefault = true
+
+[allowlist]
+description = "False-positive suppression"
+# SHA256 content hashes in the BMAD files manifest are flagged as generic-api-key
+# due to high entropy + 'api'/'auth' keywords in adjacent path strings.
+paths = [
+  '''_bmad/_config/files-manifest\.csv''',
+]
