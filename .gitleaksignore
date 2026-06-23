@@ -32,6 +32,55 @@ e8cc0956c901e454aed61e7b10857e6a1a412881:_bmad/tea/testarch/knowledge/api-testin
 7c4a65aac014dadd180b55a10b5f460326d3fe41:_bmad/_config/files-manifest.csv:generic-api-key:409
 7c4a65aac014dadd180b55a10b5f460326d3fe41:_bmad/_config/files-manifest.csv:generic-api-key:433
 
+# Commits 0046395, 5a40de9, edf3528: _bmad/_config/files-manifest.csv (lines 281, 282, 284, 300,
+# 409, 433) — same SHA256 content checksums as documented above (BMAD skill file
+# content-addressable fingerprints, not API keys). These commits appear on the dev-lead
+# branch history and were previously missing from the suppression list.
+00463959f7c39f2c65d7954524ce01e661553511:_bmad/_config/files-manifest.csv:generic-api-key:281
+00463959f7c39f2c65d7954524ce01e661553511:_bmad/_config/files-manifest.csv:generic-api-key:282
+00463959f7c39f2c65d7954524ce01e661553511:_bmad/_config/files-manifest.csv:generic-api-key:284
+00463959f7c39f2c65d7954524ce01e661553511:_bmad/_config/files-manifest.csv:generic-api-key:300
+00463959f7c39f2c65d7954524ce01e661553511:_bmad/_config/files-manifest.csv:generic-api-key:409
+00463959f7c39f2c65d7954524ce01e661553511:_bmad/_config/files-manifest.csv:generic-api-key:433
+
+# Commit 41765c6c: _bmad/_config/files-manifest.csv (lines 281, 282, 284, 300, 409, 433)
+# — same false-positive pattern: high-entropy SHA256 checksums in CSV manifest rows,
+# content-addressable fingerprints of BMAD skill files, not credentials.
+41765c6c4fc66b82f5607df95b482069139e1954:_bmad/_config/files-manifest.csv:generic-api-key:281
+41765c6c4fc66b82f5607df95b482069139e1954:_bmad/_config/files-manifest.csv:generic-api-key:282
+41765c6c4fc66b82f5607df95b482069139e1954:_bmad/_config/files-manifest.csv:generic-api-key:284
+41765c6c4fc66b82f5607df95b482069139e1954:_bmad/_config/files-manifest.csv:generic-api-key:300
+41765c6c4fc66b82f5607df95b482069139e1954:_bmad/_config/files-manifest.csv:generic-api-key:409
+41765c6c4fc66b82f5607df95b482069139e1954:_bmad/_config/files-manifest.csv:generic-api-key:433
+
+# Commit 5a40de92: same _bmad/_config/files-manifest.csv CSV rows (lines 281, 282, 284,
+# 300, 409, 433) as documented above — BMAD content-addressable file checksums, not credentials.
+5a40de92116169412709f7be5dec3acba0501953:_bmad/_config/files-manifest.csv:generic-api-key:281
+5a40de92116169412709f7be5dec3acba0501953:_bmad/_config/files-manifest.csv:generic-api-key:282
+5a40de92116169412709f7be5dec3acba0501953:_bmad/_config/files-manifest.csv:generic-api-key:284
+5a40de92116169412709f7be5dec3acba0501953:_bmad/_config/files-manifest.csv:generic-api-key:300
+5a40de92116169412709f7be5dec3acba0501953:_bmad/_config/files-manifest.csv:generic-api-key:409
+5a40de92116169412709f7be5dec3acba0501953:_bmad/_config/files-manifest.csv:generic-api-key:433
+
+# Commit 74dd36ed: same _bmad/_config/files-manifest.csv rows (lines 281, 282, 284, 300,
+# 409, 433) — SHA256 content checksums of BMAD skill files. Same false-positive justification
+# as other entries (checksums in CSV manifest, not API keys).
+74dd36ed843e245255ef59a503452945338f3fca:_bmad/_config/files-manifest.csv:generic-api-key:281
+74dd36ed843e245255ef59a503452945338f3fca:_bmad/_config/files-manifest.csv:generic-api-key:282
+74dd36ed843e245255ef59a503452945338f3fca:_bmad/_config/files-manifest.csv:generic-api-key:284
+74dd36ed843e245255ef59a503452945338f3fca:_bmad/_config/files-manifest.csv:generic-api-key:300
+74dd36ed843e245255ef59a503452945338f3fca:_bmad/_config/files-manifest.csv:generic-api-key:409
+74dd36ed843e245255ef59a503452945338f3fca:_bmad/_config/files-manifest.csv:generic-api-key:433
+
+# Commit edf35287: same _bmad/_config/files-manifest.csv rows (lines 281, 282, 284, 300,
+# 409, 433) — BMAD content-addressable file checksums, not credentials.
+edf3528742de7c0bd83dc513c159152353f711ae:_bmad/_config/files-manifest.csv:generic-api-key:281
+edf3528742de7c0bd83dc513c159152353f711ae:_bmad/_config/files-manifest.csv:generic-api-key:282
+edf3528742de7c0bd83dc513c159152353f711ae:_bmad/_config/files-manifest.csv:generic-api-key:284
+edf3528742de7c0bd83dc513c159152353f711ae:_bmad/_config/files-manifest.csv:generic-api-key:300
+edf3528742de7c0bd83dc513c159152353f711ae:_bmad/_config/files-manifest.csv:generic-api-key:409
+edf3528742de7c0bd83dc513c159152353f711ae:_bmad/_config/files-manifest.csv:generic-api-key:433
+
 # Commit e8cc0956: _bmad/_config/files-manifest.csv (lines 281, 282, 284, 300,
 # 409, 433) — CSV rows of the form "<file-path>","<sha256-hash>". The hash
 # column is a content-addressable fingerprint of BMAD skill files; gitleaks'
