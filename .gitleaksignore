@@ -214,3 +214,27 @@ a7c7e060359d709d21bc62fe80ba7504cf240c3e:_bmad/_config/files-manifest.csv:generi
 00463959f7c39f2c65d7954524ce01e661553511:_bmad/_config/files-manifest.csv:generic-api-key:300
 00463959f7c39f2c65d7954524ce01e661553511:_bmad/_config/files-manifest.csv:generic-api-key:409
 00463959f7c39f2c65d7954524ce01e661553511:_bmad/_config/files-manifest.csv:generic-api-key:433
+
+# Commits 6107c66e, b9ad0c5f, 9d10fb39: same _bmad/_config/files-manifest.csv CSV rows as above
+# (SHA256 content checksums of BMAD skill files). Same false-positive rationale; file content
+# checksums in CSV manifest, not API keys. All three are variants of the
+# "chore: add ECC integration, TEA module, and slim CLAUDE.md" commit appearing across different
+# branches. These appeared in the full-history scan for PR #298 (run 28049026465).
+6107c66e87b3b29fc4625b71b2813b4025a851a3:_bmad/_config/files-manifest.csv:generic-api-key:281
+6107c66e87b3b29fc4625b71b2813b4025a851a3:_bmad/_config/files-manifest.csv:generic-api-key:282
+6107c66e87b3b29fc4625b71b2813b4025a851a3:_bmad/_config/files-manifest.csv:generic-api-key:284
+6107c66e87b3b29fc4625b71b2813b4025a851a3:_bmad/_config/files-manifest.csv:generic-api-key:300
+6107c66e87b3b29fc4625b71b2813b4025a851a3:_bmad/_config/files-manifest.csv:generic-api-key:409
+6107c66e87b3b29fc4625b71b2813b4025a851a3:_bmad/_config/files-manifest.csv:generic-api-key:433
+b9ad0c5f78bf39d721924e8925c269d85b338735:_bmad/_config/files-manifest.csv:generic-api-key:281
+b9ad0c5f78bf39d721924e8925c269d85b338735:_bmad/_config/files-manifest.csv:generic-api-key:282
+b9ad0c5f78bf39d721924e8925c269d85b338735:_bmad/_config/files-manifest.csv:generic-api-key:284
+b9ad0c5f78bf39d721924e8925c269d85b338735:_bmad/_config/files-manifest.csv:generic-api-key:300
+b9ad0c5f78bf39d721924e8925c269d85b338735:_bmad/_config/files-manifest.csv:generic-api-key:409
+b9ad0c5f78bf39d721924e8925c269d85b338735:_bmad/_config/files-manifest.csv:generic-api-key:433
+9d10fb3917e4f220cc9ce88b5063129adbe905e3:_bmad/_config/files-manifest.csv:generic-api-key:281
+9d10fb3917e4f220cc9ce88b5063129adbe905e3:_bmad/_config/files-manifest.csv:generic-api-key:282
+9d10fb3917e4f220cc9ce88b5063129adbe905e3:_bmad/_config/files-manifest.csv:generic-api-key:284
+9d10fb3917e4f220cc9ce88b5063129adbe905e3:_bmad/_config/files-manifest.csv:generic-api-key:300
+9d10fb3917e4f220cc9ce88b5063129adbe905e3:_bmad/_config/files-manifest.csv:generic-api-key:409
+9d10fb3917e4f220cc9ce88b5063129adbe905e3:_bmad/_config/files-manifest.csv:generic-api-key:433
