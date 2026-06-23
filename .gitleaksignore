@@ -229,6 +229,11 @@ da36d9b36916087f02c4c367ad6107ab7dbdb152:_bmad/_config/files-manifest.csv:generi
 # Commits 85cb1f5f, edb82932, 720229a3: _bmad/_config/files-manifest.csv (lines 281, 282, 284, 300,
 # 409, 433) — same BMAD content-addressable file checksums as documented above. These commits appear
 # in the full-history scan as rebase/merge copies on dev-lead branches and other Git lineages.
+85cb1f5ffd6e0ed36ea87f8b2370a6746a5727c0:_bmad/_config/files-manifest.csv:generic-api-key:281
+85cb1f5ffd6e0ed36ea87f8b2370a6746a5727c0:_bmad/_config/files-manifest.csv:generic-api-key:282
+85cb1f5ffd6e0ed36ea87f8b2370a6746a5727c0:_bmad/_config/files-manifest.csv:generic-api-key:284
+85cb1f5ffd6e0ed36ea87f8b2370a6746a5727c0:_bmad/_config/files-manifest.csv:generic-api-key:300
+85cb1f5ffd6e0ed36ea87f8b2370a6746a5727c0:_bmad/_config/files-manifest.csv:generic-api-key:409
 85cb1f5ffd6e0ed36ea87f8b2370a6746a5727c0:_bmad/_config/files-manifest.csv:generic-api-key:433
 edb82932580a2ac446db7a79dba0ff3911f62183:_bmad/_config/files-manifest.csv:generic-api-key:281
 edb82932580a2ac446db7a79dba0ff3911f62183:_bmad/_config/files-manifest.csv:generic-api-key:282
