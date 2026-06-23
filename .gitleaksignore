@@ -209,3 +209,33 @@ edb82932580a2ac446db7a79dba0ff3911f62183:_bmad/_config/files-manifest.csv:generi
 # Commit 5a40de92: same _bmad/_config/files-manifest.csv CSV row as above
 # (SHA256 content checksum of BMAD skill files). Same false-positive rationale.
 5a40de92116169412709f7be5dec3acba0501953:_bmad/_config/files-manifest.csv:generic-api-key:433
+
+# Commit 7f87a9bb: same _bmad/_config/files-manifest.csv CSV rows as above
+# (SHA256 content checksums of BMAD skill files). Same false-positive rationale.
+7f87a9bb29faa938ce55b6375fac0039b08d4573:_bmad/_config/files-manifest.csv:generic-api-key:281
+7f87a9bb29faa938ce55b6375fac0039b08d4573:_bmad/_config/files-manifest.csv:generic-api-key:282
+7f87a9bb29faa938ce55b6375fac0039b08d4573:_bmad/_config/files-manifest.csv:generic-api-key:284
+7f87a9bb29faa938ce55b6375fac0039b08d4573:_bmad/_config/files-manifest.csv:generic-api-key:300
+7f87a9bb29faa938ce55b6375fac0039b08d4573:_bmad/_config/files-manifest.csv:generic-api-key:409
+7f87a9bb29faa938ce55b6375fac0039b08d4573:_bmad/_config/files-manifest.csv:generic-api-key:433
+
+# Commit 85cb1f5f: same _bmad/_config/files-manifest.csv CSV rows as above
+# (SHA256 content checksums of BMAD skill files). Same false-positive rationale.
+85cb1f5ffd6e0ed36ea87f8b2370a6746a5727c0:_bmad/_config/files-manifest.csv:generic-api-key:281
+85cb1f5ffd6e0ed36ea87f8b2370a6746a5727c0:_bmad/_config/files-manifest.csv:generic-api-key:282
+85cb1f5ffd6e0ed36ea87f8b2370a6746a5727c0:_bmad/_config/files-manifest.csv:generic-api-key:284
+85cb1f5ffd6e0ed36ea87f8b2370a6746a5727c0:_bmad/_config/files-manifest.csv:generic-api-key:300
+85cb1f5ffd6e0ed36ea87f8b2370a6746a5727c0:_bmad/_config/files-manifest.csv:generic-api-key:409
+85cb1f5ffd6e0ed36ea87f8b2370a6746a5727c0:_bmad/_config/files-manifest.csv:generic-api-key:433
+
+# Commit edf35287: same _bmad/_config/files-manifest.csv CSV rows as above
+# (SHA256 content checksums of BMAD skill files), plus a line 681 in
+# api-testing-patterns.md containing a test-design pattern with an expired/example
+# token. Same false-positive rationale: file-content checksums and test documentation.
+edf3528742de7c0bd83dc513c159152353f711ae:_bmad/_config/files-manifest.csv:generic-api-key:281
+edf3528742de7c0bd83dc513c159152353f711ae:_bmad/_config/files-manifest.csv:generic-api-key:282
+edf3528742de7c0bd83dc513c159152353f711ae:_bmad/_config/files-manifest.csv:generic-api-key:284
+edf3528742de7c0bd83dc513c159152353f711ae:_bmad/_config/files-manifest.csv:generic-api-key:300
+edf3528742de7c0bd83dc513c159152353f711ae:_bmad/_config/files-manifest.csv:generic-api-key:409
+edf3528742de7c0bd83dc513c159152353f711ae:_bmad/_config/files-manifest.csv:generic-api-key:433
+edf3528742de7c0bd83dc513c159152353f711ae:_bmad/tea/testarch/knowledge/api-testing-patterns.md:generic-api-key:681
