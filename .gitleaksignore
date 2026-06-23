@@ -239,3 +239,30 @@ edf3528742de7c0bd83dc513c159152353f711ae:_bmad/_config/files-manifest.csv:generi
 edf3528742de7c0bd83dc513c159152353f711ae:_bmad/_config/files-manifest.csv:generic-api-key:409
 edf3528742de7c0bd83dc513c159152353f711ae:_bmad/_config/files-manifest.csv:generic-api-key:433
 edf3528742de7c0bd83dc513c159152353f711ae:_bmad/tea/testarch/knowledge/api-testing-patterns.md:generic-api-key:681
+
+# Commit 5a40de92 (additional lines): missing suppressions for lines 281, 282, 284,
+# 300, 409 in _bmad/_config/files-manifest.csv (SHA256 content checksums of BMAD
+# skill files). Same false-positive rationale. Line 433 already suppressed above.
+5a40de92116169412709f7be5dec3acba0501953:_bmad/_config/files-manifest.csv:generic-api-key:281
+5a40de92116169412709f7be5dec3acba0501953:_bmad/_config/files-manifest.csv:generic-api-key:282
+5a40de92116169412709f7be5dec3acba0501953:_bmad/_config/files-manifest.csv:generic-api-key:284
+5a40de92116169412709f7be5dec3acba0501953:_bmad/_config/files-manifest.csv:generic-api-key:300
+5a40de92116169412709f7be5dec3acba0501953:_bmad/_config/files-manifest.csv:generic-api-key:409
+
+# Commit a7c7e060: same _bmad/_config/files-manifest.csv CSV rows as above
+# (SHA256 content checksums of BMAD skill files). Same false-positive rationale.
+a7c7e060359d709d21bc62fe80ba7504cf240c3e:_bmad/_config/files-manifest.csv:generic-api-key:281
+a7c7e060359d709d21bc62fe80ba7504cf240c3e:_bmad/_config/files-manifest.csv:generic-api-key:282
+a7c7e060359d709d21bc62fe80ba7504cf240c3e:_bmad/_config/files-manifest.csv:generic-api-key:284
+a7c7e060359d709d21bc62fe80ba7504cf240c3e:_bmad/_config/files-manifest.csv:generic-api-key:300
+a7c7e060359d709d21bc62fe80ba7504cf240c3e:_bmad/_config/files-manifest.csv:generic-api-key:409
+a7c7e060359d709d21bc62fe80ba7504cf240c3e:_bmad/_config/files-manifest.csv:generic-api-key:433
+
+# Commit 00463959: same _bmad/_config/files-manifest.csv CSV rows as above
+# (SHA256 content checksums of BMAD skill files). Same false-positive rationale.
+00463959f7c39f2c65d7954524ce01e661553511:_bmad/_config/files-manifest.csv:generic-api-key:281
+00463959f7c39f2c65d7954524ce01e661553511:_bmad/_config/files-manifest.csv:generic-api-key:282
+00463959f7c39f2c65d7954524ce01e661553511:_bmad/_config/files-manifest.csv:generic-api-key:284
+00463959f7c39f2c65d7954524ce01e661553511:_bmad/_config/files-manifest.csv:generic-api-key:300
+00463959f7c39f2c65d7954524ce01e661553511:_bmad/_config/files-manifest.csv:generic-api-key:409
+00463959f7c39f2c65d7954524ce01e661553511:_bmad/_config/files-manifest.csv:generic-api-key:433
