@@ -1,6 +1,5 @@
 # Gitleaks configuration — enables allowlist-based false-positive suppression
 # See: https://github.com/gitleaks/gitleaks?tab=readme-ov-file#allowlist
 
-[allowlist]
+[extend]
 useDefault = true
-paths = [".gitleaksignore"]

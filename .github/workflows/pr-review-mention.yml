@@ -17,5 +17,7 @@ jobs:
       pull-requests: write
       statuses: read
     uses: petry-projects/.github/.github/workflows/pr-review-mention-reusable.yml@376a4fcb1117444595e3e702fa450873d0e54310 # v2
-    secrets: inherit
+    secrets:
+      GH_PAT_WORKFLOWS: ${{ secrets.GH_PAT_WORKFLOWS }}
+      DON_PETRY_BOT_GH_PAT: ${{ secrets.DON_PETRY_BOT_GH_PAT }}
 
