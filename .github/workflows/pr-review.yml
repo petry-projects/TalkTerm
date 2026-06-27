@@ -4,9 +4,13 @@ name: PR Review Agent
 # pinned to the known-good `pr-review/stable` channel. Adopted from the validated
 # `.github-private/pr-review-trigger.yml` template (#536 consumer fan-out).
 #
-# - Version selection is the `pr-review/stable` tag. The `uses:` line is pinned
-#   to the tag's current commit SHA and must be bumped when the tag is promoted.
-#   `agent_ref` tracks the mutable tag so agent scripts use the promoted version.
+# - Version selection is the MOVING `pr-review/stable` tag — this file never
+#   changes on promotion; a release is rolled out by moving the tag centrally.
+#   Do NOT pin the `uses:` ref to a commit SHA here: Dependabot's github-actions
+#   updater treats a SHA-pinned reusable as a versioned dependency and auto-bumps
+#   it to the newest tag, which dragged this caller onto the unreleased `next`
+#   v1.8.0 ahead of stable (#310). A non-semver moving tag is left untouched by
+#   Dependabot, matching the other consumers (markets/ContentTwin/...).
 # - `agent_ref: pr-review/stable` pins the agent's own scripts to the same
 #   channel (#506), so the review logic AND scripts run the known-good version.
 # - Secrets are passed explicitly to the reusable workflow.
@@ -47,7 +51,7 @@ jobs:
       contents: read
       pull-requests: write
       checks: read
-    uses: petry-projects/.github-private/.github/workflows/pr-review.yml@ded84ce4820dce379f177f9992beb74483f6d6b4 # pr-review/stable (v1.7.0)
+    uses: petry-projects/.github-private/.github/workflows/pr-review.yml@pr-review/stable
     with:
       agent_ref: pr-review/stable
       pr_url: ${{ inputs.pr_url || '' }}
