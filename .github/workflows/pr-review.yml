@@ -11,6 +11,12 @@ name: PR Review Agent
 #   it to the newest tag, which dragged this caller onto the unreleased `next`
 #   v1.8.0 ahead of stable (#310). A non-semver moving tag is left untouched by
 #   Dependabot, matching the other consumers (markets/ContentTwin/...).
+# - The channel-pinned `uses:` line carries the inline
+#   `# NOSONAR(githubactions:S7637)` marker — the org-wide canonical exemption
+#   for first-party reusable-ref caller stubs (#549). It suppresses SonarCloud's
+#   "pin actions to a full SHA" rule at analysis time, clearing BOTH the quality
+#   gate AND the code-scanning SARIF alert (supersedes the per-file
+#   `sonar-project.properties` exemption, which only quieted the gate).
 # - `agent_ref: pr-review/stable` pins the agent's own scripts to the same
 #   channel (#506), so the review logic AND scripts run the known-good version.
 # - Secrets are passed explicitly to the reusable workflow.
@@ -51,7 +57,7 @@ jobs:
       contents: read
       pull-requests: write
       checks: read
-    uses: petry-projects/.github-private/.github/workflows/pr-review.yml@pr-review/stable
+    uses: petry-projects/.github-private/.github/workflows/pr-review.yml@pr-review/stable  # NOSONAR(githubactions:S7637) first-party channel ref
     with:
       agent_ref: pr-review/stable
       pr_url: ${{ inputs.pr_url || '' }}
