@@ -44,5 +44,6 @@ permissions: {}
 
 jobs:
   initiative-planner:
-    uses: petry-projects/.github/.github/workflows/initiative-planner-reusable.yml@initiative-planner/ring1  # NOSONAR(githubactions:S7637) first-party channel ref
-    secrets: inherit
+    uses: petry-projects/.github/.github/workflows/initiative-planner-reusable.yml@initiative-planner/ring1
+    secrets:
+      GH_PAT_WORKFLOWS: ${{ secrets.GH_PAT_WORKFLOWS }}
