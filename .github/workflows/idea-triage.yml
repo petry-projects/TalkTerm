@@ -42,6 +42,5 @@ permissions: {}
 
 jobs:
   idea-triage:
-    uses: petry-projects/.github/.github/workflows/idea-triage-reusable.yml@idea-triage/ring1
-    secrets:
-      GH_PAT_WORKFLOWS: ${{ secrets.GH_PAT_WORKFLOWS }}
+    uses: petry-projects/.github/.github/workflows/idea-triage-reusable.yml@idea-triage/ring1  # NOSONAR(githubactions:S7637) first-party channel ref
+    secrets: inherit
