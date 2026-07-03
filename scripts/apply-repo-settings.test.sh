@@ -12,16 +12,26 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/apply-repo-settings.sh"
 
 fails=0
-pass() { echo "ok   - $1"; }
-fail() { echo "FAIL - $1"; fails=$((fails + 1)); }
+pass() {
+  local desc="$1"
+  echo "ok   - $desc"
+  return
+}
+fail() {
+  local desc="$1"
+  echo "FAIL - $desc"
+  fails=$((fails + 1))
+  return
+}
 
 assert_eq() {
   local desc="$1" expected="$2" actual="$3"
-  if [ "$expected" = "$actual" ]; then
+  if [[ "$expected" = "$actual" ]]; then
     pass "$desc"
   else
     fail "$desc (expected '$expected', got '$actual')"
   fi
+  return
 }
 
 # ── auto_trigger_status ───────────────────────────────────────────────────────
@@ -50,7 +60,7 @@ assert_eq "resolve_repo: GITHUB_REPOSITORY fallback" \
 assert_eq "resolve_repo: REPO env fallback" \
   "petry-projects/TalkTerm" "$(ORG=petry-projects REPO=petry-projects/TalkTerm resolve_repo "")"
 
-if [ "$fails" -eq 0 ]; then
+if [[ "$fails" -eq 0 ]]; then
   echo "All tests passed."
   exit 0
 fi

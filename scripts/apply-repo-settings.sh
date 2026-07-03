@@ -35,13 +35,14 @@ readonly -a CHECK_SUITE_APP_IDS=(1236702 347564) # Claude, CodeRabbit
 # Returns non-zero if no repo can be determined.
 resolve_repo() {
   local repo="${1:-}"
-  [ -z "$repo" ] && repo="${GITHUB_REPOSITORY:-}"
-  [ -z "$repo" ] && repo="${REPO:-}"
-  [ -z "$repo" ] && return 1
+  [[ -z "$repo" ]] && repo="${GITHUB_REPOSITORY:-}"
+  [[ -z "$repo" ]] && repo="${REPO:-}"
+  [[ -z "$repo" ]] && return 1
   case "$repo" in
     */*) printf '%s' "$repo" ;;
     *) printf '%s/%s' "${ORG:-petry-projects}" "$repo" ;;
   esac
+  return
 }
 
 # auto_trigger_status <prefs_json> <app_id>
@@ -49,7 +50,7 @@ resolve_repo() {
 # "missing" (app absent from preferences — never run in repo, so compliant).
 auto_trigger_status() {
   local json="${1:-}" app_id="$2"
-  if [ -z "$json" ]; then
+  if [[ -z "$json" ]]; then
     printf 'missing'
     return 0
   fi
@@ -57,6 +58,7 @@ auto_trigger_status() {
     '.preferences.auto_trigger_checks // []
      | map(select(.app_id == $id))
      | if length == 0 then "missing" else (.[0].setting | tostring) end'
+  return
 }
 
 # apply_security_and_analysis <owner/repo>
@@ -74,6 +76,7 @@ apply_security_and_analysis() {
   }
 }
 JSON
+  return
 }
 
 # apply_check_suite_prefs <owner/repo>
@@ -88,7 +91,7 @@ apply_check_suite_prefs() {
 
   local prefs status app_id
   local -a to_disable=()
-  if prefs=$(gh api "repos/${repo}/check-suites/preferences" 2>/dev/null) && [ -n "$prefs" ]; then
+  if prefs=$(gh api "repos/${repo}/check-suites/preferences" 2>/dev/null) && [[ -n "$prefs" ]]; then
     for app_id in "${CHECK_SUITE_APP_IDS[@]}"; do
       status=$(auto_trigger_status "$prefs" "$app_id")
       case "$status" in
@@ -102,7 +105,7 @@ apply_check_suite_prefs() {
     to_disable=("${CHECK_SUITE_APP_IDS[@]}")
   fi
 
-  if [ "${#to_disable[@]}" -eq 0 ]; then
+  if [[ "${#to_disable[@]}" -eq 0 ]]; then
     echo "  already compliant — nothing to do"
     return 0
   fi
@@ -111,10 +114,11 @@ apply_check_suite_prefs() {
   payload=$(printf '%s\n' "${to_disable[@]}" |
     jq -Rcn '[inputs | tonumber] | map({app_id: ., setting: false}) | {auto_trigger_checks: .}')
   gh api -X PATCH "repos/${repo}/check-suites/preferences" --input - <<<"$payload"
+  return
 }
 
 # Run main only when executed directly, so tests can source the helpers.
-if [ "${BASH_SOURCE[0]:-$0}" = "$0" ]; then
+if [[ "${BASH_SOURCE[0]:-$0}" = "$0" ]]; then
   set -euo pipefail
   repo="$(resolve_repo "${1:-}")" || {
     echo "Usage: $0 <repo-name|owner/repo>  (or set GITHUB_REPOSITORY)" >&2
