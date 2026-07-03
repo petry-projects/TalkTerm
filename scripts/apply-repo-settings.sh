@@ -35,9 +35,9 @@ readonly -a CHECK_SUITE_APP_IDS=(1236702 347564) # Claude, CodeRabbit
 # Returns non-zero if no repo can be determined.
 resolve_repo() {
   local repo="${1:-}"
-  [ -z "$repo" ] && repo="${GITHUB_REPOSITORY:-}"
-  [ -z "$repo" ] && repo="${REPO:-}"
-  [ -z "$repo" ] && return 1
+  [[ -z "$repo" ]] && repo="${GITHUB_REPOSITORY:-}"
+  [[ -z "$repo" ]] && repo="${REPO:-}"
+  [[ -z "$repo" ]] && return 1
   case "$repo" in
     */*) printf '%s' "$repo" ;;
     *) printf '%s/%s' "${ORG:-petry-projects}" "$repo" ;;
@@ -49,7 +49,7 @@ resolve_repo() {
 # "missing" (app absent from preferences — never run in repo, so compliant).
 auto_trigger_status() {
   local json="${1:-}" app_id="$2"
-  if [ -z "$json" ]; then
+  if [[ -z "$json" ]]; then
     printf 'missing'
     return 0
   fi
