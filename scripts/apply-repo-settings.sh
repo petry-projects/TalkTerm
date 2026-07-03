@@ -42,7 +42,6 @@ resolve_repo() {
     */*) printf '%s' "$repo" ;;
     *) printf '%s/%s' "${ORG:-petry-projects}" "$repo" ;;
   esac
-  return
 }
 
 # auto_trigger_status <prefs_json> <app_id>
@@ -58,7 +57,6 @@ auto_trigger_status() {
     '.preferences.auto_trigger_checks // []
      | map(select(.app_id == $id))
      | if length == 0 then "missing" else (.[0].setting | tostring) end'
-  return
 }
 
 # apply_security_and_analysis <owner/repo>
@@ -76,7 +74,6 @@ apply_security_and_analysis() {
   }
 }
 JSON
-  return
 }
 
 # apply_check_suite_prefs <owner/repo>
@@ -114,11 +111,10 @@ apply_check_suite_prefs() {
   payload=$(printf '%s\n' "${to_disable[@]}" |
     jq -Rcn '[inputs | tonumber] | map({app_id: ., setting: false}) | {auto_trigger_checks: .}')
   gh api -X PATCH "repos/${repo}/check-suites/preferences" --input - <<<"$payload"
-  return
 }
 
 # Run main only when executed directly, so tests can source the helpers.
-if [[ "${BASH_SOURCE[0]:-$0}" = "$0" ]]; then
+if [[ "${BASH_SOURCE[0]:-$0}" == "$0" ]]; then
   set -euo pipefail
   repo="$(resolve_repo "${1:-}")" || {
     echo "Usage: $0 <repo-name|owner/repo>  (or set GITHUB_REPOSITORY)" >&2
