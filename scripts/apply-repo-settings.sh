@@ -74,7 +74,6 @@ apply_security_and_analysis() {
   }
 }
 JSON
-  return
 }
 
 # apply_check_suite_prefs <owner/repo>
