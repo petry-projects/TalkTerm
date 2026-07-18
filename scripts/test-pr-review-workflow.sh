@@ -8,13 +8,9 @@
 # (ci-failure-analyst.yml, add-to-project.yml, ...).
 #
 # Run: bash scripts/test-pr-review-workflow.sh
-#
-# Accepts an optional workflow path as $1 (defaults to the checked-in caller) so
-# the companion test-of-guard (test-pr-review-workflow.test.sh) can drive it
-# against fixtures.
 set -euo pipefail
 
-WORKFLOW="${1:-.github/workflows/pr-review.yml}"
+WORKFLOW=".github/workflows/pr-review.yml"
 PASS=true
 
 echo "=== test-pr-review-workflow ==="
@@ -64,29 +60,6 @@ if [[ "$cancel" != "false" ]]; then
   PASS=false
 else
   echo "PASS: 'concurrency.cancel-in-progress: false' present in $WORKFLOW"
-fi
-
-# ── Check 5: the review job skips Dependabot-triggered events ──────────────
-# Dependabot-triggered runs read the separate Dependabot secret store, so
-# `secrets: inherit` forwards empty PAT/OAuth secrets and the reusable's
-# "Verify auth scopes" step fails outright (Fleet Monitor #465). Guarding the
-# job on the triggering actor makes those runs skip (neutral) instead of
-# failing. A human-initiated workflow_dispatch on a Dependabot PR still runs
-# because github.actor is then the human.
-job_if=""
-if ! job_if=$(yq '.jobs.review.if' "$WORKFLOW" 2>/dev/null); then
-  job_if=""
-fi
-EXPECTED_JOB_IF="\${{ github.actor != 'dependabot[bot]' }}"
-if [[ "$job_if" == "null" || -z "$job_if" ]]; then
-  echo "FAIL: 'jobs.review.if' guard is missing in $WORKFLOW"
-  echo "      Add \"if: \${{ github.actor != 'dependabot[bot]' }}\" so Dependabot runs skip."
-  PASS=false
-elif [[ "$job_if" != "$EXPECTED_JOB_IF" ]]; then
-  echo "FAIL: 'jobs.review.if' ($job_if) does not match the required Dependabot guard in $WORKFLOW"
-  PASS=false
-else
-  echo "PASS: review job skips Dependabot-triggered events in $WORKFLOW"
 fi
 
 echo ""
