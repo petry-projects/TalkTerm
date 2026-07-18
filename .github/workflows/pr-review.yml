@@ -51,6 +51,25 @@ on:
 
 permissions: {}
 
+# Serialize redundant runs for the same PR head commit. The overlapping triggers
+# above (check_suite:completed, pull_request:synchronize, pull_request_review)
+# all fire for one commit; without a concurrency lane they launch parallel
+# duplicate reviews, inflating run duration and producing cancelled runs
+# (Fleet Monitor #374). Grouping per head SHA lets a *new* commit start its own
+# run while same-SHA events share a lane. cancel-in-progress: false so an
+# in-flight review is never interrupted — the reusable's per-head-SHA
+# idempotency no-ops the queued duplicate. workflow_dispatch falls back to
+# pr_url, and any other event (e.g. repository_dispatch) to run_id (unique, so
+# never blocked). Matches the sibling-caller convention (ci-failure-analyst.yml).
+concurrency:
+  group: >-
+    pr-review-${{
+      github.event.pull_request.head.sha ||
+      github.event.check_suite.head_sha ||
+      github.event.inputs.pr_url ||
+      github.run_id }}
+  cancel-in-progress: false
+
 jobs:
   review:
     permissions:
