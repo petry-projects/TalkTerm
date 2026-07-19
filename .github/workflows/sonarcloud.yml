@@ -30,3 +30,10 @@ jobs:
         id: sonar
         if: ${{ env.SONAR_TOKEN != '' }}
         uses: SonarSource/sonarqube-scan-action@713881670b6b3676cda39549040e2d88c70d582e # v8.2.0
+        continue-on-error: true
+      # Retry once when the first attempt failed on a transient scanner-CLI
+      # download error. Only re-runs on failure so a healthy first attempt is
+      # never scanned twice.
+      - name: SonarCloud Scan (retry)
+        if: ${{ env.SONAR_TOKEN != '' && steps.sonar.outcome == 'failure' }}
+        uses: SonarSource/sonarqube-scan-action@713881670b6b3676cda39549040e2d88c70d582e # v8.2.0
