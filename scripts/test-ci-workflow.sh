@@ -30,7 +30,10 @@ fi
 echo "PASS: $WORKFLOW exists"
 
 # ── Check 2: a top-level concurrency block is present ──────────────────────
-group=$(yq '.concurrency.group' "$WORKFLOW" 2>/dev/null)
+if ! group=$(yq '.concurrency.group' "$WORKFLOW" 2>/dev/null); then
+  echo "FAIL: yq failed to parse $WORKFLOW. Please check if it is valid YAML."
+  exit 1
+fi
 if [[ "$group" == "null" || -z "$group" ]]; then
   echo "FAIL: no top-level 'concurrency.group' block in $WORKFLOW"
   echo "      Add one to serialize redundant runs of the same ref."
@@ -43,7 +46,8 @@ fi
 # Grouping per ref lets each branch/PR have its own lane while redundant runs
 # for the same ref share it. Main and each PR branch stay isolated.
 if [[ "$PASS" == "true" ]]; then
-  if [[ ! "$group" =~ github\.ref ]]; then
+  ref_pattern='github\.ref'
+  if [[ ! "$group" =~ $ref_pattern ]]; then
     echo "FAIL: concurrency group ($group) is not keyed on github.ref in $WORKFLOW"
     PASS=false
   else
@@ -55,7 +59,10 @@ fi
 # Outdated PR runs for a superseded commit are worthless and should be cancelled,
 # but every push to main must be verified and must never be cancelled. Encoding
 # this as `${{ github.event_name == 'pull_request' }}` satisfies both.
-cancel=$(yq '.concurrency.cancel-in-progress' "$WORKFLOW" 2>/dev/null)
+if ! cancel=$(yq '.concurrency.cancel-in-progress' "$WORKFLOW" 2>/dev/null); then
+  echo "FAIL: yq failed to parse $WORKFLOW. Please check if it is valid YAML."
+  exit 1
+fi
 if [[ "$cancel" == "null" || -z "$cancel" ]]; then
   echo "FAIL: 'concurrency.cancel-in-progress' is missing in $WORKFLOW"
   PASS=false
