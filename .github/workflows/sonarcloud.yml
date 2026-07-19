@@ -24,16 +24,16 @@ jobs:
         with:
           fetch-depth: 0
       # First attempt. continue-on-error lets the retry step below recover from
-      # transient 403/5xx responses from binaries.sonarsource.com (the scanner
-      # CLI download), without failing the job on a single CDN blip.
+      # any failure (introduced for transient 403/5xx responses from
+      # binaries.sonarsource.com during scanner CLI download) without failing
+      # the job on a single blip.
       - name: SonarCloud Scan
         id: sonar
         if: ${{ env.SONAR_TOKEN != '' }}
         uses: SonarSource/sonarqube-scan-action@713881670b6b3676cda39549040e2d88c70d582e # v8.2.0
         continue-on-error: true
-      # Retry once when the first attempt failed on a transient scanner-CLI
-      # download error. Only re-runs on failure so a healthy first attempt is
-      # never scanned twice.
+      # Retry once on any failure of the first attempt. Only re-runs on
+      # failure so a healthy first attempt is never scanned twice.
       - name: SonarCloud Scan (retry)
         if: ${{ env.SONAR_TOKEN != '' && steps.sonar.outcome == 'failure' }}
         uses: SonarSource/sonarqube-scan-action@713881670b6b3676cda39549040e2d88c70d582e # v8.2.0
