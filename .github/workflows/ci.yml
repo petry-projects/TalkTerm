@@ -20,6 +20,15 @@ on:
 
 permissions: {}
 
+# Serialize CI per Git ref so redundant runs don't pile up (Fleet Monitor #380).
+# When the same ref receives several pushes in quick succession (e.g. a bot adding
+# commits to a PR), outdated pull_request runs are cancelled since only the latest
+# commit matters. main-branch pushes are never cancelled so every merged commit is
+# verified. Mirrors the concurrency convention of every sibling workflow.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   secret-scan:
     name: Secret scan (gitleaks)
