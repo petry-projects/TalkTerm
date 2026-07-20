@@ -29,6 +29,18 @@ repository:
   squash_merge_commit_title: PR_TITLE
   squash_merge_commit_message: COMMIT_MESSAGES
 
+# --- pr-quality ruleset: squash-only merges ---
+# Standard: https://github.com/petry-projects/.github/blob/main/standards/github-settings.md#pr-quality--standard-ruleset-all-repositories
+#
+# Repo-level merge methods stay all-true (above) to avoid conflicts with admin
+# overrides; the `pr-quality` ruleset restricts the default branch to squash-only
+# via its allowed_merge_methods parameter (compliance: ruleset-drift-pr-quality-allowed_merge_methods).
+#
+# The ruleset JSON's source of truth lives in petry-projects/.github
+# (standards/rulesets/pr-quality.json) and is applied org-wide by apply-rulesets.sh.
+# scripts/apply-repo-settings.sh additionally reconciles allowed_merge_methods to
+# [squash] on push to main + weekly, so drift is caught between compliance audits.
+
 # --- Check suite auto-trigger ---
 # Standard: https://github.com/petry-projects/.github/blob/main/standards/github-settings.md
 #
