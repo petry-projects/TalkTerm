@@ -148,6 +148,26 @@ else
   pass "pr_quality_reconcile_payload: empty input -> non-zero exit"
 fi
 
+# ── pr_quality_merge_methods_status ───────────────────────────────────────────
+ruleset_squash='{"rules":[{"type":"pull_request","parameters":{"allowed_merge_methods":["squash"]}}]}'
+ruleset_drifted='{"rules":[{"type":"pull_request","parameters":{"allowed_merge_methods":["merge","rebase","squash"]}}]}'
+ruleset_unsorted='{"rules":[{"type":"pull_request","parameters":{"allowed_merge_methods":["squash","merge"]}}]}'
+ruleset_no_pr='{"rules":[{"type":"required_status_checks","parameters":{}}]}'
+ruleset_no_methods='{"rules":[{"type":"pull_request","parameters":{}}]}'
+
+assert_eq "pr_quality_merge_methods_status: squash-only -> squash" \
+  "squash" "$(pr_quality_merge_methods_status "$ruleset_squash")"
+assert_eq "pr_quality_merge_methods_status: drifted -> merge,rebase,squash" \
+  "merge,rebase,squash" "$(pr_quality_merge_methods_status "$ruleset_drifted")"
+assert_eq "pr_quality_merge_methods_status: unsorted input is sorted" \
+  "merge,squash" "$(pr_quality_merge_methods_status "$ruleset_unsorted")"
+assert_eq "pr_quality_merge_methods_status: no pull_request rule -> missing" \
+  "missing" "$(pr_quality_merge_methods_status "$ruleset_no_pr")"
+assert_eq "pr_quality_merge_methods_status: rule without methods -> missing" \
+  "missing" "$(pr_quality_merge_methods_status "$ruleset_no_methods")"
+assert_eq "pr_quality_merge_methods_status: empty string -> missing" \
+  "missing" "$(pr_quality_merge_methods_status "")"
+
 # ── resolve_repo ──────────────────────────────────────────────────────────────
 assert_eq "resolve_repo: bare name -> org/name" \
   "petry-projects/TalkTerm" "$(ORG=petry-projects resolve_repo "TalkTerm")"
