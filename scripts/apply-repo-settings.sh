@@ -29,6 +29,14 @@
 # those suites, permanently blocking auto-merge.
 readonly -a CHECK_SUITE_APP_IDS=(1236702 347564) # Claude, CodeRabbit
 
+# The pr-quality ruleset enforces squash-only merges. The repo-level merge
+# settings stay all-true (see .github/settings.yml); the ruleset restricts the
+# allowed methods on the default branch to squash only.
+# Standard: petry-projects/.github/standards/github-settings.md
+#           #pr-quality--standard-ruleset-all-repositories
+readonly PR_QUALITY_RULESET_NAME='pr-quality'
+readonly PR_QUALITY_MERGE_METHOD='squash'
+
 # resolve_repo <arg>
 # Resolves the target "owner/repo". Precedence: positional arg, then
 # GITHUB_REPOSITORY, then REPO. A bare name is expanded to "<ORG>/<name>".
