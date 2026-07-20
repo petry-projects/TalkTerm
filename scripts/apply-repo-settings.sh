@@ -152,20 +152,25 @@ apply_pr_quality_merge_methods() {
   echo "Reconciling ${PR_QUALITY_RULESET_NAME} ruleset merge methods for ${repo} ..."
 
   local ruleset_id
-  ruleset_id=$(gh api "repos/${repo}/rulesets" \
-    --jq "map(select(.name == \"${PR_QUALITY_RULESET_NAME}\")) | .[0].id // empty" 2>/dev/null)
+  if ! ruleset_id=$(gh api "repos/${repo}/rulesets" \
+    --jq "map(select(.name == \"${PR_QUALITY_RULESET_NAME}\")) | .[0].id // empty" 2>/dev/null); then
+    echo "  failed to query rulesets for ${repo}"
+    return 1
+  fi
   if [[ -z "$ruleset_id" ]]; then
     echo "  ${PR_QUALITY_RULESET_NAME} ruleset not found — org automation owns creation, skipping"
     return 0
   fi
 
   local ruleset status
-  ruleset=$(gh api "repos/${repo}/rulesets/${ruleset_id}" 2>/dev/null)
-  if [[ -z "$ruleset" ]]; then
+  if ! ruleset=$(gh api "repos/${repo}/rulesets/${ruleset_id}" 2>/dev/null) || [[ -z "$ruleset" ]]; then
     echo "  could not read ruleset ${ruleset_id} — skipping"
     return 0
   fi
-  status=$(pr_quality_merge_methods_status "$ruleset")
+  if ! status=$(pr_quality_merge_methods_status "$ruleset"); then
+    echo "  failed to parse ruleset merge methods status"
+    return 1
+  fi
   if [[ "$status" == "$PR_QUALITY_MERGE_METHOD" ]]; then
     echo "  already ${PR_QUALITY_MERGE_METHOD}-only — nothing to do"
     return 0
@@ -173,7 +178,7 @@ apply_pr_quality_merge_methods() {
   echo "  merge methods '${status}' drifted — reconciling to ${PR_QUALITY_MERGE_METHOD}-only"
 
   local payload
-  payload=$(printf '%s' "$ruleset" | jq \
+  if ! payload=$(printf '%s' "$ruleset" | jq \
     --arg method "$PR_QUALITY_MERGE_METHOD" '
     {
       name: .name,
@@ -187,7 +192,10 @@ apply_pr_quality_merge_methods() {
           then .parameters.allowed_merge_methods = [$method]
           else . end
       ]
-    }')
+    }'); then
+    echo "  failed to generate payload for ruleset update"
+    return 1
+  fi
   gh api -X PUT "repos/${repo}/rulesets/${ruleset_id}" --input - <<<"$payload"
 }
 
