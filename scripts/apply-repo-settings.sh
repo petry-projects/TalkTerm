@@ -29,6 +29,14 @@
 # those suites, permanently blocking auto-merge.
 readonly -a CHECK_SUITE_APP_IDS=(1236702 347564) # Claude, CodeRabbit
 
+# The pr-quality ruleset enforces squash-only merges. The repo-level merge
+# settings stay all-true (see .github/settings.yml); the ruleset restricts the
+# allowed methods on the default branch to squash only.
+# Standard: petry-projects/.github/standards/github-settings.md
+#           #pr-quality--standard-ruleset-all-repositories
+readonly PR_QUALITY_RULESET_NAME='pr-quality'
+readonly PR_QUALITY_MERGE_METHOD='squash'
+
 # resolve_repo <arg>
 # Resolves the target "owner/repo". Precedence: positional arg, then
 # GITHUB_REPOSITORY, then REPO. A bare name is expanded to "<ORG>/<name>".
@@ -113,6 +121,84 @@ apply_check_suite_prefs() {
   gh api -X PATCH "repos/${repo}/check-suites/preferences" --input - <<<"$payload"
 }
 
+# pr_quality_merge_methods_status <ruleset_json>
+# Echoes the ruleset's pull_request-rule allowed_merge_methods as a sorted,
+# comma-joined string (e.g. "squash" or "merge,rebase,squash"), or "missing"
+# when the JSON is empty, has no pull_request rule, or that rule declares no
+# allowed_merge_methods (GitHub omits the key when all methods are permitted).
+pr_quality_merge_methods_status() {
+  local json="${1:-}"
+  if [[ -z "$json" ]]; then
+    printf 'missing'
+    return 0
+  fi
+  printf '%s' "$json" | jq -r '
+    (.rules // [])
+    | map(select(.type == "pull_request"))
+    | if length == 0 then "missing"
+      else (.[0].parameters.allowed_merge_methods // []) as $m
+        | if ($m | length) == 0 then "missing" else ($m | sort | join(",")) end
+      end'
+}
+
+# apply_pr_quality_merge_methods <owner/repo>
+# Reconciles the pr-quality ruleset's allowed_merge_methods to squash-only.
+# Skips when the ruleset is absent (org automation has not created it yet) or
+# already compliant. Otherwise PUTs the ruleset back with the merge methods
+# forced to [squash], preserving all other fields (rules, conditions, bypass
+# actors, enforcement). Idempotent.
+apply_pr_quality_merge_methods() {
+  local repo="$1"
+  echo "Reconciling ${PR_QUALITY_RULESET_NAME} ruleset merge methods for ${repo} ..."
+
+  local ruleset_id
+  if ! ruleset_id=$(gh api "repos/${repo}/rulesets" \
+    --jq "map(select(.name == \"${PR_QUALITY_RULESET_NAME}\")) | .[0].id // empty" 2>/dev/null); then
+    echo "  failed to query rulesets for ${repo}"
+    return 1
+  fi
+  if [[ -z "$ruleset_id" ]]; then
+    echo "  ${PR_QUALITY_RULESET_NAME} ruleset not found — org automation owns creation, skipping"
+    return 0
+  fi
+
+  local ruleset status
+  if ! ruleset=$(gh api "repos/${repo}/rulesets/${ruleset_id}" 2>/dev/null) || [[ -z "$ruleset" ]]; then
+    echo "  could not read ruleset ${ruleset_id} — skipping"
+    return 0
+  fi
+  if ! status=$(pr_quality_merge_methods_status "$ruleset"); then
+    echo "  failed to parse ruleset merge methods status"
+    return 1
+  fi
+  if [[ "$status" == "$PR_QUALITY_MERGE_METHOD" ]]; then
+    echo "  already ${PR_QUALITY_MERGE_METHOD}-only — nothing to do"
+    return 0
+  fi
+  echo "  merge methods '${status}' drifted — reconciling to ${PR_QUALITY_MERGE_METHOD}-only"
+
+  local payload
+  if ! payload=$(printf '%s' "$ruleset" | jq \
+    --arg method "$PR_QUALITY_MERGE_METHOD" '
+    {
+      name: .name,
+      target: .target,
+      enforcement: .enforcement,
+      bypass_actors: (.bypass_actors // []),
+      conditions: .conditions,
+      rules: [
+        .rules[]
+        | if .type == "pull_request"
+          then .parameters.allowed_merge_methods = [$method]
+          else . end
+      ]
+    }'); then
+    echo "  failed to generate payload for ruleset update"
+    return 1
+  fi
+  gh api -X PUT "repos/${repo}/rulesets/${ruleset_id}" --input - <<<"$payload"
+}
+
 # Run main only when executed directly, so tests can source the helpers.
 if [[ "${BASH_SOURCE[0]:-$0}" == "$0" ]]; then
   set -euo pipefail
@@ -122,5 +208,6 @@ if [[ "${BASH_SOURCE[0]:-$0}" == "$0" ]]; then
   }
   apply_security_and_analysis "$repo"
   apply_check_suite_prefs "$repo"
+  apply_pr_quality_merge_methods "$repo"
   echo "Done."
 fi
