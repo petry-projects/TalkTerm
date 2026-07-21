@@ -7,11 +7,8 @@ set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Sentinel the *_status helpers emit when a queried setting is absent; used as
-# the expected value across several assertions below.
-readonly MISSING='missing'
-
 # Sourcing must not execute main; if it errors the whole test run aborts here.
+# MISSING and other shared constants are exported by the production script.
 # shellcheck source=scripts/apply-repo-settings.sh
 source "${SCRIPT_DIR}/apply-repo-settings.sh"
 
