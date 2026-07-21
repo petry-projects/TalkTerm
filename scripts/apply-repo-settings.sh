@@ -65,10 +65,10 @@ auto_trigger_status() {
     printf '%s' "$STATUS_MISSING"
     return 0
   fi
-  printf '%s' "$json" | jq -r --argjson id "$app_id" --arg missing "$STATUS_MISSING" \
+  jq -r --argjson id "$app_id" --arg missing "$STATUS_MISSING" \
     '.preferences.auto_trigger_checks // []
      | map(select(.app_id == $id))
-     | if length == 0 then $missing else (.[0].setting | tostring) end'
+     | if length == 0 then $missing else (.[0].setting | tostring) end' <<< "$json"
 }
 
 # apply_security_and_analysis <owner/repo>
@@ -136,13 +136,13 @@ pr_quality_merge_methods_status() {
     printf '%s' "$STATUS_MISSING"
     return 0
   fi
-  printf '%s' "$json" | jq -r --arg missing "$STATUS_MISSING" '
+  jq -r --arg missing "$STATUS_MISSING" '
     (.rules // [])
     | map(select(.type == "pull_request"))
     | if length == 0 then $missing
       else (.[0].parameters.allowed_merge_methods // []) as $m
         | if ($m | length) == 0 then $missing else ($m | sort | join(",")) end
-      end'
+      end' <<< "$json"
 }
 
 # apply_pr_quality_merge_methods <owner/repo>
