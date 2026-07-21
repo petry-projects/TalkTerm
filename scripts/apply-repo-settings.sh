@@ -37,6 +37,10 @@ readonly -a CHECK_SUITE_APP_IDS=(1236702 347564) # Claude, CodeRabbit
 readonly PR_QUALITY_RULESET_NAME='pr-quality'
 readonly PR_QUALITY_MERGE_METHOD='squash'
 
+# Sentinel status emitted by the status helpers when the relevant app or rule is
+# absent from the fetched preferences/ruleset (never configured, so compliant).
+readonly STATUS_MISSING='missing'
+
 # resolve_repo <arg>
 # Resolves the target "owner/repo". Precedence: positional arg, then
 # GITHUB_REPOSITORY, then REPO. A bare name is expanded to "<ORG>/<name>".
@@ -58,13 +62,13 @@ resolve_repo() {
 auto_trigger_status() {
   local json="${1:-}" app_id="$2"
   if [[ -z "$json" ]]; then
-    printf 'missing'
+    printf '%s' "$STATUS_MISSING"
     return 0
   fi
-  printf '%s' "$json" | jq -r --argjson id "$app_id" \
+  printf '%s' "$json" | jq -r --argjson id "$app_id" --arg missing "$STATUS_MISSING" \
     '.preferences.auto_trigger_checks // []
      | map(select(.app_id == $id))
-     | if length == 0 then "missing" else (.[0].setting | tostring) end'
+     | if length == 0 then $missing else (.[0].setting | tostring) end'
 }
 
 # apply_security_and_analysis <owner/repo>
@@ -100,7 +104,7 @@ apply_check_suite_prefs() {
     for app_id in "${CHECK_SUITE_APP_IDS[@]}"; do
       status=$(auto_trigger_status "$prefs" "$app_id")
       case "$status" in
-        missing) echo "  app ${app_id}: never run in repo — compliant, skipping" ;;
+        "$STATUS_MISSING") echo "  app ${app_id}: never run in repo — compliant, skipping" ;;
         false) echo "  app ${app_id}: already disabled — skipping" ;;
         *) echo "  app ${app_id}: auto-trigger enabled — disabling"; to_disable+=("$app_id") ;;
       esac
@@ -129,15 +133,15 @@ apply_check_suite_prefs() {
 pr_quality_merge_methods_status() {
   local json="${1:-}"
   if [[ -z "$json" ]]; then
-    printf 'missing'
+    printf '%s' "$STATUS_MISSING"
     return 0
   fi
-  printf '%s' "$json" | jq -r '
+  printf '%s' "$json" | jq -r --arg missing "$STATUS_MISSING" '
     (.rules // [])
     | map(select(.type == "pull_request"))
-    | if length == 0 then "missing"
+    | if length == 0 then $missing
       else (.[0].parameters.allowed_merge_methods // []) as $m
-        | if ($m | length) == 0 then "missing" else ($m | sort | join(",")) end
+        | if ($m | length) == 0 then $missing else ($m | sort | join(",")) end
       end'
 }
 

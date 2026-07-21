@@ -15,11 +15,13 @@ fails=0
 pass() {
   local desc="$1"
   echo "ok   - $desc"
+  return 0
 }
 fail() {
   local desc="$1"
   echo "FAIL - $desc"
   fails=$((fails + 1))
+  return 0
 }
 
 assert_eq() {
@@ -29,6 +31,7 @@ assert_eq() {
   else
     fail "$desc (expected '$expected', got '$actual')"
   fi
+  return 0
 }
 
 # ── auto_trigger_status ───────────────────────────────────────────────────────
