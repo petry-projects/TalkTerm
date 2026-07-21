@@ -7,6 +7,10 @@ set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# Sentinel the *_status helpers emit when a queried setting is absent; used as
+# the expected value across several assertions below.
+readonly MISSING='missing'
+
 # Sourcing must not execute main; if it errors the whole test run aborts here.
 # shellcheck source=scripts/apply-repo-settings.sh
 source "${SCRIPT_DIR}/apply-repo-settings.sh"
@@ -15,11 +19,13 @@ fails=0
 pass() {
   local desc="$1"
   echo "ok   - $desc"
+  return 0
 }
 fail() {
   local desc="$1"
   echo "FAIL - $desc"
   fails=$((fails + 1))
+  return 0
 }
 
 assert_eq() {
@@ -29,6 +35,7 @@ assert_eq() {
   else
     fail "$desc (expected '$expected', got '$actual')"
   fi
+  return 0
 }
 
 # ── auto_trigger_status ───────────────────────────────────────────────────────
@@ -41,11 +48,11 @@ assert_eq "auto_trigger_status: enabled app -> true" \
 assert_eq "auto_trigger_status: disabled app -> false" \
   "false" "$(auto_trigger_status "$prefs_true" 347564)"
 assert_eq "auto_trigger_status: app absent -> missing" \
-  "missing" "$(auto_trigger_status "$prefs_missing" 1236702)"
+  "$MISSING" "$(auto_trigger_status "$prefs_missing" 1236702)"
 assert_eq "auto_trigger_status: empty list -> missing" \
-  "missing" "$(auto_trigger_status "$prefs_empty" 1236702)"
+  "$MISSING" "$(auto_trigger_status "$prefs_empty" 1236702)"
 assert_eq "auto_trigger_status: empty string -> missing" \
-  "missing" "$(auto_trigger_status "" 1236702)"
+  "$MISSING" "$(auto_trigger_status "" 1236702)"
 
 # ── pr_quality_merge_methods_status ───────────────────────────────────────────
 ruleset_squash='{"rules":[{"type":"pull_request","parameters":{"allowed_merge_methods":["squash"]}}]}'
@@ -61,11 +68,11 @@ assert_eq "pr_quality_merge_methods_status: drifted -> merge,rebase,squash" \
 assert_eq "pr_quality_merge_methods_status: unsorted input is sorted" \
   "merge,squash" "$(pr_quality_merge_methods_status "$ruleset_unsorted")"
 assert_eq "pr_quality_merge_methods_status: no pull_request rule -> missing" \
-  "missing" "$(pr_quality_merge_methods_status "$ruleset_no_pr")"
+  "$MISSING" "$(pr_quality_merge_methods_status "$ruleset_no_pr")"
 assert_eq "pr_quality_merge_methods_status: rule without methods -> missing" \
-  "missing" "$(pr_quality_merge_methods_status "$ruleset_no_methods")"
+  "$MISSING" "$(pr_quality_merge_methods_status "$ruleset_no_methods")"
 assert_eq "pr_quality_merge_methods_status: empty string -> missing" \
-  "missing" "$(pr_quality_merge_methods_status "")"
+  "$MISSING" "$(pr_quality_merge_methods_status "")"
 
 # ── resolve_repo ──────────────────────────────────────────────────────────────
 assert_eq "resolve_repo: bare name -> org/name" \
