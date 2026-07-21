@@ -19,9 +19,11 @@ name: PR Review Agent
 #   `sonar-project.properties` exemption, which only quieted the gate).
 # - `agent_ref: pr-review/stable` pins the agent's own scripts to the same
 #   channel (#506), so the review logic AND scripts run the known-good version.
-# - Secrets are passed explicitly to the reusable workflow.
-#   `DON_PETRY_BOT_GH_PAT_CLASSIC` is a classic PAT — required for approvals since
-#   fine-grained PATs cannot `addPullRequestReview`.
+# - Secrets are forwarded via `secrets: inherit`, matching every other pr-review
+#   caller in the org and TalkTerm's own `dev-lead.yml` (#385). The reusable reads
+#   the inherited org secrets it needs (e.g. `DON_PETRY_BOT_GH_PAT_CLASSIC`, a
+#   classic PAT required for approvals since fine-grained PATs cannot
+#   `addPullRequestReview`).
 
 on:
   check_suite:
@@ -82,10 +84,4 @@ jobs:
       pr_url: ${{ inputs.pr_url || '' }}
       dry_run: ${{ inputs.dry_run || '' }}
       force_review: ${{ inputs.force_review || '' }}
-    secrets:
-      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-      GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
-      COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
-      DON_PETRY_BOT_GH_PAT: ${{ secrets.DON_PETRY_BOT_GH_PAT }}
-      DON_PETRY_BOT_GH_PAT_CLASSIC: ${{ secrets.DON_PETRY_BOT_GH_PAT_CLASSIC }}
-      GH_PAT: ${{ secrets.GH_PAT }}
+    secrets: inherit  # NOSONAR(githubactions:S7635) first-party trusted reusable
