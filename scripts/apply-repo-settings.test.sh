@@ -8,7 +8,7 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Sourcing must not execute main; if it errors the whole test run aborts here.
-# MISSING and other shared constants are exported by the production script.
+# MISSING and other shared constants are declared readonly in the production script and available after sourcing.
 # shellcheck source=scripts/apply-repo-settings.sh
 source "${SCRIPT_DIR}/apply-repo-settings.sh"
 
