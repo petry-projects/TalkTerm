@@ -10,6 +10,15 @@ on:
   pull_request:
     branches: [main]
 
+# SHA-scoped so each commit keeps its own slot (per org ci-standards). This
+# dedupes the duplicate pull_request runs GitHub occasionally emits for one
+# commit: without it, one sibling runs while the other lingers as
+# `action_required`, which the fleet monitor counts as a failure. The prefix
+# keeps this group distinct from ci.yml's.
+concurrency:
+  group: sonarcloud-${{ github.ref }}-${{ github.sha }}
+  cancel-in-progress: true
+
 jobs:
   sonarcloud:
     name: SonarCloud
