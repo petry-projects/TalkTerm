@@ -20,14 +20,17 @@ on:
 
 permissions: {}
 
-# Serialize CI per Git ref so redundant runs don't pile up (Fleet Monitor #380).
-# When the same ref receives several pushes in quick succession (e.g. a bot adding
-# commits to a PR), outdated pull_request runs are cancelled since only the latest
-# commit matters. main-branch pushes are never cancelled so every merged commit is
-# verified. Mirrors the concurrency convention of every sibling workflow.
+# Scope the concurrency group to the commit SHA so every pushed commit gets its
+# own CI slot (Fleet Monitor #380; ci-standards.md#1-ci-pipeline-ciyml). A per-ref
+# group with cancel-in-progress can leave the HEAD commit with no results when
+# pushes arrive in quick succession — the final push may cancel the previous run
+# before GitHub fires a fresh pull_request:synchronize event. Including github.sha
+# gives each commit a distinct slot, so no commit is left unverified.
+# cancel-in-progress: true cancels duplicate runs for the same ref and SHA, but
+# cannot cancel runs for different commits because their groups are distinct.
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ci-${{ github.ref }}-${{ github.sha }}
+  cancel-in-progress: true
 
 jobs:
   secret-scan:
