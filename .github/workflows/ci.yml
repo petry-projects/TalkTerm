@@ -26,9 +26,8 @@ permissions: {}
 # pushes arrive in quick succession — the final push may cancel the previous run
 # before GitHub fires a fresh pull_request:synchronize event. Including github.sha
 # gives each commit a distinct slot, so no commit is left unverified.
-# cancel-in-progress: true is retained to signal intent; it is effectively a no-op
-# under a SHA-scoped group but re-activates immediately if the formula ever reverts
-# to a per-ref pattern.
+# cancel-in-progress: true cancels duplicate runs for the same ref and SHA, but
+# cannot cancel runs for different commits because their groups are distinct.
 concurrency:
   group: ci-${{ github.ref }}-${{ github.sha }}
   cancel-in-progress: true
