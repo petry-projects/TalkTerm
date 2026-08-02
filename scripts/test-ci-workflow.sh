@@ -55,10 +55,10 @@ if [[ "$PASS" == "true" ]]; then
   fi
 fi
 
-# ── Check 4: cancel-in-progress is scoped to pull_request events ───────────
-# Outdated PR runs for a superseded commit are worthless and should be cancelled,
-# but every push to main must be verified and must never be cancelled. Encoding
-# this as `${{ github.event_name == 'pull_request' }}` satisfies both.
+# ── Check 4: cancel-in-progress is unconditionally true ───────────────────
+# With a SHA-scoped concurrency group each commit gets its own slot, so runs for
+# different commits never compete. cancel-in-progress: true only affects duplicate
+# runs within the same slot (same ref + SHA), making it safe to set unconditionally.
 if ! cancel=$(yq '.concurrency.cancel-in-progress' "$WORKFLOW" 2>/dev/null); then
   echo "FAIL: yq failed to parse $WORKFLOW. Please check if it is valid YAML."
   exit 1
@@ -66,12 +66,11 @@ fi
 if [[ "$cancel" == "null" || -z "$cancel" ]]; then
   echo "FAIL: 'concurrency.cancel-in-progress' is missing in $WORKFLOW"
   PASS=false
-elif [[ ! "$cancel" =~ pull_request ]]; then
-  echo "FAIL: 'concurrency.cancel-in-progress' (found: '$cancel') is not scoped to"
-  echo "      pull_request events in $WORKFLOW — main pushes must never be cancelled."
+elif [[ "$cancel" != "true" ]]; then
+  echo "FAIL: 'concurrency.cancel-in-progress' (found: '$cancel') must be 'true' in $WORKFLOW"
   PASS=false
 else
-  echo "PASS: 'concurrency.cancel-in-progress' scoped to pull_request events in $WORKFLOW"
+  echo "PASS: 'concurrency.cancel-in-progress' is unconditionally true in $WORKFLOW"
 fi
 
 echo ""
