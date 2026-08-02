@@ -36,6 +36,7 @@ readonly -a CHECK_SUITE_APP_IDS=(1236702 347564) # Claude, CodeRabbit
 #           #pr-quality--standard-ruleset-all-repositories
 readonly PR_QUALITY_RULESET_NAME='pr-quality'
 readonly PR_QUALITY_MERGE_METHOD='squash'
+readonly MISSING='missing'
 
 # resolve_repo <arg>
 # Resolves the target "owner/repo". Precedence: positional arg, then
@@ -58,13 +59,13 @@ resolve_repo() {
 auto_trigger_status() {
   local json="${1:-}" app_id="$2"
   if [[ -z "$json" ]]; then
-    printf 'missing'
+    printf '%s' "$MISSING"
     return 0
   fi
-  printf '%s' "$json" | jq -r --argjson id "$app_id" \
+  printf '%s' "$json" | jq -r --argjson id "$app_id" --arg missing "$MISSING" \
     '.preferences.auto_trigger_checks // []
      | map(select(.app_id == $id))
-     | if length == 0 then "missing" else (.[0].setting | tostring) end'
+     | if length == 0 then $missing else (.[0].setting | tostring) end'
 }
 
 # apply_security_and_analysis <owner/repo>
