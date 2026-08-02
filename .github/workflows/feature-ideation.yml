@@ -157,10 +157,15 @@ jobs:
         run: |
           {
             echo "target_discussion=${TARGET_DISCUSSION:-}"
-            echo "focus_area=${FOCUS_AREA:-}"
             echo "research_depth=${RESEARCH_DEPTH:-standard}"
             echo "dry_run=${DRY_RUN:-false}"
             echo "enhance_backlog=${ENHANCE_BACKLOG:-false}"
+          } >> "$GITHUB_OUTPUT"
+          _delim="$(openssl rand -hex 8)"
+          {
+            echo "focus_area<<${_delim}"
+            printf '%s\n' "${FOCUS_AREA:-}"
+            echo "${_delim}"
           } >> "$GITHUB_OUTPUT"
 
   ideate:
