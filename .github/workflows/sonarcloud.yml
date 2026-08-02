@@ -1,8 +1,23 @@
-# SonarCloud code quality, maintainability, and security hotspot scanning.
-# Standard: https://github.com/petry-projects/.github/blob/main/standards/ci-standards.md#3-sonarcloud-analysis-sonarcloudyml
+# ─────────────────────────────────────────────────────────────────────────────
+# SOURCE OF TRUTH: petry-projects/.github/standards/workflows/sonarcloud.yml
+# Standard:        petry-projects/.github/standards/ci-standards.md#3-sonarcloud-analysis
+#
+# ADOPTING THIS WORKFLOW:
+#   1. This ships verbatim into repos created from petry-projects/repo-template.
+#   2. Set sonar.projectKey / sonar.organization in sonar-project.properties to
+#      match your repo (see BOOTSTRAP.md), and add the SONAR_TOKEN repo secret.
+#   3. The job name `SonarCloud` is the required status check — keep it.
+#   4. The scan is guarded on SONAR_TOKEN, so the job is a green no-op until the
+#      secret is set — a fresh repo is not blocked on day 0.
+#
+# CONVENTIONS (enforced by the standard):
+#   • permissions: {} at top, least-privilege per job (contents + pull-requests: read)
+#   • triggers: push + pull_request to main; checkout with fetch-depth: 0
+#   • first scan is continue-on-error with a single retry (SonarCloud's analysis
+#     endpoint is occasionally flaky)
+#   • SHA-pin every third-party action (never a tag/branch)
+# ─────────────────────────────────────────────────────────────────────────────
 name: SonarCloud Analysis
-
-permissions: {}
 
 on:
   push:
@@ -10,39 +25,38 @@ on:
   pull_request:
     branches: [main]
 
-# SHA-scoped so each commit keeps its own slot (per org ci-standards). This
-# dedupes the duplicate pull_request runs GitHub occasionally emits for one
-# commit: without it, one sibling runs while the other lingers as
-# `action_required`, which the fleet monitor counts as a failure. The prefix
-# keeps this group distinct from ci.yml's.
+permissions: {}
+
 concurrency:
-  group: sonarcloud-${{ github.ref }}-${{ github.sha }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   sonarcloud:
     name: SonarCloud
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
       pull-requests: read
     env:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - name: Checkout repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
-      # First attempt. continue-on-error lets the retry step below recover from
-      # any failure (introduced for transient 403/5xx responses from
-      # binaries.sonarsource.com during scanner CLI download) without failing
-      # the job on a single blip.
+      - name: Set up JDK 21
+        id: setup_java
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+        with:
+          distribution: temurin
+          java-version: '21'
       - name: SonarCloud Scan
         id: sonar
-        if: ${{ env.SONAR_TOKEN != '' }}
+        if: env.SONAR_TOKEN != ''
         uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
         continue-on-error: true
-      # Retry once on any failure of the first attempt. Only re-runs on
-      # failure so a healthy first attempt is never scanned twice.
       - name: SonarCloud Scan (retry)
-        if: ${{ env.SONAR_TOKEN != '' && steps.sonar.outcome == 'failure' }}
+        if: env.SONAR_TOKEN != '' && steps.sonar.outcome == 'failure'
         uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
