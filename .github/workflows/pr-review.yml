@@ -21,9 +21,9 @@ name: PR Review Agent
 #   channel (#506), so the review logic AND scripts run the known-good version.
 # - Secrets are forwarded via `secrets: inherit`, matching every other pr-review
 #   caller in the org and TalkTerm's own `dev-lead.yml` (#385). The reusable reads
-#   the inherited org secrets it needs (e.g. `DON_PETRY_BOT_GH_PAT_CLASSIC`, a
-#   classic PAT required for approvals since fine-grained PATs cannot
-#   `addPullRequestReview`).
+#   the inherited org secrets it needs (`DON_PETRY_BOT_GH_PAT_CLASSIC`, falling
+#   back to `DON_PETRY_BOT_GH_PAT`) — a classic PAT required for approvals since
+#   fine-grained PATs cannot `addPullRequestReview`.
 
 on:
   check_suite:
