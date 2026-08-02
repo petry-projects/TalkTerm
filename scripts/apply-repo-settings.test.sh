@@ -176,11 +176,11 @@ assert_eq "pr_quality_merge_methods_status: drifted -> merge,rebase,squash" \
 assert_eq "pr_quality_merge_methods_status: unsorted input is sorted" \
   "merge,squash" "$(pr_quality_merge_methods_status "$ruleset_unsorted")"
 assert_eq "pr_quality_merge_methods_status: no pull_request rule -> missing" \
-  "missing" "$(pr_quality_merge_methods_status "$ruleset_no_pr")"
+  "$MISSING" "$(pr_quality_merge_methods_status "$ruleset_no_pr")"
 assert_eq "pr_quality_merge_methods_status: rule without methods -> missing" \
-  "missing" "$(pr_quality_merge_methods_status "$ruleset_no_methods")"
+  "$MISSING" "$(pr_quality_merge_methods_status "$ruleset_no_methods")"
 assert_eq "pr_quality_merge_methods_status: empty string -> missing" \
-  "missing" "$(pr_quality_merge_methods_status "")"
+  "$MISSING" "$(pr_quality_merge_methods_status "")"
 
 # ── resolve_repo ──────────────────────────────────────────────────────────────
 assert_eq "resolve_repo: bare name -> org/name" \
