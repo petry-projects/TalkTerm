@@ -21,8 +21,6 @@
 # ─────────────────────────────────────────────────────────────────────────────
 name: SonarCloud Analysis
 
-permissions: {}
-
 on:
   push:
     branches: [main]
