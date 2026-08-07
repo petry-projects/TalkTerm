@@ -83,8 +83,8 @@ assert_eq "pr_quality_require_last_push_approval_status: false (drifted) -> fals
   "false" "$(pr_quality_require_last_push_approval_status "$ruleset_rlpa_false")"
 assert_eq "pr_quality_require_last_push_approval_status: no pull_request rule -> missing" \
   "$MISSING" "$(pr_quality_require_last_push_approval_status "$ruleset_rlpa_no_pr")"
-assert_eq "pr_quality_require_last_push_approval_status: rule without parameter -> missing" \
-  "$MISSING" "$(pr_quality_require_last_push_approval_status "$ruleset_rlpa_absent")"
+assert_eq "pr_quality_require_last_push_approval_status: rule without parameter -> false (GitHub default)" \
+  "false" "$(pr_quality_require_last_push_approval_status "$ruleset_rlpa_absent")"
 assert_eq "pr_quality_require_last_push_approval_status: empty string -> missing" \
   "$MISSING" "$(pr_quality_require_last_push_approval_status "")"
 
