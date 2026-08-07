@@ -36,6 +36,11 @@ readonly -a CHECK_SUITE_APP_IDS=(1236702 347564) # Claude, CodeRabbit
 #           #pr-quality--standard-ruleset-all-repositories
 readonly PR_QUALITY_RULESET_NAME='pr-quality'
 readonly PR_QUALITY_MERGE_METHOD='squash'
+# The pr-quality ruleset requires stale approvals to be dismissed when new
+# commits are pushed, so a review always reflects the code being merged.
+# Standard: petry-projects/.github/standards/github-settings.md
+#           #pr-quality--standard-ruleset-all-repositories
+readonly PR_QUALITY_DISMISS_STALE_REVIEWS='true'
 readonly MISSING='missing'
 
 # resolve_repo <arg>
@@ -143,6 +148,25 @@ pr_quality_merge_methods_status() {
       end'
 }
 
+# pr_quality_dismiss_stale_reviews_status <ruleset_json>
+# Echoes the ruleset's pull_request-rule dismiss_stale_reviews_on_push value as
+# "true" or "false", or "missing" when the JSON is empty, has no pull_request
+# rule, or that rule omits the dismiss_stale_reviews_on_push parameter.
+pr_quality_dismiss_stale_reviews_status() {
+  local json="${1:-}"
+  if [[ -z "$json" ]]; then
+    printf '%s' "$MISSING"
+    return 0
+  fi
+  printf '%s' "$json" | jq -r --arg missing "$MISSING" '
+    (.rules // [])
+    | map(select(.type == "pull_request"))
+    | if length == 0 then $missing
+      else (.[0].parameters.dismiss_stale_reviews_on_push) as $d
+        | if $d == null then $missing else ($d | tostring) end
+      end'
+}
+
 # apply_pr_quality_merge_methods <owner/repo>
 # Reconciles the pr-quality ruleset's allowed_merge_methods to squash-only.
 # Skips when the ruleset is absent (org automation has not created it yet) or
@@ -201,6 +225,67 @@ apply_pr_quality_merge_methods() {
   gh api -X PUT "repos/${repo}/rulesets/${ruleset_id}" --input - <<<"$payload"
 }
 
+# apply_pr_quality_dismiss_stale_reviews <owner/repo>
+# Reconciles the pr-quality ruleset's dismiss_stale_reviews_on_push to true.
+# Skips when the ruleset is absent (org automation has not created it yet), when
+# it has no pull_request rule, or when already true. Otherwise PUTs the ruleset
+# back with the parameter forced to true, preserving all other fields (rules,
+# conditions, bypass actors, enforcement). Idempotent.
+apply_pr_quality_dismiss_stale_reviews() {
+  local repo="$1"
+  echo "Reconciling ${PR_QUALITY_RULESET_NAME} ruleset dismiss_stale_reviews_on_push for ${repo} ..."
+
+  local ruleset_id
+  if ! ruleset_id=$(gh api "repos/${repo}/rulesets" \
+    --jq "map(select(.name == \"${PR_QUALITY_RULESET_NAME}\")) | .[0].id // empty" 2>/dev/null); then
+    echo "  failed to query rulesets for ${repo}"
+    return 1
+  fi
+  if [[ -z "$ruleset_id" ]]; then
+    echo "  ${PR_QUALITY_RULESET_NAME} ruleset not found — org automation owns creation, skipping"
+    return 0
+  fi
+
+  local ruleset status
+  if ! ruleset=$(gh api "repos/${repo}/rulesets/${ruleset_id}" 2>/dev/null) || [[ -z "$ruleset" ]]; then
+    echo "  could not read ruleset ${ruleset_id} — skipping"
+    return 0
+  fi
+  if ! status=$(pr_quality_dismiss_stale_reviews_status "$ruleset"); then
+    echo "  failed to parse ruleset dismiss_stale_reviews_on_push status"
+    return 1
+  fi
+  if [[ "$status" == "$MISSING" ]]; then
+    echo "  no pull_request rule found — org automation owns creation, skipping"
+    return 0
+  fi
+  if [[ "$status" == "$PR_QUALITY_DISMISS_STALE_REVIEWS" ]]; then
+    echo "  already dismiss_stale_reviews_on_push=true — nothing to do"
+    return 0
+  fi
+  echo "  dismiss_stale_reviews_on_push '${status}' drifted — reconciling to true"
+
+  local payload
+  if ! payload=$(printf '%s' "$ruleset" | jq '
+    {
+      name: .name,
+      target: .target,
+      enforcement: .enforcement,
+      bypass_actors: (.bypass_actors // []),
+      conditions: .conditions,
+      rules: [
+        .rules[]
+        | if .type == "pull_request"
+          then .parameters.dismiss_stale_reviews_on_push = true
+          else . end
+      ]
+    }'); then
+    echo "  failed to generate payload for ruleset update"
+    return 1
+  fi
+  gh api -X PUT "repos/${repo}/rulesets/${ruleset_id}" --input - <<<"$payload"
+}
+
 # Run main only when executed directly, so tests can source the helpers.
 if [[ "${BASH_SOURCE[0]:-$0}" == "$0" ]]; then
   set -euo pipefail
@@ -211,5 +296,6 @@ if [[ "${BASH_SOURCE[0]:-$0}" == "$0" ]]; then
   apply_security_and_analysis "$repo"
   apply_check_suite_prefs "$repo"
   apply_pr_quality_merge_methods "$repo"
+  apply_pr_quality_dismiss_stale_reviews "$repo"
   echo "Done."
 fi
