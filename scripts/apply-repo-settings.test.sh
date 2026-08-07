@@ -71,6 +71,23 @@ assert_eq "pr_quality_merge_methods_status: rule without methods -> missing" \
 assert_eq "pr_quality_merge_methods_status: empty string -> missing" \
   "$MISSING" "$(pr_quality_merge_methods_status "")"
 
+# ── pr_quality_require_last_push_approval_status ───────────────────────────────
+ruleset_rlpa_true='{"rules":[{"type":"pull_request","parameters":{"require_last_push_approval":true}}]}'
+ruleset_rlpa_false='{"rules":[{"type":"pull_request","parameters":{"require_last_push_approval":false}}]}'
+ruleset_rlpa_no_pr='{"rules":[{"type":"required_status_checks","parameters":{}}]}'
+ruleset_rlpa_absent='{"rules":[{"type":"pull_request","parameters":{}}]}'
+
+assert_eq "pr_quality_require_last_push_approval_status: true -> true" \
+  "true" "$(pr_quality_require_last_push_approval_status "$ruleset_rlpa_true")"
+assert_eq "pr_quality_require_last_push_approval_status: false (drifted) -> false" \
+  "false" "$(pr_quality_require_last_push_approval_status "$ruleset_rlpa_false")"
+assert_eq "pr_quality_require_last_push_approval_status: no pull_request rule -> missing" \
+  "$MISSING" "$(pr_quality_require_last_push_approval_status "$ruleset_rlpa_no_pr")"
+assert_eq "pr_quality_require_last_push_approval_status: rule without parameter -> missing" \
+  "$MISSING" "$(pr_quality_require_last_push_approval_status "$ruleset_rlpa_absent")"
+assert_eq "pr_quality_require_last_push_approval_status: empty string -> missing" \
+  "$MISSING" "$(pr_quality_require_last_push_approval_status "")"
+
 # ── resolve_repo ──────────────────────────────────────────────────────────────
 assert_eq "resolve_repo: bare name -> org/name" \
   "petry-projects/TalkTerm" "$(ORG=petry-projects resolve_repo "TalkTerm")"
