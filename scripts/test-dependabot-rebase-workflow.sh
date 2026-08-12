@@ -53,7 +53,11 @@ echo "PASS: $WORKFLOW is valid YAML"
 # ── Check 3: job `uses` is the org reusable pinned to its channel tag ───────
 # The ref must ride the moving `dependabot-rebase/*` channel — never @main, a
 # bare SHA, or a frozen @vN (see ci-standards.md → Reusable workflow versioning).
-uses=$(yq ".jobs.${JOB}.uses" "$WORKFLOW" 2>/dev/null)
+uses=""
+if ! uses=$(yq ".jobs.${JOB}.uses" "$WORKFLOW" 2>/dev/null); then
+  echo "FAIL: yq failed to parse job uses in $WORKFLOW"
+  PASS=false
+fi
 if [[ "$uses" == "null" || -z "$uses" ]]; then
   echo "FAIL: job '$JOB' has no 'uses:' calling the org reusable in $WORKFLOW"
   PASS=false
@@ -68,8 +72,16 @@ fi
 # ── Check 4: job-level permissions grant the reusable's gh writes ──────────
 # A reusable can be granted no more permission than the calling job holds;
 # dropping either scope breaks the reusable's update-branch / re-approve calls.
-contents=$(yq ".jobs.${JOB}.permissions.contents" "$WORKFLOW" 2>/dev/null)
-pulls=$(yq ".jobs.${JOB}.permissions.pull-requests" "$WORKFLOW" 2>/dev/null)
+contents=""
+pulls=""
+if ! contents=$(yq ".jobs.${JOB}.permissions.contents" "$WORKFLOW" 2>/dev/null); then
+  echo "FAIL: yq failed to parse permissions.contents in $WORKFLOW"
+  PASS=false
+fi
+if ! pulls=$(yq ".jobs.${JOB}.permissions.pull-requests" "$WORKFLOW" 2>/dev/null); then
+  echo "FAIL: yq failed to parse permissions.pull-requests in $WORKFLOW"
+  PASS=false
+fi
 if [[ "$contents" != "write" ]]; then
   echo "FAIL: job permission 'contents' must be 'write' (found: '$contents') in $WORKFLOW"
   PASS=false
@@ -86,7 +98,11 @@ fi
 # ── Check 5: the GitHub App secrets are passed through ─────────────────────
 # Without these the reusable's create-github-app-token step fails immediately.
 for secret in APP_ID APP_PRIVATE_KEY; do
-  has=$(yq ".jobs.${JOB}.secrets | has(\"${secret}\")" "$WORKFLOW" 2>/dev/null)
+  has=""
+  if ! has=$(yq ".jobs.${JOB}.secrets | has(\"${secret}\")" "$WORKFLOW" 2>/dev/null); then
+    echo "FAIL: yq failed to parse secrets in $WORKFLOW"
+    PASS=false
+  fi
   if [[ "$has" != "true" ]]; then
     echo "FAIL: secret '$secret' is not passed to the reusable in $WORKFLOW"
     PASS=false
@@ -98,8 +114,16 @@ done
 # ── Check 6: concurrency serializes runs one-at-a-time ─────────────────────
 # The merge chain assumes a single in-flight run; the group name is contract and
 # cancel-in-progress must stay false so a mid-merge run is never interrupted.
-group=$(yq '.concurrency.group' "$WORKFLOW" 2>/dev/null)
-cancel=$(yq '.concurrency.cancel-in-progress' "$WORKFLOW" 2>/dev/null)
+group=""
+cancel=""
+if ! group=$(yq '.concurrency.group' "$WORKFLOW" 2>/dev/null); then
+  echo "FAIL: yq failed to parse concurrency.group in $WORKFLOW"
+  PASS=false
+fi
+if ! cancel=$(yq '.concurrency.cancel-in-progress' "$WORKFLOW" 2>/dev/null); then
+  echo "FAIL: yq failed to parse concurrency.cancel-in-progress in $WORKFLOW"
+  PASS=false
+fi
 if [[ "$group" != "dependabot-update-and-merge" ]]; then
   echo "FAIL: concurrency.group must be 'dependabot-update-and-merge' (found: '$group') in $WORKFLOW"
   PASS=false
@@ -117,7 +141,11 @@ fi
 # push keeps the self-sustaining chain, schedule is the safety net, and
 # workflow_dispatch allows manual queue flushes — none may be dropped.
 for trig in push schedule workflow_dispatch; do
-  has=$(yq ".on | has(\"${trig}\")" "$WORKFLOW" 2>/dev/null)
+  has=""
+  if ! has=$(yq ".on | has(\"${trig}\")" "$WORKFLOW" 2>/dev/null); then
+    echo "FAIL: yq failed to parse triggers in $WORKFLOW"
+    PASS=false
+  fi
   if [[ "$has" != "true" ]]; then
     echo "FAIL: trigger '$trig' is missing from $WORKFLOW"
     PASS=false
@@ -126,7 +154,11 @@ for trig in push schedule workflow_dispatch; do
   fi
 done
 # push must target main so merges to main re-arm the chain.
-push_main=$(yq '.on.push.branches | contains(["main"])' "$WORKFLOW" 2>/dev/null)
+push_main=""
+if ! push_main=$(yq '.on.push.branches | contains(["main"])' "$WORKFLOW" 2>/dev/null); then
+  echo "FAIL: yq failed to parse push branches in $WORKFLOW"
+  PASS=false
+fi
 if [[ "$push_main" != "true" ]]; then
   echo "FAIL: 'push' trigger must include the 'main' branch in $WORKFLOW"
   PASS=false
