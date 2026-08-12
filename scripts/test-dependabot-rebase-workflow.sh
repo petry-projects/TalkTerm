@@ -24,7 +24,6 @@ set -euo pipefail
 WORKFLOW="${1:-.github/workflows/dependabot-rebase.yml}"
 JOB="dependabot-rebase"
 REUSABLE_PREFIX="petry-projects/.github/.github/workflows/dependabot-rebase-reusable.yml@"
-CHANNEL_PREFIX="${REUSABLE_PREFIX}dependabot-rebase/"
 PASS=true
 
 echo "=== test-dependabot-rebase-workflow ($WORKFLOW) ==="
@@ -50,9 +49,9 @@ if ! yq '.' "$WORKFLOW" > /dev/null 2>&1; then
 fi
 echo "PASS: $WORKFLOW is valid YAML"
 
-# ── Check 3: job `uses` is the org reusable pinned to its channel tag ───────
-# The ref must ride the moving `dependabot-rebase/*` channel — never @main, a
-# bare SHA, or a frozen @vN (see ci-standards.md → Reusable workflow versioning).
+# ── Check 3: job `uses` is the org reusable pinned to an approved channel tag ─
+# The ref must ride an approved moving channel (stable, next, or vN-ringN) —
+# never @main, a bare SHA, a frozen @vN, or an arbitrary/unknown channel tag.
 uses=""
 if ! uses=$(yq ".jobs.${JOB}.uses" "$WORKFLOW" 2>/dev/null); then
   echo "FAIL: yq failed to parse job uses in $WORKFLOW"
@@ -61,12 +60,18 @@ fi
 if [[ "$uses" == "null" || -z "$uses" ]]; then
   echo "FAIL: job '$JOB' has no 'uses:' calling the org reusable in $WORKFLOW"
   PASS=false
-elif [[ "$uses" != "$CHANNEL_PREFIX"* ]]; then
-  echo "FAIL: job 'uses' ($uses) is not pinned to the '${CHANNEL_PREFIX}' channel in $WORKFLOW"
-  echo "      Must ride the moving channel tag — not @main, a SHA, or a frozen @vN."
+elif [[ "$uses" != "${REUSABLE_PREFIX}"* ]]; then
+  echo "FAIL: job 'uses' ($uses) does not reference the org reusable '${REUSABLE_PREFIX}...' in $WORKFLOW"
   PASS=false
 else
-  echo "PASS: job 'uses' rides the dependabot-rebase channel"
+  channel_ref="${uses#"${REUSABLE_PREFIX}"}"
+  if [[ ! "$channel_ref" =~ ^dependabot-rebase/(stable|next|v[0-9]+-ring[0-9]+)$ ]]; then
+    echo "FAIL: job 'uses' channel '$channel_ref' is not a recognized approved channel in $WORKFLOW"
+    echo "      Approved: dependabot-rebase/(stable|next|v<N>-ring<N>) — not @main, a SHA, or an arbitrary tag."
+    PASS=false
+  else
+    echo "PASS: job 'uses' rides the dependabot-rebase channel"
+  fi
 fi
 
 # ── Check 4: job-level permissions grant the reusable's gh writes ──────────
