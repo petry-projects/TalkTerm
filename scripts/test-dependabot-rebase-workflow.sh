@@ -53,7 +53,7 @@ echo "PASS: $WORKFLOW is valid YAML"
 # The ref must ride an approved moving channel (stable, next, or vN-ringN) —
 # never @main, a bare SHA, a frozen @vN, or an arbitrary/unknown channel tag.
 uses=""
-if ! uses=$(yq ".jobs.${JOB}.uses" "$WORKFLOW" 2>/dev/null); then
+if ! uses=$(yq ".jobs[\"${JOB}\"].uses" "$WORKFLOW" 2>/dev/null); then
   echo "FAIL: yq failed to parse job uses in $WORKFLOW"
   PASS=false
 fi
@@ -79,11 +79,11 @@ fi
 # dropping either scope breaks the reusable's update-branch / re-approve calls.
 contents=""
 pulls=""
-if ! contents=$(yq ".jobs.${JOB}.permissions.contents" "$WORKFLOW" 2>/dev/null); then
+if ! contents=$(yq ".jobs[\"${JOB}\"].permissions.contents" "$WORKFLOW" 2>/dev/null); then
   echo "FAIL: yq failed to parse permissions.contents in $WORKFLOW"
   PASS=false
 fi
-if ! pulls=$(yq ".jobs.${JOB}.permissions.pull-requests" "$WORKFLOW" 2>/dev/null); then
+if ! pulls=$(yq ".jobs[\"${JOB}\"].permissions[\"pull-requests\"]" "$WORKFLOW" 2>/dev/null); then
   echo "FAIL: yq failed to parse permissions.pull-requests in $WORKFLOW"
   PASS=false
 fi
@@ -102,17 +102,19 @@ fi
 
 # ── Check 5: the GitHub App secrets are passed through ─────────────────────
 # Without these the reusable's create-github-app-token step fails immediately.
+# Validate the actual mapping value, not merely key presence.
 for secret in APP_ID APP_PRIVATE_KEY; do
-  has=""
-  if ! has=$(yq ".jobs.${JOB}.secrets | has(\"${secret}\")" "$WORKFLOW" 2>/dev/null); then
+  val=""
+  if ! val=$(yq ".jobs[\"${JOB}\"].secrets.${secret}" "$WORKFLOW" 2>/dev/null); then
     echo "FAIL: yq failed to parse secrets in $WORKFLOW"
     PASS=false
   fi
-  if [[ "$has" != "true" ]]; then
-    echo "FAIL: secret '$secret' is not passed to the reusable in $WORKFLOW"
+  expected="\${{ secrets.${secret} }}"
+  if [[ "$val" != "$expected" ]]; then
+    echo "FAIL: secret '$secret' mapping (found: '$val', expected: '$expected') in $WORKFLOW"
     PASS=false
   else
-    echo "PASS: secret '$secret' is passed to the reusable"
+    echo "PASS: secret '$secret' is correctly mapped to secrets.${secret}"
   fi
 done
 
@@ -160,7 +162,7 @@ for trig in push schedule workflow_dispatch; do
 done
 # push must target main so merges to main re-arm the chain.
 push_main=""
-if ! push_main=$(yq '.on.push.branches | contains(["main"])' "$WORKFLOW" 2>/dev/null); then
+if ! push_main=$(yq '.on.push.branches | any_c(. == "main")' "$WORKFLOW" 2>/dev/null); then
   echo "FAIL: yq failed to parse push branches in $WORKFLOW"
   PASS=false
 fi
@@ -169,6 +171,21 @@ if [[ "$push_main" != "true" ]]; then
   PASS=false
 else
   echo "PASS: 'push' trigger includes 'main'"
+fi
+# schedule must have the 4-hour safety net cron entry (non-empty, exact value).
+cron_val=""
+if ! cron_val=$(yq '.on.schedule[0].cron' "$WORKFLOW" 2>/dev/null); then
+  echo "FAIL: yq failed to parse schedule cron in $WORKFLOW"
+  PASS=false
+fi
+if [[ "$cron_val" == "null" || -z "$cron_val" ]]; then
+  echo "FAIL: schedule trigger must contain a non-empty cron entry in $WORKFLOW"
+  PASS=false
+elif [[ "$cron_val" != "0 */4 * * *" ]]; then
+  echo "FAIL: schedule cron must be '0 */4 * * *' (found: '$cron_val') in $WORKFLOW"
+  PASS=false
+else
+  echo "PASS: schedule cron is '0 */4 * * *'"
 fi
 
 echo ""
