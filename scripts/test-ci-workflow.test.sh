@@ -88,6 +88,48 @@ append_correct_yq() {
 YAML
 }
 
+# Buggy Install yq step followed by an unnamed step that contains $19 as a decoy.
+# The guard must scope validation to the Install yq step only and reject the decoy.
+append_buggy_yq_with_decoy() {
+  cat >> "$1" <<'YAML'
+  workflow-tests:
+    name: Workflow regression guards
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install yq
+        env:
+          YQ_VERSION: v4.44.6
+        run: |
+          curl -sSfL "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" -o /tmp/yq
+          EXPECTED=$(curl -sSfL "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/checksums" | grep "yq_linux_amd64$" | awk '{print $1}')
+          echo "${EXPECTED}  /tmp/yq" | sha256sum --check
+      - run: |
+          # decoy: $19 lives in an unnamed step — must not rescue the buggy Install yq above
+          echo "awk '{print $19}'"
+YAML
+}
+
+# Correct Install yq step followed by an unnamed step whose content would trip
+# up an over-broad line-capture but must not cause a false failure.
+append_correct_yq_with_unnamed_step() {
+  cat >> "$1" <<'YAML'
+  workflow-tests:
+    name: Workflow regression guards
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install yq
+        env:
+          YQ_VERSION: v4.44.6
+        run: |
+          curl -sSfL "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" -o /tmp/yq
+          EXPECTED=$(curl -sSfL "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/checksums" | grep "^yq_linux_amd64  " | awk '{print $19}')
+          echo "${EXPECTED}  /tmp/yq" | sha256sum --check
+      - run: |
+          # unnamed step with suspicious content — guard must ignore it
+          echo "grep 'yq_linux_amd64$' | awk '{print $1}'"
+YAML
+}
+
 run_guard() { bash "$GUARD" "$1" >/dev/null 2>&1; }
 
 # ── Case 1: buggy yq extraction is rejected (root cause of #430) ────────────
@@ -137,6 +179,26 @@ if run_guard "$noconc"; then
   fail "workflow missing a concurrency block should be REJECTED"
 else
   pass "workflow missing a concurrency block is rejected"
+fi
+
+# ── Case 5: decoy $19 in unnamed step must not rescue buggy Install yq ─────
+decoy="${TMP}/ci-decoy.yml"
+write_header "$decoy"
+append_buggy_yq_with_decoy "$decoy"
+if run_guard "$decoy"; then
+  fail "buggy Install yq with decoy \$19 in unnamed step should be REJECTED"
+else
+  pass "decoy \$19 in unnamed step does not rescue buggy Install yq"
+fi
+
+# ── Case 6: correct Install yq with following unnamed step still passes ─────
+correct_unnamed="${TMP}/ci-correct-unnamed.yml"
+write_header "$correct_unnamed"
+append_correct_yq_with_unnamed_step "$correct_unnamed"
+if run_guard "$correct_unnamed"; then
+  pass "correct Install yq with following unnamed step is accepted"
+else
+  fail "correct Install yq with following unnamed step should be ACCEPTED"
 fi
 
 echo ""

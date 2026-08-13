@@ -92,33 +92,29 @@ fi
 # an empty checksum and a deterministic `sha256sum: no properly formatted
 # checksum lines found` failure. This check locks the correct extraction so the
 # drift cannot return. It is a no-op when no `Install yq` step is present.
-if ! yq_block=$(awk '
-  /^[[:space:]]*-[[:space:]]*name:[[:space:]]*Install yq[[:space:]]*$/ { cap = 1; next }
-  cap && /^[[:space:]]*-[[:space:]]*name:/ { cap = 0 }
-  cap { print }
-' "$WORKFLOW"); then
-  echo "FAIL: Failed to parse $WORKFLOW with awk."
+if ! yq_run=$(yq '.jobs[].steps[] | select(.name == "Install yq") | .run' "$WORKFLOW" 2>/dev/null); then
+  echo "FAIL: yq failed to parse $WORKFLOW. Please check if it is valid YAML."
   exit 1
 fi
 
-if [[ -z "$yq_block" ]]; then
+if [[ -z "$yq_run" || "$yq_run" == "null" ]]; then
   echo "PASS: no 'Install yq' step in $WORKFLOW — yq checksum check not applicable"
 else
   # The filename must be anchored at line start; an end-anchor never matches the
   # `checksums` table (the filename is column 1), leaving the checksum empty.
-  if grep -Fq 'yq_linux_amd64$' <<< "$yq_block"; then
+  if grep -Fq 'yq_linux_amd64$' <<< "$yq_run"; then
     echo "FAIL: 'Install yq' matches the checksum line with an end-anchor"
     echo "      ('yq_linux_amd64\$'). The filename is column 1 — anchor at line"
     echo "      start ('^yq_linux_amd64  ') so the match succeeds."
     PASS=false
   # Column 1 is the filename, not a hash; selecting it yields an empty checksum.
-  elif grep -Fq "awk '{print \$1}'" <<< "$yq_block"; then
+  elif grep -Fq "awk '{print \$1}'" <<< "$yq_run"; then
     echo "FAIL: 'Install yq' extracts checksum column 1 (the filename) via"
     echo "      awk '{print \$1}'. SHA-256 is column 19 in the mikefarah/yq"
     echo "      checksums table — use awk '{print \$19}'."
     PASS=false
   # SHA-256 lives in column 19 (per checksums_hashes_order); require it explicitly.
-  elif ! grep -Fq '$19' <<< "$yq_block"; then
+  elif ! grep -Fq "\$19" <<< "$yq_run"; then
     echo "FAIL: 'Install yq' does not select checksum column 19 (SHA-256) in"
     echo "      $WORKFLOW. The mikefarah/yq checksums file lists SHA-256 as"
     echo "      column 19 — use awk '{print \$19}'."
