@@ -5,7 +5,7 @@
 # that degraded ci.yml in Fleet Monitor #430. No bats dependency: the guard is
 # driven as a subprocess against temporary fixture workflows.
 # Run: bash scripts/test-ci-workflow.test.sh
-set -uo pipefail
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 GUARD="${SCRIPT_DIR}/test-ci-workflow.sh"
@@ -24,7 +24,10 @@ if ! command -v yq >/dev/null 2>&1; then
   exit 0
 fi
 
-TMP="$(mktemp -d)"
+if ! TMP="$(mktemp -d)"; then
+  echo "FAIL: Failed to create temporary directory" >&2
+  exit 1
+fi
 trap 'rm -rf "$TMP"' EXIT
 
 # ── Fixture fragments ──────────────────────────────────────────────────────

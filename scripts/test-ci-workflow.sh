@@ -92,11 +92,14 @@ fi
 # an empty checksum and a deterministic `sha256sum: no properly formatted
 # checksum lines found` failure. This check locks the correct extraction so the
 # drift cannot return. It is a no-op when no `Install yq` step is present.
-yq_block=$(awk '
+if ! yq_block=$(awk '
   /^[[:space:]]*-[[:space:]]*name:[[:space:]]*Install yq[[:space:]]*$/ { cap = 1; next }
   cap && /^[[:space:]]*-[[:space:]]*name:/ { cap = 0 }
   cap { print }
-' "$WORKFLOW")
+' "$WORKFLOW"); then
+  echo "FAIL: Failed to parse $WORKFLOW with awk."
+  exit 1
+fi
 
 if [[ -z "$yq_block" ]]; then
   echo "PASS: no 'Install yq' step in $WORKFLOW — yq checksum check not applicable"
