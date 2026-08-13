@@ -88,10 +88,10 @@ jobs:
         env:
           YQ_VERSION: v4.44.6
         run: |
-          curl -sSfL --proto-redir -all,https \
+          curl -sSfL --proto '=https' \
             "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" \
             -o /tmp/yq
-          EXPECTED=$(curl -sSfL --proto-redir -all,https \
+          EXPECTED=$(curl -sSfL --proto '=https' \
             "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/checksums" \
             | grep "^yq_linux_amd64  " | awk '{print $19}')
           echo "${EXPECTED}  /tmp/yq" | sha256sum --check
