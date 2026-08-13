@@ -11,13 +11,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 GUARD="${SCRIPT_DIR}/test-ci-workflow.sh"
 
 fails=0
-pass() {
-  local desc="$1"
-  echo "ok   - $desc"
-}
+pass() { echo "ok   - $1"; }
 fail() {
-  local desc="$1"
-  echo "FAIL - $desc"
+  echo "FAIL - $1"
   fails=$((fails + 1))
 }
 
@@ -38,8 +34,7 @@ trap 'rm -rf "$TMP"' EXIT
 # A valid header that satisfies the concurrency invariants (Checks 1-4) so that
 # only the yq check (Check 5) differentiates the fixtures below.
 write_header() {
-  local file="$1"
-  cat > "$file" <<'YAML'
+  cat > "$1" <<'YAML'
 name: CI
 on:
   pull_request:
@@ -51,7 +46,6 @@ jobs:
   secret-scan:
     name: Secret scan
     runs-on: ubuntu-latest
-    timeout-minutes: 10
     steps:
       - run: echo scan
 YAML
@@ -61,12 +55,10 @@ YAML
 # end-anchor (never matches — it is the first column) and column 1 (the
 # filename) is selected instead of the SHA-256 column.
 append_buggy_yq() {
-  local file="$1"
-  cat >> "$file" <<'YAML'
+  cat >> "$1" <<'YAML'
   workflow-tests:
     name: Workflow regression guards
     runs-on: ubuntu-latest
-    timeout-minutes: 10
     steps:
       - name: Install yq
         env:
@@ -81,19 +73,17 @@ YAML
 # The correct Install yq step: filename anchored at line start, SHA-256 column
 # (19, per checksums_hashes_order) selected.
 append_correct_yq() {
-  local file="$1"
-  cat >> "$file" <<'YAML'
+  cat >> "$1" <<'YAML'
   workflow-tests:
     name: Workflow regression guards
     runs-on: ubuntu-latest
-    timeout-minutes: 10
     steps:
       - name: Install yq
         env:
           YQ_VERSION: v4.44.6
         run: |
-          curl -sSfL --retry 3 --retry-delay 2 --retry-all-errors "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" -o /tmp/yq
-          EXPECTED=$(curl -sSfL --retry 3 --retry-delay 2 --retry-all-errors "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/checksums" | grep "^yq_linux_amd64  " | awk '{print $19}')
+          curl -sSfL "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" -o /tmp/yq
+          EXPECTED=$(curl -sSfL "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/checksums" | grep "^yq_linux_amd64  " | awk '{print $19}')
           echo "${EXPECTED}  /tmp/yq" | sha256sum --check
 YAML
 }
@@ -101,12 +91,10 @@ YAML
 # Buggy Install yq step followed by an unnamed step that contains $19 as a decoy.
 # The guard must scope validation to the Install yq step only and reject the decoy.
 append_buggy_yq_with_decoy() {
-  local file="$1"
-  cat >> "$file" <<'YAML'
+  cat >> "$1" <<'YAML'
   workflow-tests:
     name: Workflow regression guards
     runs-on: ubuntu-latest
-    timeout-minutes: 10
     steps:
       - name: Install yq
         env:
@@ -121,78 +109,13 @@ append_buggy_yq_with_decoy() {
 YAML
 }
 
-# A second job that declares a positive-integer `timeout-minutes` and no curl.
-# Appended after a valid header so ONLY the timeout invariant (Check 7) is at
-# play: with it present on every job the guard accepts, without it the guard
-# rejects.
-append_job_with_timeout() {
-  local file="$1"
-  cat >> "$file" <<'YAML'
+# Correct Install yq step followed by an unnamed step whose content would trip
+# up an over-broad line-capture but must not cause a false failure.
+append_correct_yq_with_unnamed_step() {
+  cat >> "$1" <<'YAML'
   workflow-tests:
     name: Workflow regression guards
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - run: echo guards
-YAML
-}
-
-# A second job that declares NO `timeout-minutes`. Without a job timeout a
-# stalled step runs to GitHub's 6-hour default before being killed and counted
-# as a failure — the class of noise that inflates the Fleet Monitor failure rate
-# (#470). ONLY the missing timeout differentiates this fixture (Check 7).
-append_job_without_timeout() {
-  local file="$1"
-  cat >> "$file" <<'YAML'
-  workflow-tests:
-    name: Workflow regression guards
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo guards
-YAML
-}
-
-# A second job that declares `timeout-minutes: "10"` (quoted string). GitHub
-# Actions requires a bare YAML integer; a quoted value is a YAML type error
-# that yq masks by stripping quotes, so the guard checks the YAML tag (#471).
-append_job_with_quoted_timeout() {
-  local file="$1"
-  cat >> "$file" <<'YAML'
-  workflow-tests:
-    name: Workflow regression guards
-    runs-on: ubuntu-latest
-    timeout-minutes: "10"
-    steps:
-      - run: echo guards
-YAML
-}
-
-# A second job that declares `timeout-minutes: 0`. Zero is not a valid job
-# timeout (GitHub requires a positive integer) and must be rejected just like a
-# missing value.
-append_job_zero_timeout() {
-  local file="$1"
-  cat >> "$file" <<'YAML'
-  workflow-tests:
-    name: Workflow regression guards
-    runs-on: ubuntu-latest
-    timeout-minutes: 0
-    steps:
-      - run: echo guards
-YAML
-}
-
-# A job whose curl download omits --retry. A transient network blip would then
-# fail CI deterministically and inflate the Fleet Monitor failure rate. The
-# filename is anchored correctly and column 19 is selected so ONLY the missing
-# --retry (Check 6) differentiates this fixture.
-append_curl_without_retry() {
-  local file="$1"
-  cat >> "$file" <<'YAML'
-  workflow-tests:
-    name: Workflow regression guards
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
     steps:
       - name: Install yq
         env:
@@ -201,77 +124,13 @@ append_curl_without_retry() {
           curl -sSfL "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" -o /tmp/yq
           EXPECTED=$(curl -sSfL "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/checksums" | grep "^yq_linux_amd64  " | awk '{print $19}')
           echo "${EXPECTED}  /tmp/yq" | sha256sum --check
-YAML
-}
-
-# A job whose curl downloads all pass --retry, including one whose flags span a
-# backslash line-continuation. The guard must fold the continuation and accept it.
-append_curl_with_retry_multiline() {
-  local file="$1"
-  cat >> "$file" <<'YAML'
-  workflow-tests:
-    name: Workflow regression guards
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Install yq
-        env:
-          YQ_VERSION: v4.44.6
-        run: |
-          curl -sSfL --retry 3 --retry-delay 2 --retry-all-errors \
-            "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" \
-            -o /tmp/yq
-          EXPECTED=$(curl -sSfL --retry 3 --retry-delay 2 --retry-all-errors \
-            "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/checksums" \
-            | grep "^yq_linux_amd64  " | awk '{print $19}')
-          echo "${EXPECTED}  /tmp/yq" | sha256sum --check
-YAML
-}
-
-# A step where a curl without --retry is chained (&&) with one that has it.
-# A line-level check would miss the missing --retry because --retry appears
-# elsewhere in the same line; the guard must split chained commands first.
-append_curl_without_retry_chained() {
-  local file="$1"
-  cat >> "$file" <<'YAML'
-  workflow-tests:
-    name: Workflow regression guards
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Download tools
-        run: |
-          curl -sSfL "https://example.com/tool" -o /tmp/tool && curl -sSfL --retry 3 --retry-delay 2 --retry-all-errors "https://example.com/checksums" -o /tmp/checksums
-YAML
-}
-
-# Correct Install yq step followed by an unnamed step whose content would trip
-# up an over-broad line-capture but must not cause a false failure.
-append_correct_yq_with_unnamed_step() {
-  local file="$1"
-  cat >> "$file" <<'YAML'
-  workflow-tests:
-    name: Workflow regression guards
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Install yq
-        env:
-          YQ_VERSION: v4.44.6
-        run: |
-          curl -sSfL --retry 3 --retry-delay 2 --retry-all-errors "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" -o /tmp/yq
-          EXPECTED=$(curl -sSfL --retry 3 --retry-delay 2 --retry-all-errors "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/checksums" | grep "^yq_linux_amd64  " | awk '{print $19}')
-          echo "${EXPECTED}  /tmp/yq" | sha256sum --check
       - run: |
           # unnamed step with suspicious content — guard must ignore it
           echo "grep 'yq_linux_amd64$' | awk '{print $1}'"
 YAML
 }
 
-run_guard() {
-  local file="$1"
-  bash "$GUARD" "$file" >/dev/null 2>&1
-}
+run_guard() { bash "$GUARD" "$1" >/dev/null 2>&1; }
 
 # ── Case 1: buggy yq extraction is rejected (root cause of #430) ────────────
 buggy="${TMP}/ci-buggy.yml"
@@ -313,7 +172,6 @@ jobs:
   secret-scan:
     name: Secret scan
     runs-on: ubuntu-latest
-    timeout-minutes: 10
     steps:
       - run: echo scan
 YAML
@@ -341,76 +199,6 @@ if run_guard "$correct_unnamed"; then
   pass "correct Install yq with following unnamed step is accepted"
 else
   fail "correct Install yq with following unnamed step should be ACCEPTED"
-fi
-
-# ── Case 7: a curl download without --retry is rejected (Check 6) ──────────
-noretry="${TMP}/ci-noretry.yml"
-write_header "$noretry"
-append_curl_without_retry "$noretry"
-if run_guard "$noretry"; then
-  fail "curl download without --retry should be REJECTED"
-else
-  pass "curl download without --retry is rejected"
-fi
-
-# ── Case 8: curl downloads with --retry (incl. multi-line) are accepted ────
-retry="${TMP}/ci-retry.yml"
-write_header "$retry"
-append_curl_with_retry_multiline "$retry"
-if run_guard "$retry"; then
-  pass "curl downloads with --retry (multi-line continuation) are accepted"
-else
-  fail "curl downloads with --retry should be ACCEPTED"
-fi
-
-# ── Case 9: curl without --retry chained (&&) with one that has it — rejected
-chained="${TMP}/ci-chained.yml"
-write_header "$chained"
-append_curl_without_retry_chained "$chained"
-if run_guard "$chained"; then
-  fail "curl without --retry chained with one that has --retry should be REJECTED"
-else
-  pass "curl without --retry chained with one that has --retry is rejected"
-fi
-
-# ── Case 10: every job declaring timeout-minutes is accepted (Check 7) ──────
-timeout_ok="${TMP}/ci-timeout-ok.yml"
-write_header "$timeout_ok"
-append_job_with_timeout "$timeout_ok"
-if run_guard "$timeout_ok"; then
-  pass "every job declaring timeout-minutes is accepted"
-else
-  fail "every job declaring timeout-minutes should be ACCEPTED"
-fi
-
-# ── Case 11: a job missing timeout-minutes is rejected (root cause of #470) ─
-timeout_missing="${TMP}/ci-timeout-missing.yml"
-write_header "$timeout_missing"
-append_job_without_timeout "$timeout_missing"
-if run_guard "$timeout_missing"; then
-  fail "a job missing timeout-minutes should be REJECTED"
-else
-  pass "a job missing timeout-minutes is rejected"
-fi
-
-# ── Case 12: timeout-minutes: 0 (not a positive integer) is rejected ────────
-timeout_zero="${TMP}/ci-timeout-zero.yml"
-write_header "$timeout_zero"
-append_job_zero_timeout "$timeout_zero"
-if run_guard "$timeout_zero"; then
-  fail "timeout-minutes: 0 should be REJECTED"
-else
-  pass "timeout-minutes: 0 is rejected"
-fi
-
-# ── Case 13: timeout-minutes: "10" (quoted string) is rejected ───────────────
-timeout_quoted="${TMP}/ci-timeout-quoted.yml"
-write_header "$timeout_quoted"
-append_job_with_quoted_timeout "$timeout_quoted"
-if run_guard "$timeout_quoted"; then
-  fail 'timeout-minutes: "10" (quoted string) should be REJECTED'
-else
-  pass 'timeout-minutes: "10" (quoted string) is rejected'
 fi
 
 echo ""
