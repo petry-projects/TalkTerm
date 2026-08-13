@@ -83,8 +83,8 @@ assert_eq "pr_quality_dismiss_stale_reviews_status: disabled -> false" \
   "false" "$(pr_quality_dismiss_stale_reviews_status "$ruleset_dismiss_false")"
 assert_eq "pr_quality_dismiss_stale_reviews_status: no pull_request rule -> missing" \
   "$MISSING" "$(pr_quality_dismiss_stale_reviews_status "$ruleset_dismiss_no_pr")"
-assert_eq "pr_quality_dismiss_stale_reviews_status: rule without parameter -> missing" \
-  "$MISSING" "$(pr_quality_dismiss_stale_reviews_status "$ruleset_dismiss_no_param")"
+assert_eq "pr_quality_dismiss_stale_reviews_status: rule without parameter -> false" \
+  "false" "$(pr_quality_dismiss_stale_reviews_status "$ruleset_dismiss_no_param")"
 assert_eq "pr_quality_dismiss_stale_reviews_status: empty string -> missing" \
   "$MISSING" "$(pr_quality_dismiss_stale_reviews_status "")"
 

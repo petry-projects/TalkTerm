@@ -150,8 +150,9 @@ pr_quality_merge_methods_status() {
 
 # pr_quality_dismiss_stale_reviews_status <ruleset_json>
 # Echoes the ruleset's pull_request-rule dismiss_stale_reviews_on_push value as
-# "true" or "false", or "missing" when the JSON is empty, has no pull_request
-# rule, or that rule omits the dismiss_stale_reviews_on_push parameter.
+# "true" or "false", or "missing" when the JSON is empty or has no pull_request
+# rule. An absent parameter is treated as "false" (not "missing") so the apply
+# function can reconcile it to true.
 pr_quality_dismiss_stale_reviews_status() {
   local json="${1:-}"
   if [[ -z "$json" ]]; then
@@ -162,8 +163,7 @@ pr_quality_dismiss_stale_reviews_status() {
     (.rules // [])
     | map(select(.type == "pull_request"))
     | if length == 0 then $missing
-      else (.[0].parameters.dismiss_stale_reviews_on_push) as $d
-        | if $d == null then $missing else ($d | tostring) end
+      else (.[0].parameters.dismiss_stale_reviews_on_push // false | tostring)
       end'
 }
 
