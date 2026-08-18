@@ -2,7 +2,6 @@ import type { ForgeConfig } from '@electron-forge/shared-types';
 import { VitePlugin } from '@electron-forge/plugin-vite';
 import { MakerSquirrel } from '@electron-forge/maker-squirrel';
 import { MakerZIP } from '@electron-forge/maker-zip';
-import { MakerDMG } from '@electron-forge/maker-dmg';
 import path from 'node:path';
 import fs from 'node:fs';
 
@@ -49,10 +48,6 @@ const config: ForgeConfig = {
   makers: [
     new MakerSquirrel({
       name: 'TalkTerm',
-    }),
-    new MakerDMG({
-      name: 'TalkTerm',
-      format: 'ULFO',
     }),
     new MakerZIP({}, ['darwin', 'linux']),
   ],

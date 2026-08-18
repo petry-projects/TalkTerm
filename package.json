@@ -43,7 +43,6 @@
   "license": "MIT",
   "devDependencies": {
     "@electron-forge/cli": "^7.6.0",
-    "@electron-forge/maker-dmg": "^7.6.0",
     "@electron-forge/maker-squirrel": "^7.6.0",
     "@electron-forge/maker-zip": "^7.6.0",
     "@electron-forge/plugin-vite": "^7.6.0",
@@ -77,7 +76,8 @@
   },
   "overrides": {
     "tar": "^7.5.22",
-    "tmp": "^0.2.7"
+    "tmp": "^0.2.7",
+    "@electron/packager": "^20.0.1"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.2.83",
