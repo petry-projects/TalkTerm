@@ -57,6 +57,19 @@ describe('WebSpeechTts', () => {
     expect(window.speechSynthesis.speak).toHaveBeenCalled();
   });
 
+  it('does nothing when speechSynthesis is not available', () => {
+    Object.defineProperty(window, 'speechSynthesis', {
+      value: undefined,
+      writable: true,
+      configurable: true,
+    });
+    const tts = new WebSpeechTts();
+    expect(() => {
+      tts.speak('Hello');
+    }).not.toThrow();
+    expect(tts.isSpeaking).toBe(false);
+  });
+
   it('fires onEnd callback when utterance ends', () => {
     const tts = new WebSpeechTts();
     const onEnd = vi.fn();

@@ -147,6 +147,56 @@ describe('WebSpeechStt', () => {
     expect(errorArg.message).toContain('mic permission denied');
   });
 
+  it('does nothing when start() called while already listening', () => {
+    const stt = new WebSpeechStt();
+    stt.start();
+    expect(stt.isListening).toBe(true);
+    const recognition = (stt as any).recognition as MockSpeechRecognition;
+    const callCount = recognition.start.mock.calls.length;
+    // Second start should be a no-op
+    stt.start();
+    expect(recognition.start.mock.calls.length).toBe(callCount);
+  });
+
+  it('fires onResult with empty transcript when result[0] is undefined', () => {
+    const stt = new WebSpeechStt();
+    const onResult = vi.fn();
+    stt.onResult = onResult;
+    stt.start();
+
+    const recognition = (stt as any).recognition as MockSpeechRecognition;
+    recognition.onresult?.({
+      results: {
+        length: 1,
+        0: undefined,
+      },
+    });
+
+    // result is defined but result[0] is undefined — should not call onResult
+    expect(onResult).not.toHaveBeenCalled();
+  });
+
+  it('fires onError with String() when start() throws a non-Error value', () => {
+    const ThrowingNonError = class extends MockSpeechRecognition {
+      override start = vi.fn(() => {
+        throw 'mic blocked'; // eslint-disable-line @typescript-eslint/only-throw-error
+      });
+    };
+    Object.defineProperty(window, 'SpeechRecognition', {
+      value: ThrowingNonError,
+      writable: true,
+      configurable: true,
+    });
+    const stt = new WebSpeechStt();
+    const onError = vi.fn();
+    stt.onError = onError;
+    stt.start();
+
+    expect(onError).toHaveBeenCalledTimes(1);
+    const errorArg = onError.mock.calls[0]?.[0] as Error;
+    expect(errorArg.message).toContain('mic blocked');
+  });
+
   it('calls onError when speech recognition not supported', () => {
     Object.defineProperty(window, 'SpeechRecognition', {
       value: undefined,

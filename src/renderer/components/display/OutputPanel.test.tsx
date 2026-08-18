@@ -35,4 +35,52 @@ describe('OutputPanel', () => {
     expect(screen.getByText('Progress')).toBeInTheDocument();
     expect(screen.getByText('Step 1')).toBeInTheDocument();
   });
+
+  it('renders task progress with counters', () => {
+    const data = {
+      steps: [{ name: 'Step 1', status: 'completed' as const }],
+      counters: { total: 5 },
+    };
+    render(<OutputPanel mode="task-progress" data={data} onClose={vi.fn()} />);
+    expect(screen.getByText('Progress')).toBeInTheDocument();
+  });
+
+  it('renders document view with filePath', () => {
+    render(
+      <OutputPanel
+        mode="document"
+        data={{ markdown: '# Doc', filePath: '/doc.md' }}
+        onClose={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('Document')).toBeInTheDocument();
+  });
+
+  it('renders comparison table', () => {
+    const data = { rows: [{ name: 'A', scores: { speed: 4 } }], criteria: ['speed'] };
+    render(<OutputPanel mode="comparison-table" data={data} onClose={vi.fn()} />);
+    expect(screen.getByText('Comparison')).toBeInTheDocument();
+    expect(screen.getByText('A')).toBeInTheDocument();
+  });
+
+  it('renders clustered cards', () => {
+    const data = { clusters: [{ category: 'UI', ideas: [{ title: 'Dark mode' }] }] };
+    render(<OutputPanel mode="clustered-cards" data={data} onClose={vi.fn()} />);
+    expect(screen.getByText('Ideas')).toBeInTheDocument();
+    expect(screen.getByText('UI')).toBeInTheDocument();
+  });
+
+  it('renders activity feed', () => {
+    const data = {
+      entries: [{ timestamp: '12:00', actionType: 'write', description: 'Created file' }],
+    };
+    render(<OutputPanel mode="activity-feed" data={data} onClose={vi.fn()} />);
+    expect(screen.getByText('Activity')).toBeInTheDocument();
+    expect(screen.getByText('Created file')).toBeInTheDocument();
+  });
+
+  it('renders Preview title for plan-preview mode', () => {
+    render(<OutputPanel mode="plan-preview" data={{}} onClose={vi.fn()} />);
+    expect(screen.getByText('Preview')).toBeInTheDocument();
+  });
 });
