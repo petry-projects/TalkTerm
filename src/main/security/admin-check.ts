@@ -41,7 +41,7 @@ function checkUnixRoot(): boolean {
 
 function checkMacOsAdminGroup(): boolean {
   try {
-    const groups = execSync('groups', { encoding: 'utf-8', timeout: 3000 });
+    const groups = execSync('/usr/bin/groups', { encoding: 'utf-8', timeout: 3000 });
     return groups.split(/\s+/).includes('admin');
   } catch {
     return false;
