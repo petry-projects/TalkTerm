@@ -35,7 +35,7 @@
 # STACK: Node.js / npm (TypeScript + Electron desktop app)
 # ─────────────────────────────────────────────────────────────────────────────
 
-name: "Copilot Setup Steps"
+name: 'Copilot Setup Steps'
 
 on:
   workflow_dispatch:
@@ -74,7 +74,7 @@ jobs:
         # and would fail until that file is committed. Re-enable once the npm project is initialised.
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: "24"
+          node-version: '24'
 
       - name: Install Node.js dependencies
         # npm ci requires a package-lock.json — skip gracefully until one is committed.

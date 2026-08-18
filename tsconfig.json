@@ -18,9 +18,8 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "baseUrl": ".",
     "paths": {
-      "@shared/*": ["src/shared/*"]
+      "@shared/*": ["./src/shared/*"]
     }
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "test/**/*.ts"],
