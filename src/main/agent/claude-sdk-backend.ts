@@ -245,8 +245,10 @@ export class ClaudeSdkBackend implements AgentBackend {
 
   cancelCurrentAction(): void {
     this.abortController?.abort();
-    // Fire-and-forget interrupt on the active query
-    this.activeQuery?.interrupt().catch(() => {});
+    // Fire-and-forget interrupt on the active query — ignore if already completed
+    this.activeQuery?.interrupt().catch((err: unknown) => {
+      console.debug('[SDK] Query interrupt failed (likely already completed):', err);
+    });
   }
 
   // eslint-disable-next-line @typescript-eslint/require-await -- will be async when resume uses SDK
