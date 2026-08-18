@@ -165,29 +165,36 @@ export class SherpaOnnxStt {
   private processAudio(): void {
     if (this.recognizer === null || this.stream === null) return;
 
-    while (this.recognizer.isReady(this.stream) as boolean) {
-      this.recognizer.decode(this.stream);
-    }
-
-    const isEndpoint = this.recognizer.isEndpoint(this.stream) as boolean;
-
-    const result = this.recognizer.getResult(this.stream) as { text: string };
-    const text = result.text.trim();
-
-    // Emit interim results when text changes
-    if (text.length > 0 && text !== this.lastText) {
-      this.lastText = text;
-      this.onResult?.({ transcript: text, isFinal: false });
-    }
-
-    // Endpoint detected — emit final result and reset stream
-    if (isEndpoint) {
-      if (text.length > 0) {
-        this.onResult?.({ transcript: text, isFinal: true });
-        this.lastText = '';
+    try {
+      while (this.recognizer.isReady(this.stream) as boolean) {
+        this.recognizer.decode(this.stream);
       }
 
-      this.recognizer.reset(this.stream);
+      const isEndpoint = this.recognizer.isEndpoint(this.stream) as boolean;
+
+      const result = this.recognizer.getResult(this.stream) as { text: string };
+      const text = (result?.text ?? '').trim();
+
+      // Emit interim results when text changes
+      if (text.length > 0 && text !== this.lastText) {
+        this.lastText = text;
+        this.onResult?.({ transcript: text, isFinal: false });
+      }
+
+      // Endpoint detected — emit final result and reset stream
+      if (isEndpoint) {
+        if (text.length > 0) {
+          this.onResult?.({ transcript: text, isFinal: true });
+          this.lastText = '';
+        }
+
+        this.recognizer.reset(this.stream);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('[SherpaOnnxStt] Error processing audio:', msg);
+      this.onError?.(`Speech processing error: ${msg}`);
+      this.stop();
     }
   }
 
