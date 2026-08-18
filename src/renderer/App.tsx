@@ -68,12 +68,17 @@ export function App(): ReactElement {
           platform={adminResult.platform}
           instructions={adminResult.instructions ?? ''}
           onRetry={() => {
-            void window.electronAPI.retryAdminCheck().then((result: AdminCheckResult) => {
-              setAdminResult(result);
-              if (result.isAdmin) {
-                setPhase('setup');
-              }
-            });
+            void window.electronAPI
+              .retryAdminCheck()
+              .then((result: AdminCheckResult) => {
+                setAdminResult(result);
+                if (result.isAdmin) {
+                  setPhase('setup');
+                }
+              })
+              .catch(() => {
+                // Admin check retry failed — keep current state
+              });
           }}
           onQuit={() => {
             window.electronAPI.quitApp();

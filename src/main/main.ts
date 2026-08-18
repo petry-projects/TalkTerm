@@ -165,15 +165,22 @@ function bootstrap(): void {
   });
 }
 
-void app.whenReady().then(() => {
-  bootstrap();
+void app
+  .whenReady()
+  .then(() => {
+    bootstrap();
 
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      bootstrap();
-    }
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) {
+        bootstrap();
+      }
+    });
+  })
+  .catch((err: unknown) => {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`Failed to initialize app: ${msg}`);
+    process.exit(1);
   });
-});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
