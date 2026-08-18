@@ -47,6 +47,14 @@ interface AuditRow {
 }
 
 function mapRowToAuditEntry(row: AuditRow): AuditEntry {
+  let details: Record<string, unknown> = {};
+  try {
+    details = JSON.parse(row.details) as Record<string, unknown>;
+  } catch (err: unknown) {
+    console.error('[SqliteAuditRepository] Failed to parse audit details:', err);
+    // Return empty object if JSON is malformed rather than crashing
+  }
+
   return {
     id: row.id,
     sessionId: row.session_id,
@@ -54,6 +62,6 @@ function mapRowToAuditEntry(row: AuditRow): AuditEntry {
     actionType: row.action_type,
     outcome: row.outcome as AuditEntry['outcome'],
     userIntent: row.user_intent,
-    details: JSON.parse(row.details) as Record<string, unknown>,
+    details,
   };
 }
