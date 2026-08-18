@@ -36,6 +36,11 @@ readonly -a CHECK_SUITE_APP_IDS=(1236702 347564) # Claude, CodeRabbit
 #           #pr-quality--standard-ruleset-all-repositories
 readonly PR_QUALITY_RULESET_NAME='pr-quality'
 readonly PR_QUALITY_MERGE_METHOD='squash'
+# The pr-quality ruleset requires stale approvals to be dismissed when new
+# commits are pushed, so a review always reflects the code being merged.
+# Standard: petry-projects/.github/standards/github-settings.md
+#           #pr-quality--standard-ruleset-all-repositories
+readonly PR_QUALITY_DISMISS_STALE_REVIEWS='true'
 # The pr-quality ruleset requires that the most recent push be approved by a
 # reviewer other than its pusher. Expected true; GitHub omits/defaults it to
 # false, which is the drift this reconciler corrects.
