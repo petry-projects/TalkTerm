@@ -71,6 +71,22 @@ assert_eq "pr_quality_merge_methods_status: rule without methods -> missing" \
 assert_eq "pr_quality_merge_methods_status: empty string -> missing" \
   "$MISSING" "$(pr_quality_merge_methods_status "")"
 
+# ── pr_quality_dismiss_stale_reviews_status ───────────────────────────────────
+ruleset_dismiss_true='{"rules":[{"type":"pull_request","parameters":{"dismiss_stale_reviews_on_push":true}}]}'
+ruleset_dismiss_false='{"rules":[{"type":"pull_request","parameters":{"dismiss_stale_reviews_on_push":false}}]}'
+ruleset_dismiss_no_pr='{"rules":[{"type":"required_status_checks","parameters":{}}]}'
+ruleset_dismiss_no_param='{"rules":[{"type":"pull_request","parameters":{}}]}'
+
+assert_eq "pr_quality_dismiss_stale_reviews_status: enabled -> true" \
+  "true" "$(pr_quality_dismiss_stale_reviews_status "$ruleset_dismiss_true")"
+assert_eq "pr_quality_dismiss_stale_reviews_status: disabled -> false" \
+  "false" "$(pr_quality_dismiss_stale_reviews_status "$ruleset_dismiss_false")"
+assert_eq "pr_quality_dismiss_stale_reviews_status: no pull_request rule -> missing" \
+  "$MISSING" "$(pr_quality_dismiss_stale_reviews_status "$ruleset_dismiss_no_pr")"
+assert_eq "pr_quality_dismiss_stale_reviews_status: rule without parameter -> false" \
+  "false" "$(pr_quality_dismiss_stale_reviews_status "$ruleset_dismiss_no_param")"
+assert_eq "pr_quality_dismiss_stale_reviews_status: empty string -> missing" \
+  "$MISSING" "$(pr_quality_dismiss_stale_reviews_status "")"
 # ── pr_quality_require_last_push_approval_status ───────────────────────────────
 ruleset_rlpa_true='{"rules":[{"type":"pull_request","parameters":{"require_last_push_approval":true}}]}'
 ruleset_rlpa_false='{"rules":[{"type":"pull_request","parameters":{"require_last_push_approval":false}}]}'
