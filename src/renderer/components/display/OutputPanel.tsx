@@ -41,7 +41,7 @@ export function OutputPanel({ mode, data, onClose }: OutputPanelProps): ReactEle
         </button>
       </div>
       <div className="flex-1 overflow-y-auto">
-        {mode === 'task-progress' && data && (
+        {mode === 'task-progress' && data != null && (
           <TaskProgress
             steps={(data as { steps: TaskStep[] }).steps}
             {...((data as { counters?: Record<string, number> }).counters !== undefined
@@ -49,7 +49,7 @@ export function OutputPanel({ mode, data, onClose }: OutputPanelProps): ReactEle
               : {})}
           />
         )}
-        {mode === 'document' && data && (
+        {mode === 'document' && data != null && (
           <DocumentView
             markdown={(data as { markdown: string }).markdown}
             {...((data as { filePath?: string }).filePath !== undefined
@@ -57,16 +57,16 @@ export function OutputPanel({ mode, data, onClose }: OutputPanelProps): ReactEle
               : {})}
           />
         )}
-        {mode === 'comparison-table' && data && (
+        {mode === 'comparison-table' && data != null && (
           <ComparisonTable
             rows={(data as { rows: ComparisonRow[] }).rows}
             criteria={(data as { criteria: string[] }).criteria}
           />
         )}
-        {mode === 'clustered-cards' && data && (
+        {mode === 'clustered-cards' && data != null && (
           <ClusteredCards clusters={(data as { clusters: CardCluster[] }).clusters} />
         )}
-        {mode === 'activity-feed' && data && (
+        {mode === 'activity-feed' && data != null && (
           <ActivityFeed entries={(data as { entries: FeedEntry[] }).entries} visible={true} />
         )}
       </div>
