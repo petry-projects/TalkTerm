@@ -24,6 +24,9 @@ function layoutReducer(_state: LayoutState, action: LayoutAction): LayoutState {
       return { mode: 'output-review', leftPanelVisible: true, rightPanelVisible: true };
     case 'layout:reset':
       return { mode: 'conversation', leftPanelVisible: false, rightPanelVisible: false };
+    default:
+      const _exhaustive: never = action;
+      return _exhaustive;
   }
 }
 
