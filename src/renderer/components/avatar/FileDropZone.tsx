@@ -21,7 +21,9 @@ export function FileDropZone({ onFilesDropped, children }: FileDropZoneProps): R
     (e: DragEvent): void => {
       e.preventDefault();
       setIsDragging(false);
-      const files = Array.from(e.dataTransfer?.files ?? []);
+      const dataTransfer = e.dataTransfer as DataTransfer | null;
+      if (dataTransfer === null) return;
+      const files = Array.from(dataTransfer.files);
       const paths = files.map((f) => f.path).filter((p) => p !== '');
       if (paths.length > 0) {
         onFilesDropped(paths);
