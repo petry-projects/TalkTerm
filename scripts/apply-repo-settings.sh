@@ -36,6 +36,11 @@ readonly -a CHECK_SUITE_APP_IDS=(1236702 347564) # Claude, CodeRabbit
 #           #pr-quality--standard-ruleset-all-repositories
 readonly PR_QUALITY_RULESET_NAME='pr-quality'
 readonly PR_QUALITY_MERGE_METHOD='squash'
+# The pr-quality ruleset requires stale approvals to be dismissed when new
+# commits are pushed, so a review always reflects the code being merged.
+# Standard: petry-projects/.github/standards/github-settings.md
+#           #pr-quality--standard-ruleset-all-repositories
+readonly PR_QUALITY_DISMISS_STALE_REVIEWS='true'
 # The pr-quality ruleset requires that the most recent push be approved by a
 # reviewer other than its pusher. Expected true; GitHub omits/defaults it to
 # false, which is the drift this reconciler corrects.
@@ -149,6 +154,25 @@ pr_quality_merge_methods_status() {
       end'
 }
 
+# pr_quality_dismiss_stale_reviews_status <ruleset_json>
+# Echoes the ruleset's pull_request-rule dismiss_stale_reviews_on_push value as
+# "true" or "false", or "missing" when the JSON is empty or has no pull_request
+# rule. An absent parameter is treated as "false" (not "missing") so the apply
+# function can reconcile it to true.
+pr_quality_dismiss_stale_reviews_status() {
+  local json="${1:-}"
+  if [[ -z "$json" ]]; then
+    printf '%s' "$MISSING"
+    return 0
+  fi
+  printf '%s' "$json" | jq -r --arg missing "$MISSING" '
+    (.rules // [])
+    | map(select(.type == "pull_request"))
+    | if length == 0 then $missing
+      else (.[0].parameters.dismiss_stale_reviews_on_push // false | tostring)
+      end'
+}
+
 # pr_quality_require_last_push_approval_status <ruleset_json>
 # Echoes the ruleset's pull_request-rule require_last_push_approval as "true" or
 # "false", or "missing" when the JSON is empty or has no pull_request rule.
@@ -170,12 +194,12 @@ pr_quality_require_last_push_approval_status() {
 }
 
 # apply_pr_quality_ruleset <owner/repo>
-# Reconciles both the allowed_merge_methods and require_last_push_approval
-# settings in the pr-quality ruleset in a single GET+PUT cycle, eliminating the
-# read-modify-write race that arises from two consecutive PUT operations sharing
-# stale state. Skips when the ruleset is absent. Skips require_last_push_approval
-# when the ruleset has no pull_request rule (org automation owns rule creation).
-# Idempotent.
+# Reconciles the allowed_merge_methods, require_last_push_approval, and
+# dismiss_stale_reviews_on_push settings in the pr-quality ruleset in a single
+# GET+PUT cycle, eliminating the read-modify-write race that arises from
+# consecutive PUT operations sharing stale state. Skips when the ruleset is
+# absent. Skips the pull_request-rule parameters when the ruleset has no
+# pull_request rule (org automation owns rule creation). Idempotent.
 apply_pr_quality_ruleset() {
   local repo="$1"
   echo "Reconciling ${PR_QUALITY_RULESET_NAME} ruleset for ${repo} ..."
@@ -197,13 +221,17 @@ apply_pr_quality_ruleset() {
     return 0
   fi
 
-  local merge_status rlpa_status needs_update=false
+  local merge_status rlpa_status ds_status needs_update=false
   if ! merge_status=$(pr_quality_merge_methods_status "$ruleset"); then
     echo "  failed to parse ruleset merge methods status"
     return 1
   fi
   if ! rlpa_status=$(pr_quality_require_last_push_approval_status "$ruleset"); then
     echo "  failed to parse ruleset require_last_push_approval status"
+    return 1
+  fi
+  if ! ds_status=$(pr_quality_dismiss_stale_reviews_status "$ruleset"); then
+    echo "  failed to parse ruleset dismiss_stale_reviews_on_push status"
     return 1
   fi
 
@@ -226,6 +254,13 @@ apply_pr_quality_ruleset() {
     needs_update=true
   fi
 
+  if [[ "$ds_status" == "$PR_QUALITY_DISMISS_STALE_REVIEWS" ]]; then
+    echo "  already dismiss_stale_reviews_on_push=${PR_QUALITY_DISMISS_STALE_REVIEWS} — nothing to do"
+  else
+    echo "  dismiss_stale_reviews_on_push '${ds_status}' drifted — reconciling to ${PR_QUALITY_DISMISS_STALE_REVIEWS}"
+    needs_update=true
+  fi
+
   if [[ "$needs_update" == "false" ]]; then
     return 0
   fi
@@ -243,7 +278,7 @@ apply_pr_quality_ruleset() {
         (.rules // [])[]
         | if .type == "pull_request"
           then .parameters.allowed_merge_methods = [$method]
-            | .parameters = ((.parameters // {}) + {require_last_push_approval: true})
+            | .parameters = ((.parameters // {}) + {require_last_push_approval: true, dismiss_stale_reviews_on_push: true})
           else . end
       ]
     }'); then
