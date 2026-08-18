@@ -11,9 +11,13 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 GUARD="${SCRIPT_DIR}/test-ci-workflow.sh"
 
 fails=0
-pass() { echo "ok   - $1"; }
+pass() {
+  local desc="$1"
+  echo "ok   - $desc"
+}
 fail() {
-  echo "FAIL - $1"
+  local desc="$1"
+  echo "FAIL - $desc"
   fails=$((fails + 1))
 }
 
@@ -34,7 +38,8 @@ trap 'rm -rf "$TMP"' EXIT
 # A valid header that satisfies the concurrency invariants (Checks 1-4) so that
 # only the yq check (Check 5) differentiates the fixtures below.
 write_header() {
-  cat > "$1" <<'YAML'
+  local file="$1"
+  cat > "$file" <<'YAML'
 name: CI
 on:
   pull_request:
@@ -55,7 +60,8 @@ YAML
 # end-anchor (never matches — it is the first column) and column 1 (the
 # filename) is selected instead of the SHA-256 column.
 append_buggy_yq() {
-  cat >> "$1" <<'YAML'
+  local file="$1"
+  cat >> "$file" <<'YAML'
   workflow-tests:
     name: Workflow regression guards
     runs-on: ubuntu-latest
@@ -73,7 +79,8 @@ YAML
 # The correct Install yq step: filename anchored at line start, SHA-256 column
 # (19, per checksums_hashes_order) selected.
 append_correct_yq() {
-  cat >> "$1" <<'YAML'
+  local file="$1"
+  cat >> "$file" <<'YAML'
   workflow-tests:
     name: Workflow regression guards
     runs-on: ubuntu-latest
@@ -91,7 +98,8 @@ YAML
 # Buggy Install yq step followed by an unnamed step that contains $19 as a decoy.
 # The guard must scope validation to the Install yq step only and reject the decoy.
 append_buggy_yq_with_decoy() {
-  cat >> "$1" <<'YAML'
+  local file="$1"
+  cat >> "$file" <<'YAML'
   workflow-tests:
     name: Workflow regression guards
     runs-on: ubuntu-latest
@@ -112,7 +120,8 @@ YAML
 # Correct Install yq step followed by an unnamed step whose content would trip
 # up an over-broad line-capture but must not cause a false failure.
 append_correct_yq_with_unnamed_step() {
-  cat >> "$1" <<'YAML'
+  local file="$1"
+  cat >> "$file" <<'YAML'
   workflow-tests:
     name: Workflow regression guards
     runs-on: ubuntu-latest
@@ -130,7 +139,10 @@ append_correct_yq_with_unnamed_step() {
 YAML
 }
 
-run_guard() { bash "$GUARD" "$1" >/dev/null 2>&1; }
+run_guard() {
+  local file="$1"
+  bash "$GUARD" "$file" >/dev/null 2>&1
+}
 
 # ── Case 1: buggy yq extraction is rejected (root cause of #430) ────────────
 buggy="${TMP}/ci-buggy.yml"
