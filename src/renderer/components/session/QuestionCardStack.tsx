@@ -76,6 +76,9 @@ function reducer(state: CardStackState, action: CardStackAction): CardStackState
       return { ...state, showReview: true };
     case 'edit-from-review':
       return { ...state, showReview: false, currentIndex: action.index };
+    default:
+      const _exhaustive: never = action;
+      return _exhaustive;
   }
 }
 
