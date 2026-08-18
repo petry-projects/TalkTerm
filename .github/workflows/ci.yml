@@ -75,3 +75,30 @@ jobs:
           echo "${EXPECTED}  /tmp/gitleaks.tar.gz" | sha256sum --check
           tar -xzf /tmp/gitleaks.tar.gz -C /tmp gitleaks
           /tmp/gitleaks detect --source . --redact --verbose --exit-code 1
+
+  workflow-tests:
+    name: Workflow regression guards
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Install yq
+        env:
+          YQ_VERSION: v4.44.6
+        run: |
+          curl -sSfL --proto '=https' \
+            "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" \
+            -o /tmp/yq
+          EXPECTED=$(curl -sSfL --proto '=https' \
+            "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/checksums" \
+            | grep "^yq_linux_amd64  " | awk '{print $19}')
+          echo "${EXPECTED}  /tmp/yq" | sha256sum --check
+          sudo install -m 755 /tmp/yq /usr/local/bin/yq
+      - name: Run workflow regression guards
+        run: |
+          bash scripts/test-dependabot-rebase-workflow.sh
+          bash scripts/test-pr-review-workflow.sh
+          bash scripts/test-ci-workflow.sh
+          bash scripts/test-copilot-setup-steps-workflow.sh
