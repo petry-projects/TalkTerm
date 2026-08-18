@@ -207,6 +207,11 @@ apply_pr_quality_ruleset() {
     return 1
   fi
 
+  if [[ "$rlpa_status" == "$MISSING" ]]; then
+    echo "  no pull_request rule found — skipping ruleset reconciliation (org automation owns rule creation)"
+    return 0
+  fi
+
   if [[ "$merge_status" == "$PR_QUALITY_MERGE_METHOD" ]]; then
     echo "  already ${PR_QUALITY_MERGE_METHOD}-only — nothing to do for merge methods"
   else
@@ -214,9 +219,7 @@ apply_pr_quality_ruleset() {
     needs_update=true
   fi
 
-  if [[ "$rlpa_status" == "$MISSING" ]]; then
-    echo "  no pull_request rule found — skipping require_last_push_approval reconciliation (org automation owns rule creation)"
-  elif [[ "$rlpa_status" == "$PR_QUALITY_REQUIRE_LAST_PUSH_APPROVAL" ]]; then
+  if [[ "$rlpa_status" == "$PR_QUALITY_REQUIRE_LAST_PUSH_APPROVAL" ]]; then
     echo "  already require_last_push_approval=${PR_QUALITY_REQUIRE_LAST_PUSH_APPROVAL} — nothing to do"
   else
     echo "  require_last_push_approval '${rlpa_status}' drifted — reconciling to ${PR_QUALITY_REQUIRE_LAST_PUSH_APPROVAL}"
