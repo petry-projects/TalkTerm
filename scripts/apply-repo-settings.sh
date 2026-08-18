@@ -36,6 +36,12 @@ readonly -a CHECK_SUITE_APP_IDS=(1236702 347564) # Claude, CodeRabbit
 #           #pr-quality--standard-ruleset-all-repositories
 readonly PR_QUALITY_RULESET_NAME='pr-quality'
 readonly PR_QUALITY_MERGE_METHOD='squash'
+# The pr-quality ruleset requires that the most recent push be approved by a
+# reviewer other than its pusher. Expected true; GitHub omits/defaults it to
+# false, which is the drift this reconciler corrects.
+# Standard: petry-projects/.github/standards/github-settings.md
+#           #pr-quality--standard-ruleset-all-repositories
+readonly PR_QUALITY_REQUIRE_LAST_PUSH_APPROVAL='true'
 readonly MISSING='missing'
 
 # resolve_repo <arg>
