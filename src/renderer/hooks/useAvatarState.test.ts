@@ -41,6 +41,14 @@ describe('useAvatarState', () => {
     expect(result.current.animationState).toBe('deep-thinking');
   });
 
+  it('transitions to error', () => {
+    const { result } = renderHook(() => useAvatarState());
+    act(() => {
+      result.current.setError();
+    });
+    expect(result.current.animationState).toBe('error');
+  });
+
   it('transitions back to ready', () => {
     const { result } = renderHook(() => useAvatarState());
     act(() => {

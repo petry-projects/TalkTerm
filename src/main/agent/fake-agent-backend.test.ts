@@ -71,4 +71,38 @@ describe('FakeAgentBackend', () => {
 
     expect(received).toHaveLength(1);
   });
+
+  it('stops yielding sendMessage events when cancelled mid-iteration', () => {
+    const backend = new FakeAgentBackend();
+    backend.queueEvents([
+      { type: 'text', content: 'First' },
+      { type: 'text', content: 'Second' },
+    ]);
+
+    const received: AgentEvent[] = [];
+    for (const event of backend.sendMessage('session-1', 'hello')) {
+      received.push(event);
+      backend.cancelCurrentAction();
+    }
+
+    expect(received).toHaveLength(1);
+    expect(backend.cancelled).toBe(true);
+  });
+
+  it('stops yielding resumeSession events when cancelled mid-iteration', () => {
+    const backend = new FakeAgentBackend();
+    backend.queueEvents([
+      { type: 'text', content: 'First' },
+      { type: 'text', content: 'Second' },
+    ]);
+
+    const received: AgentEvent[] = [];
+    for (const event of backend.resumeSession('session-1')) {
+      received.push(event);
+      backend.cancelCurrentAction();
+    }
+
+    expect(received).toHaveLength(1);
+    expect(backend.cancelled).toBe(true);
+  });
 });
