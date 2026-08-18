@@ -80,4 +80,22 @@ describe('FileDropZone', () => {
 
     expect(onFilesDropped).not.toHaveBeenCalled();
   });
+
+  it('handles null dataTransfer gracefully without throwing', () => {
+    const onFilesDropped = vi.fn();
+    render(
+      <FileDropZone onFilesDropped={onFilesDropped}>
+        <div>Content</div>
+      </FileDropZone>,
+    );
+    const dropZone = screen.getByTestId('file-drop-zone');
+
+    const dropEvt = createEvent.drop(dropZone);
+    Object.defineProperty(dropEvt, 'dataTransfer', {
+      value: null,
+    });
+    fireEvent(dropZone, dropEvt);
+
+    expect(onFilesDropped).not.toHaveBeenCalled();
+  });
 });
