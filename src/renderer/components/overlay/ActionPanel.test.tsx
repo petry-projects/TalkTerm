@@ -45,7 +45,12 @@ describe('ActionPanel', () => {
 
   it('uses aria-label prop when provided', () => {
     render(
-      <ActionPanel title="Choose" cards={mockCards} onSelect={vi.fn()} aria-label="Pick an option" />,
+      <ActionPanel
+        title="Choose"
+        cards={mockCards}
+        onSelect={vi.fn()}
+        aria-label="Pick an option"
+      />,
     );
     expect(screen.getByRole('listbox', { name: 'Pick an option' })).toBeInTheDocument();
   });
