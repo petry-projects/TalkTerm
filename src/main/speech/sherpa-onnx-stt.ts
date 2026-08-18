@@ -173,7 +173,7 @@ export class SherpaOnnxStt {
       const isEndpoint = this.recognizer.isEndpoint(this.stream) as boolean;
 
       const result = this.recognizer.getResult(this.stream) as { text: string };
-      const text = (result?.text ?? '').trim();
+      const text = result.text.trim();
 
       // Emit interim results when text changes
       if (text.length > 0 && text !== this.lastText) {
