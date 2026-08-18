@@ -25,7 +25,14 @@ export class SafeStorageKeyManager implements KeyManager {
 
   retrieveKey(): string | null {
     if (this.encryptedKey === null) return null;
-    return this.safeStorage.decryptString(this.encryptedKey);
+    try {
+      return this.safeStorage.decryptString(this.encryptedKey);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('[SafeStorageKeyManager] Failed to decrypt API key:', msg);
+      // Return null instead of throwing — key retrieval failure shouldn't crash the app
+      return null;
+    }
   }
 
   deleteKey(): void {
