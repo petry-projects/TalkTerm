@@ -47,7 +47,8 @@ jobs:
         with:
           node-version: 24
           cache: npm
-      - run: npm ci --legacy-peer-deps
+      - run: npm ci --legacy-peer-deps --ignore-scripts
+      - run: npm rebuild better-sqlite3
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run format:check
@@ -66,7 +67,8 @@ jobs:
         with:
           node-version: 24
           cache: npm
-      - run: npm ci --legacy-peer-deps
+      - run: npm ci --legacy-peer-deps --ignore-scripts
+      - run: npm rebuild better-sqlite3
       - run: npm run test:mutate
 
   e2e:
@@ -81,10 +83,10 @@ jobs:
         with:
           node-version: 24
           cache: npm
-      - run: npm ci --legacy-peer-deps
-      - run: npx electron-forge make
-      - run: npx playwright install --with-deps
-      - run: npx playwright test --config playwright.electron.config.ts
+      - run: npm ci --legacy-peer-deps # NOSONAR - Electron binary download and native module compilation require lifecycle scripts
+      - run: npm run make
+      - run: npm run playwright:install
+      - run: npm run test:e2e:electron
         env:
           CI: 'true'
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
