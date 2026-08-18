@@ -13,34 +13,54 @@ export class SpeechIPCHandler {
 
   register(ipcMain: IpcMain): void {
     ipcMain.handle(IPC_CHANNELS.AUDIO_START, async () => {
-      await this.stt.initialize();
+      try {
+        await this.stt.initialize();
 
-      const wc = this.getWebContents();
+        const wc = this.getWebContents();
+        if (wc === null) {
+          console.warn('[SpeechIPCHandler] No active window for audio callbacks');
+          return;
+        }
 
-      this.stt.onResult = (result) => {
-        wc?.send(IPC_CHANNELS.AUDIO_RESULT, result);
-      };
+        this.stt.onResult = (result) => {
+          wc.send(IPC_CHANNELS.AUDIO_RESULT, result);
+        };
 
-      this.stt.onError = (error) => {
-        wc?.send(IPC_CHANNELS.AUDIO_ERROR, error);
-      };
+        this.stt.onError = (error) => {
+          wc.send(IPC_CHANNELS.AUDIO_ERROR, error);
+        };
 
-      this.stt.onEnd = () => {
-        wc?.send(IPC_CHANNELS.AUDIO_END);
-      };
+        this.stt.onEnd = () => {
+          wc.send(IPC_CHANNELS.AUDIO_END);
+        };
 
-      this.stt.start();
+        this.stt.start();
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error('[SpeechIPCHandler] Failed to start audio:', msg);
+        this.getWebContents()?.send(IPC_CHANNELS.AUDIO_ERROR, `Failed to start audio: ${msg}`);
+      }
     });
 
     ipcMain.handle(IPC_CHANNELS.AUDIO_STOP, () => {
-      this.stt.stop();
+      try {
+        this.stt.stop();
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error('[SpeechIPCHandler] Error stopping audio:', msg);
+      }
     });
 
     // Audio data arrives as ArrayBuffer from renderer — convert to Float32Array
     ipcMain.on(IPC_CHANNELS.AUDIO_DATA, (_event, buffer: ArrayBuffer) => {
-      if (this.stt.isListening) {
-        const samples = new Float32Array(buffer);
-        this.stt.acceptAudio(samples);
+      if (this.stt.isListening && buffer instanceof ArrayBuffer) {
+        try {
+          const samples = new Float32Array(buffer);
+          this.stt.acceptAudio(samples);
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.error('[SpeechIPCHandler] Error processing audio data:', msg);
+        }
       }
     });
   }
