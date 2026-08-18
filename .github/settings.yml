@@ -39,7 +39,9 @@ repository:
 # The ruleset JSON's source of truth lives in petry-projects/.github
 # (standards/rulesets/pr-quality.json) and is applied org-wide by apply-rulesets.sh.
 # scripts/apply-repo-settings.sh additionally reconciles allowed_merge_methods to
-# [squash] on push to main + weekly, so drift is caught between compliance audits.
+# [squash] and require_last_push_approval to true on push to main + weekly, so
+# drift is caught between compliance audits (compliance:
+# ruleset-drift-pr-quality-require_last_push_approval).
 
 # --- Check suite auto-trigger ---
 # Standard: https://github.com/petry-projects/.github/blob/main/standards/github-settings.md
