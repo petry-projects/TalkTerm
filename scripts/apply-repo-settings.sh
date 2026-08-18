@@ -36,6 +36,12 @@ readonly -a CHECK_SUITE_APP_IDS=(1236702 347564) # Claude, CodeRabbit
 #           #pr-quality--standard-ruleset-all-repositories
 readonly PR_QUALITY_RULESET_NAME='pr-quality'
 readonly PR_QUALITY_MERGE_METHOD='squash'
+# The pr-quality ruleset requires that the most recent push be approved by a
+# reviewer other than its pusher. Expected true; GitHub omits/defaults it to
+# false, which is the drift this reconciler corrects.
+# Standard: petry-projects/.github/standards/github-settings.md
+#           #pr-quality--standard-ruleset-all-repositories
+readonly PR_QUALITY_REQUIRE_LAST_PUSH_APPROVAL='true'
 readonly MISSING='missing'
 
 # resolve_repo <arg>
@@ -143,15 +149,36 @@ pr_quality_merge_methods_status() {
       end'
 }
 
-# apply_pr_quality_merge_methods <owner/repo>
-# Reconciles the pr-quality ruleset's allowed_merge_methods to squash-only.
-# Skips when the ruleset is absent (org automation has not created it yet) or
-# already compliant. Otherwise PUTs the ruleset back with the merge methods
-# forced to [squash], preserving all other fields (rules, conditions, bypass
-# actors, enforcement). Idempotent.
-apply_pr_quality_merge_methods() {
+# pr_quality_require_last_push_approval_status <ruleset_json>
+# Echoes the ruleset's pull_request-rule require_last_push_approval as "true" or
+# "false", or "missing" when the JSON is empty or has no pull_request rule.
+# When the pull_request rule exists but omits the parameter, returns "false"
+# (GitHub omits the key when the value is its default of false).
+pr_quality_require_last_push_approval_status() {
+  local json="${1:-}"
+  if [[ -z "$json" ]]; then
+    printf '%s' "$MISSING"
+    return 0
+  fi
+  printf '%s' "$json" | jq -r --arg missing "$MISSING" '
+    (.rules // [])
+    | map(select(.type == "pull_request"))
+    | if length == 0 then $missing
+      else (.[0].parameters.require_last_push_approval) as $v
+        | if $v == null then "false" else ($v | tostring) end
+      end'
+}
+
+# apply_pr_quality_ruleset <owner/repo>
+# Reconciles both the allowed_merge_methods and require_last_push_approval
+# settings in the pr-quality ruleset in a single GET+PUT cycle, eliminating the
+# read-modify-write race that arises from two consecutive PUT operations sharing
+# stale state. Skips when the ruleset is absent. Skips require_last_push_approval
+# when the ruleset has no pull_request rule (org automation owns rule creation).
+# Idempotent.
+apply_pr_quality_ruleset() {
   local repo="$1"
-  echo "Reconciling ${PR_QUALITY_RULESET_NAME} ruleset merge methods for ${repo} ..."
+  echo "Reconciling ${PR_QUALITY_RULESET_NAME} ruleset for ${repo} ..."
 
   local ruleset_id
   if ! ruleset_id=$(gh api "repos/${repo}/rulesets" \
@@ -164,20 +191,44 @@ apply_pr_quality_merge_methods() {
     return 0
   fi
 
-  local ruleset status
+  local ruleset
   if ! ruleset=$(gh api "repos/${repo}/rulesets/${ruleset_id}" 2>/dev/null) || [[ -z "$ruleset" ]]; then
     echo "  could not read ruleset ${ruleset_id} — skipping"
     return 0
   fi
-  if ! status=$(pr_quality_merge_methods_status "$ruleset"); then
+
+  local merge_status rlpa_status needs_update=false
+  if ! merge_status=$(pr_quality_merge_methods_status "$ruleset"); then
     echo "  failed to parse ruleset merge methods status"
     return 1
   fi
-  if [[ "$status" == "$PR_QUALITY_MERGE_METHOD" ]]; then
-    echo "  already ${PR_QUALITY_MERGE_METHOD}-only — nothing to do"
+  if ! rlpa_status=$(pr_quality_require_last_push_approval_status "$ruleset"); then
+    echo "  failed to parse ruleset require_last_push_approval status"
+    return 1
+  fi
+
+  if [[ "$rlpa_status" == "$MISSING" ]]; then
+    echo "  no pull_request rule found — skipping ruleset reconciliation (org automation owns rule creation)"
     return 0
   fi
-  echo "  merge methods '${status}' drifted — reconciling to ${PR_QUALITY_MERGE_METHOD}-only"
+
+  if [[ "$merge_status" == "$PR_QUALITY_MERGE_METHOD" ]]; then
+    echo "  already ${PR_QUALITY_MERGE_METHOD}-only — nothing to do for merge methods"
+  else
+    echo "  merge methods '${merge_status}' drifted — reconciling to ${PR_QUALITY_MERGE_METHOD}-only"
+    needs_update=true
+  fi
+
+  if [[ "$rlpa_status" == "$PR_QUALITY_REQUIRE_LAST_PUSH_APPROVAL" ]]; then
+    echo "  already require_last_push_approval=${PR_QUALITY_REQUIRE_LAST_PUSH_APPROVAL} — nothing to do"
+  else
+    echo "  require_last_push_approval '${rlpa_status}' drifted — reconciling to ${PR_QUALITY_REQUIRE_LAST_PUSH_APPROVAL}"
+    needs_update=true
+  fi
+
+  if [[ "$needs_update" == "false" ]]; then
+    return 0
+  fi
 
   local payload
   if ! payload=$(printf '%s' "$ruleset" | jq \
@@ -189,9 +240,10 @@ apply_pr_quality_merge_methods() {
       bypass_actors: (.bypass_actors // []),
       conditions: .conditions,
       rules: [
-        .rules[]
+        (.rules // [])[]
         | if .type == "pull_request"
           then .parameters.allowed_merge_methods = [$method]
+            | .parameters = ((.parameters // {}) + {require_last_push_approval: true})
           else . end
       ]
     }'); then
@@ -210,6 +262,6 @@ if [[ "${BASH_SOURCE[0]:-$0}" == "$0" ]]; then
   }
   apply_security_and_analysis "$repo"
   apply_check_suite_prefs "$repo"
-  apply_pr_quality_merge_methods "$repo"
+  apply_pr_quality_ruleset "$repo"
   echo "Done."
 fi
