@@ -16,7 +16,7 @@ interface AdminCheckResult {
   instructions?: string;
 }
 
-export function App(): ReactElement {
+export function App(): ReactElement | null {
   const { currentStep, goToStep, completeCurrentStep } = useSetupRouter('needs-key');
   const [userName, setUserName] = useState('');
   const [phase, setPhase] = useState<AppPhase>('admin-check');
@@ -51,6 +51,42 @@ export function App(): ReactElement {
       setPhase('conversation');
     }
   }
+
+  // Handle admin check completion
+  useEffect(() => {
+    if (phase === 'admin-check' && adminResult?.isAdmin === true) {
+      setPhase('setup');
+    }
+  }, [phase, adminResult?.isAdmin]);
+
+  // Handle setup step completion
+  useEffect(() => {
+    if (phase === 'setup' && currentStep === 'ready') {
+      setPhase('greeting');
+    }
+  }, [phase, currentStep]);
+
+  // Fetch incomplete sessions when entering greeting phase with a real workspace
+  useEffect(() => {
+    if (phase === 'greeting' && incompleteSessions.length === 0 && workspacePath !== '') {
+      void window.electronAPI
+        .getIncompleteSessions(workspacePath)
+        .then((sessions) => {
+          if (sessions.length > 0) {
+            setIncompleteSessions(
+              sessions.map((s) => ({
+                id: s.id,
+                workspacePath: s.workspacePath,
+                updatedAt: s.updatedAt,
+              })),
+            );
+          }
+        })
+        .catch(() => {
+          // Failed to fetch — proceed without resume options
+        });
+    }
+  }, [phase, workspacePath, incompleteSessions.length]);
 
   // Admin check phase — block until admin privileges confirmed
   if (phase === 'admin-check') {
@@ -87,7 +123,7 @@ export function App(): ReactElement {
       );
     }
     // Admin check passed — proceed to setup
-    setPhase('setup');
+    return null;
   }
 
   // Setup phase — walk through setup steps
@@ -158,38 +194,21 @@ export function App(): ReactElement {
         <AvatarSelection
           onSelect={() => {
             completeCurrentStep();
-            setPhase('greeting');
           }}
         />
       );
     }
 
-    // ready step — transition to greeting
-    setPhase('greeting');
+    // ready step — return loading state while useEffect transitions phase
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-stage-bg">
+        <p className="text-body text-text-muted-on-dark">Loading...</p>
+      </div>
+    );
   }
 
-  // Greeting phase — fetch incomplete sessions, then show greeting
+  // Greeting phase — show greeting with incomplete sessions
   if (phase === 'greeting') {
-    // Fetch incomplete sessions on first render of greeting phase
-    // Only query when a real workspace was selected — skip if empty/fallback
-    if (incompleteSessions.length === 0 && workspacePath !== '') {
-      void window.electronAPI
-        .getIncompleteSessions(workspacePath)
-        .then((sessions) => {
-          if (sessions.length > 0) {
-            setIncompleteSessions(
-              sessions.map((s) => ({
-                id: s.id,
-                workspacePath: s.workspacePath,
-                updatedAt: s.updatedAt,
-              })),
-            );
-          }
-        })
-        .catch(() => {
-          // Failed to fetch — proceed without resume options
-        });
-    }
     return (
       <SessionGreeting
         userName={userName || 'there'}
