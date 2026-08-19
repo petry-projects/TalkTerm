@@ -10,7 +10,10 @@
 # Run: bash scripts/test-sonarcloud-workflow.test.sh
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if ! SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"; then
+  echo "FAIL: Failed to determine script directory" >&2
+  exit 1
+fi
 GUARD="${SCRIPT_DIR}/test-sonarcloud-workflow.sh"
 
 fails=0
@@ -114,6 +117,22 @@ append_scan_without_retry() {
 YAML
 }
 
+# A retry condition that guards on an unrelated step's failure rather than the
+# primary scan's id, so the retry does not reliably fire on a primary-scan blip.
+append_scan_wrong_retry_id() {
+  local file="$1"
+  cat >> "$file" <<'YAML'
+      - name: SonarCloud Scan
+        id: sonar
+        if: env.SONAR_TOKEN != ''
+        uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
+        continue-on-error: true
+      - name: SonarCloud Scan (retry)
+        if: env.SONAR_TOKEN != '' && steps.other.outcome == 'failure'
+        uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
+YAML
+}
+
 # Correct scan pair but the retry action is pinned to a mutable tag, not a SHA.
 append_good_scan_unpinned_retry() {
   local file="$1"
@@ -187,6 +206,16 @@ if run_guard "${TMP}/does-not-exist.yml"; then
   fail "a missing workflow file should be REJECTED"
 else
   pass "a missing workflow file is rejected"
+fi
+
+# ── Case 7: retry condition referencing an unrelated step ID is rejected ────
+wrongid="${TMP}/sonar-wrong-retry-id.yml"
+write_header "$wrongid"
+append_scan_wrong_retry_id "$wrongid"
+if run_guard "$wrongid"; then
+  fail "retry condition referencing an unrelated step ID should be REJECTED"
+else
+  pass "retry condition referencing an unrelated step ID is rejected"
 fi
 
 echo ""
