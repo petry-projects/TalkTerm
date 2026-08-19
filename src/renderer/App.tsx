@@ -83,7 +83,10 @@ export function App(): ReactElement | null {
           // Failed to fetch — proceed without resume options
         });
     }
-  }, [phase, workspacePath, incompleteSessions.length]);
+    // incompleteSessions intentionally excluded: it's checked in condition only to prevent re-fetching
+    // if already populated. Including it would cause re-fetch every time setIncompleteSessions is called.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, workspacePath]);
 
   // Admin check phase — block until admin privileges confirmed
   if (phase === 'admin-check') {

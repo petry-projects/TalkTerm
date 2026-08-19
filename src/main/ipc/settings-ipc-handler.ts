@@ -49,6 +49,9 @@ export class SettingsIPCHandler implements IPCRegistrar {
     });
 
     ipcMain.handle(IPC_CHANNELS.PROFILE_SET, (_event: unknown, name: unknown) => {
+      if (typeof name !== 'string' || name.length === 0) {
+        throw new Error('Profile name must be a non-empty string');
+      }
       const now = new Date().toISOString();
       this.configStore.set('userProfile', {
         name,

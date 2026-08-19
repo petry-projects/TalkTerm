@@ -12,8 +12,8 @@ export class SessionIPCHandler implements IPCRegistrar {
 
   register(ipcMain: IPCMain): void {
     ipcMain.handle(IPC_CHANNELS.SESSION_START, (_event: unknown, workspacePath: unknown) => {
-      if (typeof workspacePath !== 'string') {
-        throw new Error('workspacePath must be a string');
+      if (typeof workspacePath !== 'string' || workspacePath.length === 0) {
+        throw new Error('workspacePath must be a non-empty string');
       }
       const profile = this.configStore.get('userProfile') as
         | { avatarPersonaId: string | null }
@@ -30,8 +30,8 @@ export class SessionIPCHandler implements IPCRegistrar {
     });
 
     ipcMain.handle(IPC_CHANNELS.SESSION_RESUME, (_event: unknown, sessionId: unknown) => {
-      if (typeof sessionId !== 'string') {
-        throw new Error('sessionId must be a string');
+      if (typeof sessionId !== 'string' || sessionId.length === 0) {
+        throw new Error('sessionId must be a non-empty string');
       }
       const session = this.sessionRepo.findById(sessionId);
       if (session === null) {
