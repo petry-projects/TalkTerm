@@ -120,7 +120,7 @@ export function QuestionCardStack({
 
   function getDotState(index: number): 'current' | 'answered' | 'skipped' | 'unanswered' {
     if (index === state.currentIndex) return 'current';
-    if (state.skipped[index] === true) return 'skipped';
+    if (state.skipped[index]) return 'skipped';
     const effective = getEffectiveAnswer(index);
     if (effective.trim() !== '') return 'answered';
     return 'unanswered';

@@ -16,7 +16,7 @@ interface ActionCardProps {
 }
 
 export function ActionCard({ card, selected, onSelect, tabIndex }: ActionCardProps): ReactElement {
-  const isDisabled = card.disabled === true;
+  const isDisabled = !!card.disabled;
   return (
     <button
       type="button"
@@ -36,7 +36,7 @@ export function ActionCard({ card, selected, onSelect, tabIndex }: ActionCardPro
             : 'border-[#E0E0E0] hover:-translate-y-0.5 hover:border-primary hover:shadow-md'
       }`}
     >
-      {card.preferred === true && (
+      {card.preferred && (
         <span className="absolute -top-2 right-2 rounded-full bg-primary-light px-2 py-0.5 text-caption font-medium text-text-primary">
           Your usual
         </span>

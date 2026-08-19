@@ -18,7 +18,7 @@ export function QuestionReview({
   onConfirm,
   onEdit,
 }: QuestionReviewProps): ReactElement {
-  const answeredCount = answers.filter((a, i) => a.trim() !== '' && skipped[i] !== true).length;
+  const answeredCount = answers.filter((a, i) => a.trim() !== '' && !skipped[i]).length;
   const total = questionSet.questions.length;
 
   function formatAggregatedMessage(): string {
@@ -26,7 +26,7 @@ export function QuestionReview({
     const body = questionSet.questions
       .map((q, i) => {
         const answer =
-          skipped[i] === true || answers[i]?.trim() === '' ? '(no answer provided)' : answers[i];
+          skipped[i] || answers[i]?.trim() === '' ? '(no answer provided)' : answers[i];
         return `${String(q.index)}. **${q.title}** — ${q.body}\n   **Answer:** ${answer ?? '(no answer provided)'}`;
       })
       .join('\n\n');
@@ -55,7 +55,7 @@ export function QuestionReview({
               <p className="text-small font-semibold text-text-on-dark">
                 {String(question.index)}. {question.title}
               </p>
-              {skipped[i] === true || answers[i]?.trim() === '' ? (
+              {skipped[i] || answers[i]?.trim() === '' ? (
                 <p className="text-caption text-text-muted-on-dark italic">Skipped</p>
               ) : (
                 <p className="text-caption text-text-muted-on-dark line-clamp-2">{answers[i]}</p>
