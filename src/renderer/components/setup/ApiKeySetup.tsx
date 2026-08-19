@@ -93,7 +93,7 @@ export function ApiKeySetup({
   const autoFocusRef = useCallback((el: HTMLButtonElement | null) => el?.focus(), []);
 
   // If ANTHROPIC_API_KEY env var detected, offer to use it directly
-  if (detectedEnvKey) {
+  if (detectedEnvKey === true) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-stage-bg">
         <form

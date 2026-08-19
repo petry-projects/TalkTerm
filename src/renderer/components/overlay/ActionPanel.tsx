@@ -27,7 +27,7 @@ export function ActionPanel({
   );
 
   const enabledIndices = cards
-    .map((card, i) => (card.disabled ? -1 : i))
+    .map((card, i) => (card.disabled === true ? -1 : i))
     .filter((i) => i >= 0);
 
   const handleKeyDown = useCallback(
@@ -51,7 +51,7 @@ export function ActionPanel({
       } else if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
         const card = cards[focusedIndex];
-        if (card !== undefined && !card.disabled) {
+        if (card !== undefined && card.disabled !== true) {
           handleSelect(card.label);
         }
         return;
