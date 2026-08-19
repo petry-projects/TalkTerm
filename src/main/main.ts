@@ -12,7 +12,6 @@ import { SafeStorageKeyManager } from './security/safe-storage-key-manager';
 import { SherpaOnnxStt } from './speech/sherpa-onnx-stt';
 import { initializeDatabase } from './storage/database-initializer';
 import { InMemoryConfigStore } from './storage/electron-config-store';
-import { MemoryIndexStore } from './storage/memory-index-store';
 import { SqliteAuditRepository } from './storage/sqlite-audit-repository';
 import { SqliteSessionRepository } from './storage/sqlite-session-repository';
 
@@ -51,7 +50,6 @@ function bootstrap(): void {
   initializeDatabase(db);
   const sessionRepo = new SqliteSessionRepository(db);
   const auditRepo = new SqliteAuditRepository(db);
-  const _memoryStore = new MemoryIndexStore(db);
   const configStore = new InMemoryConfigStore();
 
   // 3. Security — use Electron's safeStorage for API key encryption
@@ -135,7 +133,7 @@ function bootstrap(): void {
   });
 
   const devServerUrl = MAIN_WINDOW_VITE_DEV_SERVER_URL;
-  if (devServerUrl != null && devServerUrl !== '') {
+  if (devServerUrl !== undefined && devServerUrl !== '') {
     void mainWindow.loadURL(devServerUrl);
   } else {
     void mainWindow.loadFile(
