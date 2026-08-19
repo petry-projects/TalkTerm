@@ -161,6 +161,22 @@ append_curl_with_retry_multiline() {
 YAML
 }
 
+# A step where a curl without --retry is chained (&&) with one that has it.
+# A line-level check would miss the missing --retry because --retry appears
+# elsewhere in the same line; the guard must split chained commands first.
+append_curl_without_retry_chained() {
+  local file="$1"
+  cat >> "$file" <<'YAML'
+  workflow-tests:
+    name: Workflow regression guards
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download tools
+        run: |
+          curl -sSfL "https://example.com/tool" -o /tmp/tool && curl -sSfL --retry 3 --retry-delay 2 --retry-all-errors "https://example.com/checksums" -o /tmp/checksums
+YAML
+}
+
 # Correct Install yq step followed by an unnamed step whose content would trip
 # up an over-broad line-capture but must not cause a false failure.
 append_correct_yq_with_unnamed_step() {
@@ -275,6 +291,16 @@ if run_guard "$retry"; then
   pass "curl downloads with --retry (multi-line continuation) are accepted"
 else
   fail "curl downloads with --retry should be ACCEPTED"
+fi
+
+# ── Case 9: curl without --retry chained (&&) with one that has it — rejected
+chained="${TMP}/ci-chained.yml"
+write_header "$chained"
+append_curl_without_retry_chained "$chained"
+if run_guard "$chained"; then
+  fail "curl without --retry chained with one that has --retry should be REJECTED"
+else
+  pass "curl without --retry chained with one that has --retry is rejected"
 fi
 
 echo ""

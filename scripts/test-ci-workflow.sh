@@ -132,13 +132,27 @@ fi
 # absorbed. Backslash line-continuations are folded first so a curl whose flags
 # span multiple lines is evaluated as a single logical command. No-op when the
 # workflow contains no curl.
+runs=""
 if ! runs=$(yq '.jobs[].steps[].run' "$WORKFLOW" 2>/dev/null); then
   echo "FAIL: yq failed to parse $WORKFLOW. Please check if it is valid YAML."
   exit 1
 fi
 
 # Fold "\<newline>" continuations into one line so multi-line curls are whole.
-folded=$(printf '%s\n' "$runs" | sed -e ':a' -e '/\\$/{N;s/\\\n/ /;ba}')
+folded=""
+if ! folded=$(printf '%s\n' "$runs" | sed -e ':a' -e '/\\$/{N;s/\\\n/ /;ba}'); then
+  echo "FAIL: failed to fold multi-line commands."
+  exit 1
+fi
+
+# Split chained commands (&&, ||, ;, |) so a curl missing --retry is not
+# masked by another command on the same line that has --retry.
+split_commands=""
+if ! split_commands=$(awk '{gsub(/&&|\|\||;|\|/, "\n"); print}' <<< "$folded"); then
+  echo "FAIL: failed to split chained commands."
+  exit 1
+fi
+
 curl_missing_retry=false
 while IFS= read -r line; do
   # Match `curl` only as a command word (line start or after a non-name char
@@ -147,7 +161,7 @@ while IFS= read -r line; do
     && ! grep -Fq -- '--retry' <<< "$line"; then
     curl_missing_retry=true
   fi
-done <<< "$folded"
+done <<< "$split_commands"
 
 if [[ "$curl_missing_retry" == "true" ]]; then
   echo "FAIL: a 'curl' download in $WORKFLOW has no '--retry' flag. A transient"
