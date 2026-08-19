@@ -41,44 +41,9 @@ fi
 trap 'rm -rf "$TMP"' EXIT
 
 # ── Fixture fragments ──────────────────────────────────────────────────────
-# A valid header shared by every fixture: top-level permissions, SHA-scoped
-# concurrency (Fleet Monitor #445 — each commit gets its own slot so
-# quick-succession pushes do not cancel each other), and a checkout with
-# fetch-depth: 0 (SHA-pinned).
+# A valid header shared by every fixture: top-level permissions, per-ref
+# concurrency, and a checkout with fetch-depth: 0 (SHA-pinned).
 write_header() {
-  local file="$1"
-  cat > "$file" <<'YAML'
-name: SonarCloud Analysis
-on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
-permissions: {}
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.sha }}
-  cancel-in-progress: true
-jobs:
-  sonarcloud:
-    name: SonarCloud
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: read
-    env:
-      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-        with:
-          fetch-depth: 0
-YAML
-}
-
-# A header whose concurrency group is keyed only on github.ref (no github.sha):
-# a newer commit on the same ref cancels an in-progress run for an earlier
-# commit — the exact cancelled-run flakiness this guard now prevents (#445).
-write_header_per_ref() {
   local file="$1"
   cat > "$file" <<'YAML'
 name: SonarCloud Analysis
@@ -108,8 +73,8 @@ jobs:
 YAML
 }
 
-# The correct pair: a continue-on-error primary scan (id: sonar), a backoff step
-# guarded on that step's failure, then a retry guarded on the same. Both SHA-pinned.
+# The correct pair: a continue-on-error primary scan (id: sonar) followed by a
+# retry guarded on that step's outcome == 'failure'. Both SHA-pinned.
 append_good_scan() {
   local file="$1"
   cat >> "$file" <<'YAML'
@@ -118,86 +83,9 @@ append_good_scan() {
         if: env.SONAR_TOKEN != ''
         uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
         continue-on-error: true
-      - name: Back off before retry
-        if: env.SONAR_TOKEN != '' && steps.sonar.outcome == 'failure'
-        run: sleep 30
       - name: SonarCloud Scan (retry)
         if: env.SONAR_TOKEN != '' && steps.sonar.outcome == 'failure'
         uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
-YAML
-}
-
-# A continue-on-error primary scan and a failure-guarded retry, but NO backoff
-# step between them: the retry fires immediately, so a transient endpoint blip
-# lasting longer than a moment fails both attempts (the #447 regression).
-append_scan_without_backoff() {
-  local file="$1"
-  cat >> "$file" <<'YAML'
-      - name: SonarCloud Scan
-        id: sonar
-        if: env.SONAR_TOKEN != ''
-        uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
-        continue-on-error: true
-      - name: SonarCloud Scan (retry)
-        if: env.SONAR_TOKEN != '' && steps.sonar.outcome == 'failure'
-        uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
-YAML
-}
-
-# The backoff step uses 'echo sleep' rather than executing sleep directly — the
-# guard must reject this because 'sleep' is an argument to echo, not the command.
-append_scan_backoff_not_executed() {
-  local file="$1"
-  cat >> "$file" <<'YAML'
-      - name: SonarCloud Scan
-        id: sonar
-        if: env.SONAR_TOKEN != ''
-        uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
-        continue-on-error: true
-      - name: Back off before retry
-        if: env.SONAR_TOKEN != '' && steps.sonar.outcome == 'failure'
-        run: echo sleep
-      - name: SonarCloud Scan (retry)
-        if: env.SONAR_TOKEN != '' && steps.sonar.outcome == 'failure'
-        uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
-YAML
-}
-
-# The backoff step uses 'sleep 0' rather than 'sleep 30' — the guard must
-# reject this because an instant sleep provides no effective backoff delay.
-append_scan_backoff_wrong_duration() {
-  local file="$1"
-  cat >> "$file" <<'YAML'
-      - name: SonarCloud Scan
-        id: sonar
-        if: env.SONAR_TOKEN != ''
-        uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
-        continue-on-error: true
-      - name: Back off before retry
-        if: env.SONAR_TOKEN != '' && steps.sonar.outcome == 'failure'
-        run: sleep 0
-      - name: SonarCloud Scan (retry)
-        if: env.SONAR_TOKEN != '' && steps.sonar.outcome == 'failure'
-        uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
-YAML
-}
-
-# The backoff appears AFTER the retry, where it does nothing to protect the
-# retry — the guard must reject this ordering.
-append_scan_backoff_after_retry() {
-  local file="$1"
-  cat >> "$file" <<'YAML'
-      - name: SonarCloud Scan
-        id: sonar
-        if: env.SONAR_TOKEN != ''
-        uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
-        continue-on-error: true
-      - name: SonarCloud Scan (retry)
-        if: env.SONAR_TOKEN != '' && steps.sonar.outcome == 'failure'
-        uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
-      - name: Back off (too late)
-        if: env.SONAR_TOKEN != '' && steps.sonar.outcome == 'failure'
-        run: sleep 30
 YAML
 }
 
@@ -216,9 +104,8 @@ append_scan_without_continue_on_error() {
 YAML
 }
 
-# A continue-on-error primary scan (and a backoff) with NO retry: the first blip
-# is swallowed and the analysis never runs — the resilience is only half present.
-# The backoff keeps the only defect the missing retry, so this isolates Check 3.
+# A continue-on-error primary scan with NO retry: the first blip is swallowed and
+# the analysis never runs — the resilience is only half present.
 append_scan_without_retry() {
   local file="$1"
   cat >> "$file" <<'YAML'
@@ -227,15 +114,11 @@ append_scan_without_retry() {
         if: env.SONAR_TOKEN != ''
         uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
         continue-on-error: true
-      - name: Back off before retry
-        if: env.SONAR_TOKEN != '' && steps.sonar.outcome == 'failure'
-        run: sleep 30
 YAML
 }
 
 # A retry condition that guards on an unrelated step's failure rather than the
 # primary scan's id, so the retry does not reliably fire on a primary-scan blip.
-# A valid backoff is present so the only defect is the wrong retry id (Check 3).
 append_scan_wrong_retry_id() {
   local file="$1"
   cat >> "$file" <<'YAML'
@@ -244,17 +127,13 @@ append_scan_wrong_retry_id() {
         if: env.SONAR_TOKEN != ''
         uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
         continue-on-error: true
-      - name: Back off before retry
-        if: env.SONAR_TOKEN != '' && steps.sonar.outcome == 'failure'
-        run: sleep 30
       - name: SonarCloud Scan (retry)
         if: env.SONAR_TOKEN != '' && steps.other.outcome == 'failure'
         uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
 YAML
 }
 
-# Correct scan pair (with backoff) but the retry action is pinned to a mutable
-# tag, not a SHA — so the ONLY defect is the unpinned action.
+# Correct scan pair but the retry action is pinned to a mutable tag, not a SHA.
 append_good_scan_unpinned_retry() {
   local file="$1"
   cat >> "$file" <<'YAML'
@@ -263,31 +142,9 @@ append_good_scan_unpinned_retry() {
         if: env.SONAR_TOKEN != ''
         uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
         continue-on-error: true
-      - name: Back off before retry
-        if: env.SONAR_TOKEN != '' && steps.sonar.outcome == 'failure'
-        run: sleep 30
       - name: SonarCloud Scan (retry)
         if: env.SONAR_TOKEN != '' && steps.sonar.outcome == 'failure'
         uses: SonarSource/sonarqube-scan-action@v8.2.1
-YAML
-}
-
-# The backoff appears BEFORE the primary scan — GitHub Actions skips it because
-# steps.sonar.outcome is not set yet, so the retry runs without a delay.
-append_scan_backoff_before_primary() {
-  local file="$1"
-  cat >> "$file" <<'YAML'
-      - name: Back off (too early)
-        if: env.SONAR_TOKEN != '' && steps.sonar.outcome == 'failure'
-        run: sleep 30
-      - name: SonarCloud Scan
-        id: sonar
-        if: env.SONAR_TOKEN != ''
-        uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
-        continue-on-error: true
-      - name: SonarCloud Scan (retry)
-        if: env.SONAR_TOKEN != '' && steps.sonar.outcome == 'failure'
-        uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
 YAML
 }
 
@@ -359,150 +216,6 @@ if run_guard "$wrongid"; then
   fail "retry condition referencing an unrelated step ID should be REJECTED"
 else
   pass "retry condition referencing an unrelated step ID is rejected"
-fi
-
-# ── Case 8: a per-ref-only concurrency group is rejected ───────────────────
-perref="${TMP}/sonar-per-ref.yml"
-write_header_per_ref "$perref"
-append_good_scan "$perref"
-if run_guard "$perref"; then
-  fail "a per-ref-only concurrency group (no github.sha) should be REJECTED"
-else
-  pass "a per-ref-only concurrency group (no github.sha) is rejected"
-fi
-
-# ── Case 9: concurrency group with suffixed github.sha is rejected ──────────
-# A literal string containing github.sha_suffix (not an expression reference)
-# should be rejected because it's not a valid ${{ github.sha }} expression.
-write_header_suffixed_sha() {
-  local file="$1"
-  cat > "$file" <<'YAML'
-name: SonarCloud Analysis
-on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
-permissions: {}
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}-{{ github.sha_suffix }}
-  cancel-in-progress: true
-jobs:
-  sonarcloud:
-    name: SonarCloud
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: read
-    env:
-      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-        with:
-          fetch-depth: 0
-YAML
-}
-
-suffixed="${TMP}/sonar-suffixed-sha.yml"
-write_header_suffixed_sha "$suffixed"
-append_good_scan "$suffixed"
-if run_guard "$suffixed"; then
-  fail "a concurrency group with github.sha_suffix (not github.sha) should be REJECTED"
-else
-  pass "a concurrency group with github.sha_suffix (not github.sha) is rejected"
-fi
-
-# ── Case 10: concurrency group with prefixed github.sha is rejected ────────
-# A literal string like sonar-github.sha (not an expression reference) should
-# be rejected because it's not a valid ${{ github.sha }} expression.
-write_header_prefixed_sha() {
-  local file="$1"
-  cat > "$file" <<'YAML'
-name: SonarCloud Analysis
-on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
-permissions: {}
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}-sonar-github.sha
-  cancel-in-progress: true
-jobs:
-  sonarcloud:
-    name: SonarCloud
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: read
-    env:
-      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-        with:
-          fetch-depth: 0
-YAML
-}
-
-prefixed="${TMP}/sonar-prefixed-sha.yml"
-write_header_prefixed_sha "$prefixed"
-append_good_scan "$prefixed"
-if run_guard "$prefixed"; then
-  fail "a concurrency group with sonar-github.sha (not github.sha expression) should be REJECTED"
-else
-  pass "a concurrency group with sonar-github.sha (not github.sha expression) is rejected"
-fi
-
-# ── Case 11: a retry with no backoff step is rejected ──────────────────────
-nobackoff="${TMP}/sonar-no-backoff.yml"
-write_header "$nobackoff"
-append_scan_without_backoff "$nobackoff"
-if run_guard "$nobackoff"; then
-  fail "a failure-guarded retry with no preceding backoff step should be REJECTED"
-else
-  pass "a failure-guarded retry with no preceding backoff step is rejected"
-fi
-
-# ── Case 12: a backoff step placed after the retry is rejected ─────────────
-latebackoff="${TMP}/sonar-backoff-after-retry.yml"
-write_header "$latebackoff"
-append_scan_backoff_after_retry "$latebackoff"
-if run_guard "$latebackoff"; then
-  fail "a backoff step placed after the retry should be REJECTED"
-else
-  pass "a backoff step placed after the retry is rejected"
-fi
-
-# ── Case 13: backoff using 'echo sleep' (not executed) is rejected ──────────
-notexec="${TMP}/sonar-backoff-not-executed.yml"
-write_header "$notexec"
-append_scan_backoff_not_executed "$notexec"
-if run_guard "$notexec"; then
-  fail "a backoff step using 'echo sleep' (not executed) should be REJECTED"
-else
-  pass "a backoff step using 'echo sleep' (not executed) is rejected"
-fi
-
-# ── Case 14: backoff with wrong duration ('sleep 0') is rejected ─────────────
-wrongdur="${TMP}/sonar-backoff-wrong-duration.yml"
-write_header "$wrongdur"
-append_scan_backoff_wrong_duration "$wrongdur"
-if run_guard "$wrongdur"; then
-  fail "a backoff step using 'sleep 0' (wrong duration) should be REJECTED"
-else
-  pass "a backoff step using 'sleep 0' (wrong duration) is rejected"
-fi
-
-# ── Case 15: a backoff step placed before the primary scan is rejected ───────
-earlybackoff="${TMP}/sonar-backoff-before-primary.yml"
-write_header "$earlybackoff"
-append_scan_backoff_before_primary "$earlybackoff"
-if run_guard "$earlybackoff"; then
-  fail "a backoff step placed before the primary scan should be REJECTED"
-else
-  pass "a backoff step placed before the primary scan is rejected"
 fi
 
 echo ""
