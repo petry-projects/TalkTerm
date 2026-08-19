@@ -6,7 +6,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   sendAgentMessage: (sessionId: string, message: string): Promise<void> =>
     ipcRenderer.invoke(IPC_CHANNELS.AGENT_ACTION, sessionId, message) as Promise<void>,
   cancelAgent: (): void => {
-    ipcRenderer.send('agent:cancel');
+    ipcRenderer.send(IPC_CHANNELS.AGENT_CANCEL);
   },
   onAgentEvent: (callback: (event: unknown) => void): (() => void) => {
     const handler = (_ipcEvent: unknown, data: unknown): void => {

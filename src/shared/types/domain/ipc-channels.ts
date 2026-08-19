@@ -8,6 +8,7 @@ export const IPC_CHANNELS = {
 
   // Renderer → Main (invoke/request)
   AGENT_ACTION: 'agent:action',
+  AGENT_CANCEL: 'agent:cancel',
   SESSION_START: 'session:start',
   SESSION_RESUME: 'session:resume',
   SETTINGS_GET: 'settings:get',
