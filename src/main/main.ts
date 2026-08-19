@@ -150,7 +150,7 @@ function bootstrap(): void {
   // Use before-input-event instead of globalShortcut for reliable packaged-app support
   mainWindow.webContents.on('before-input-event', (_event, input) => {
     if (input.key === 'd' && (input.control || input.meta) && input.type === 'keyDown') {
-      if (mainWindow?.webContents.isDevToolsOpened()) {
+      if (mainWindow?.webContents.isDevToolsOpened() === true) {
         mainWindow.webContents.closeDevTools();
       } else {
         mainWindow?.webContents.openDevTools({ mode: 'detach' });

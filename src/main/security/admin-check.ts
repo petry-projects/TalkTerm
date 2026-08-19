@@ -54,7 +54,7 @@ export function checkAdminPrivileges(options?: AdminCheckOptions): AdminCheckRes
   let isAdmin: boolean;
 
   if (platform === 'win32') {
-    isAdmin = !!options?.isElevated;
+    isAdmin = options?.isElevated === true;
   } else if (platform === 'darwin') {
     isAdmin = checkUnixRoot() || checkMacOsAdminGroup();
   } else {

@@ -64,7 +64,7 @@ export function TextInput({
         onKeyDown={handleKeyDown}
         onInput={handleInput}
         placeholder={`Type, paste, or speak to ${avatarName}...`}
-        disabled={!!disabled}
+        disabled={disabled === true}
         rows={1}
         className="flex-1 resize-none rounded-lg border border-text-muted-on-dark bg-stage-bg px-4 py-3 text-body text-text-on-dark outline-none transition-colors focus:border-primary disabled:opacity-50"
       />
