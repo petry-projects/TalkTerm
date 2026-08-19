@@ -124,6 +124,55 @@ else
   fi
 fi
 
+# ── Check 6: every `curl` download retries on transient network failures ───
+# A curl without --retry turns a transient network blip (DNS hiccup, connection
+# reset, 429/5xx from the release host) into a hard, deterministic-looking CI
+# failure — exactly the class of noise that inflates the Fleet Monitor failure
+# rate (#438). Require every curl invocation to pass --retry so such blips are
+# absorbed. Backslash line-continuations are folded first so a curl whose flags
+# span multiple lines is evaluated as a single logical command. No-op when the
+# workflow contains no curl.
+runs=""
+if ! runs=$(yq '.jobs[].steps[].run' "$WORKFLOW" 2>/dev/null); then
+  echo "FAIL: yq failed to parse $WORKFLOW. Please check if it is valid YAML."
+  exit 1
+fi
+
+# Fold "\<newline>" continuations into one line so multi-line curls are whole.
+folded=""
+if ! folded=$(printf '%s\n' "$runs" | sed -e ':a' -e '/\\$/{N;s/\\\n/ /;ba}'); then
+  echo "FAIL: failed to fold multi-line commands."
+  exit 1
+fi
+
+# Split chained commands (&&, ||, ;, |) so a curl missing --retry is not
+# masked by another command on the same line that has --retry.
+split_commands=""
+if ! split_commands=$(awk '{gsub(/&&|\|\||;|\|/, "\n"); print}' <<< "$folded"); then
+  echo "FAIL: failed to split chained commands."
+  exit 1
+fi
+
+curl_missing_retry=false
+while IFS= read -r line; do
+  # Match `curl` only as a command word (line start or after a non-name char
+  # such as the `$(` of a command substitution), not as a substring.
+  if grep -Eq '(^|[^[:alnum:]_-])curl([[:space:]]|$)' <<< "$line" \
+    && ! grep -Fq -- '--retry' <<< "$line"; then
+    curl_missing_retry=true
+  fi
+done <<< "$split_commands"
+
+if [[ "$curl_missing_retry" == "true" ]]; then
+  echo "FAIL: a 'curl' download in $WORKFLOW has no '--retry' flag. A transient"
+  echo "      network failure would then fail CI deterministically and inflate"
+  echo "      the Fleet Monitor failure rate. Add e.g."
+  echo "      '--retry 3 --retry-delay 2 --retry-all-errors' to every curl."
+  PASS=false
+else
+  echo "PASS: every 'curl' download retries on transient failures in $WORKFLOW"
+fi
+
 echo ""
 if [[ "$PASS" == "true" ]]; then
   echo "All checks passed."

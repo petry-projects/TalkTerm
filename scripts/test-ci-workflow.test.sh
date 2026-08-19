@@ -89,8 +89,8 @@ append_correct_yq() {
         env:
           YQ_VERSION: v4.44.6
         run: |
-          curl -sSfL "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" -o /tmp/yq
-          EXPECTED=$(curl -sSfL "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/checksums" | grep "^yq_linux_amd64  " | awk '{print $19}')
+          curl -sSfL --retry 3 --retry-delay 2 --retry-all-errors "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" -o /tmp/yq
+          EXPECTED=$(curl -sSfL --retry 3 --retry-delay 2 --retry-all-errors "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/checksums" | grep "^yq_linux_amd64  " | awk '{print $19}')
           echo "${EXPECTED}  /tmp/yq" | sha256sum --check
 YAML
 }
@@ -117,6 +117,66 @@ append_buggy_yq_with_decoy() {
 YAML
 }
 
+# A job whose curl download omits --retry. A transient network blip would then
+# fail CI deterministically and inflate the Fleet Monitor failure rate. The
+# filename is anchored correctly and column 19 is selected so ONLY the missing
+# --retry (Check 6) differentiates this fixture.
+append_curl_without_retry() {
+  local file="$1"
+  cat >> "$file" <<'YAML'
+  workflow-tests:
+    name: Workflow regression guards
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install yq
+        env:
+          YQ_VERSION: v4.44.6
+        run: |
+          curl -sSfL "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" -o /tmp/yq
+          EXPECTED=$(curl -sSfL "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/checksums" | grep "^yq_linux_amd64  " | awk '{print $19}')
+          echo "${EXPECTED}  /tmp/yq" | sha256sum --check
+YAML
+}
+
+# A job whose curl downloads all pass --retry, including one whose flags span a
+# backslash line-continuation. The guard must fold the continuation and accept it.
+append_curl_with_retry_multiline() {
+  local file="$1"
+  cat >> "$file" <<'YAML'
+  workflow-tests:
+    name: Workflow regression guards
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install yq
+        env:
+          YQ_VERSION: v4.44.6
+        run: |
+          curl -sSfL --retry 3 --retry-delay 2 --retry-all-errors \
+            "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" \
+            -o /tmp/yq
+          EXPECTED=$(curl -sSfL --retry 3 --retry-delay 2 --retry-all-errors \
+            "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/checksums" \
+            | grep "^yq_linux_amd64  " | awk '{print $19}')
+          echo "${EXPECTED}  /tmp/yq" | sha256sum --check
+YAML
+}
+
+# A step where a curl without --retry is chained (&&) with one that has it.
+# A line-level check would miss the missing --retry because --retry appears
+# elsewhere in the same line; the guard must split chained commands first.
+append_curl_without_retry_chained() {
+  local file="$1"
+  cat >> "$file" <<'YAML'
+  workflow-tests:
+    name: Workflow regression guards
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download tools
+        run: |
+          curl -sSfL "https://example.com/tool" -o /tmp/tool && curl -sSfL --retry 3 --retry-delay 2 --retry-all-errors "https://example.com/checksums" -o /tmp/checksums
+YAML
+}
+
 # Correct Install yq step followed by an unnamed step whose content would trip
 # up an over-broad line-capture but must not cause a false failure.
 append_correct_yq_with_unnamed_step() {
@@ -130,8 +190,8 @@ append_correct_yq_with_unnamed_step() {
         env:
           YQ_VERSION: v4.44.6
         run: |
-          curl -sSfL "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" -o /tmp/yq
-          EXPECTED=$(curl -sSfL "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/checksums" | grep "^yq_linux_amd64  " | awk '{print $19}')
+          curl -sSfL --retry 3 --retry-delay 2 --retry-all-errors "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" -o /tmp/yq
+          EXPECTED=$(curl -sSfL --retry 3 --retry-delay 2 --retry-all-errors "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/checksums" | grep "^yq_linux_amd64  " | awk '{print $19}')
           echo "${EXPECTED}  /tmp/yq" | sha256sum --check
       - run: |
           # unnamed step with suspicious content — guard must ignore it
@@ -211,6 +271,36 @@ if run_guard "$correct_unnamed"; then
   pass "correct Install yq with following unnamed step is accepted"
 else
   fail "correct Install yq with following unnamed step should be ACCEPTED"
+fi
+
+# ── Case 7: a curl download without --retry is rejected (Check 6) ──────────
+noretry="${TMP}/ci-noretry.yml"
+write_header "$noretry"
+append_curl_without_retry "$noretry"
+if run_guard "$noretry"; then
+  fail "curl download without --retry should be REJECTED"
+else
+  pass "curl download without --retry is rejected"
+fi
+
+# ── Case 8: curl downloads with --retry (incl. multi-line) are accepted ────
+retry="${TMP}/ci-retry.yml"
+write_header "$retry"
+append_curl_with_retry_multiline "$retry"
+if run_guard "$retry"; then
+  pass "curl downloads with --retry (multi-line continuation) are accepted"
+else
+  fail "curl downloads with --retry should be ACCEPTED"
+fi
+
+# ── Case 9: curl without --retry chained (&&) with one that has it — rejected
+chained="${TMP}/ci-chained.yml"
+write_header "$chained"
+append_curl_without_retry_chained "$chained"
+if run_guard "$chained"; then
+  fail "curl without --retry chained with one that has --retry should be REJECTED"
+else
+  pass "curl without --retry chained with one that has --retry is rejected"
 fi
 
 echo ""
