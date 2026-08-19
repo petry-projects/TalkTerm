@@ -129,12 +129,12 @@ export function ConversationView({
     const handleVoicesChanged = (): void => {
       voiceRef.current = selectBestVoice();
     };
-    window.speechSynthesis.addEventListener('voiceschanged', handleVoicesChanged);
+    window.speechSynthesis?.addEventListener('voiceschanged', handleVoicesChanged);
 
     return () => {
       stt.stop();
       tts.stop();
-      window.speechSynthesis.removeEventListener('voiceschanged', handleVoicesChanged);
+      window.speechSynthesis?.removeEventListener('voiceschanged', handleVoicesChanged);
     };
   }, []);
 

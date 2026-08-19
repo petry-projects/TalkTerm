@@ -16,29 +16,35 @@ export class SpeechIPCHandler {
       try {
         await this.stt.initialize();
 
-        const wc = this.getWebContents();
-        if (wc === null) {
-          console.warn('[SpeechIPCHandler] No active window for audio callbacks');
-          return;
-        }
-
         this.stt.onResult = (result) => {
-          wc.send(IPC_CHANNELS.AUDIO_RESULT, result);
+          const wc = this.getWebContents();
+          if (wc !== null) {
+            wc.send(IPC_CHANNELS.AUDIO_RESULT, result);
+          }
         };
 
         this.stt.onError = (error) => {
-          wc.send(IPC_CHANNELS.AUDIO_ERROR, error);
+          const wc = this.getWebContents();
+          if (wc !== null) {
+            wc.send(IPC_CHANNELS.AUDIO_ERROR, error);
+          }
         };
 
         this.stt.onEnd = () => {
-          wc.send(IPC_CHANNELS.AUDIO_END);
+          const wc = this.getWebContents();
+          if (wc !== null) {
+            wc.send(IPC_CHANNELS.AUDIO_END);
+          }
         };
 
         this.stt.start();
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
         console.error('[SpeechIPCHandler] Failed to start audio:', msg);
-        this.getWebContents()?.send(IPC_CHANNELS.AUDIO_ERROR, `Failed to start audio: ${msg}`);
+        const wc = this.getWebContents();
+        if (wc !== null) {
+          wc.send(IPC_CHANNELS.AUDIO_ERROR, `Failed to start audio: ${msg}`);
+        }
       }
     });
 

@@ -16,15 +16,17 @@ export class SettingsIPCHandler implements IPCRegistrar {
     });
 
     ipcMain.handle(IPC_CHANNELS.SETTINGS_STORE_KEY, (_event: unknown, key: unknown) => {
-      if (typeof key === 'string' && key.length > 0) {
-        this.keyManager.storeKey(key);
+      if (typeof key !== 'string' || key.length === 0) {
+        throw new Error('API key must be a non-empty string');
       }
+      this.keyManager.storeKey(key);
     });
 
     ipcMain.handle(IPC_CHANNELS.SETTINGS_SET_AUTH_MODE, (_event: unknown, mode: unknown) => {
-      if (mode === 'api-key' || mode === 'claude-subscription') {
-        this.configStore.set('authMode', mode);
+      if (mode !== 'api-key' && mode !== 'claude-subscription') {
+        throw new Error('Auth mode must be either "api-key" or "claude-subscription"');
       }
+      this.configStore.set('authMode', mode);
     });
 
     ipcMain.handle(IPC_CHANNELS.SETTINGS_GET_AUTH_MODE, () => {
@@ -32,16 +34,17 @@ export class SettingsIPCHandler implements IPCRegistrar {
     });
 
     ipcMain.handle(IPC_CHANNELS.SETTINGS_GET, (_event: unknown, key: unknown) => {
-      if (typeof key === 'string') {
-        return this.configStore.get(key);
+      if (typeof key !== 'string' || key.length === 0) {
+        throw new Error('Settings key must be a non-empty string');
       }
-      return undefined;
+      return this.configStore.get(key);
     });
 
     ipcMain.handle(IPC_CHANNELS.SETTINGS_SET, (_event: unknown, key: unknown, value: unknown) => {
-      if (typeof key === 'string' && key.length > 0) {
-        this.configStore.set(key, value);
+      if (typeof key !== 'string' || key.length === 0) {
+        throw new Error('Settings key must be a non-empty string');
       }
+      this.configStore.set(key, value);
     });
 
     ipcMain.handle(IPC_CHANNELS.PROFILE_GET, () => {
@@ -62,16 +65,20 @@ export class SettingsIPCHandler implements IPCRegistrar {
     });
 
     ipcMain.handle(IPC_CHANNELS.AVATAR_SELECT, (_event: unknown, personaId: unknown) => {
+      if (typeof personaId !== 'string' || personaId.length === 0) {
+        throw new Error('Avatar persona ID must be a non-empty string');
+      }
       const profile = this.configStore.get('userProfile') as
         | { name: string; avatarPersonaId: string | null; createdAt: string; updatedAt: string }
         | undefined;
-      if (profile !== undefined && typeof personaId === 'string' && personaId.length > 0) {
-        this.configStore.set('userProfile', {
-          ...profile,
-          avatarPersonaId: personaId,
-          updatedAt: new Date().toISOString(),
-        });
+      if (profile === undefined) {
+        throw new Error('User profile not found');
       }
+      this.configStore.set('userProfile', {
+        ...profile,
+        avatarPersonaId: personaId,
+        updatedAt: new Date().toISOString(),
+      });
     });
   }
 }
