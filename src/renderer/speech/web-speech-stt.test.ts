@@ -72,6 +72,24 @@ describe('WebSpeechStt', () => {
     expect(onResult).toHaveBeenCalledWith({ transcript: 'hello world', isFinal: true });
   });
 
+  it('fires onResult with empty transcript when result[0].transcript is undefined', () => {
+    const stt = new WebSpeechStt();
+    const onResult = vi.fn();
+    stt.onResult = onResult;
+    stt.start();
+
+    const recognition = (stt as any).recognition as MockSpeechRecognition;
+    recognition.onresult?.({
+      results: {
+        length: 1,
+        // transcript is absent — exercises the `?? ''` fallback
+        0: { 0: {}, isFinal: false },
+      },
+    });
+
+    expect(onResult).toHaveBeenCalledWith({ transcript: '', isFinal: false });
+  });
+
   it('fires onError with network message for network errors', () => {
     const stt = new WebSpeechStt();
     const onError = vi.fn();

@@ -45,4 +45,17 @@ describe('AuditLog', () => {
     expect(screen.getByText('edit file')).toBeInTheDocument();
     expect(screen.queryByText('run tests')).not.toBeInTheDocument();
   });
+
+  it('renders entries with cancelled outcome using muted style', () => {
+    const cancelledEntry: AuditEntry = {
+      sessionId: 's1',
+      timestamp: '12:00:03',
+      actionType: 'tool:read',
+      outcome: 'cancelled',
+      userIntent: 'read config',
+      details: {},
+    };
+    render(<AuditLog entries={[cancelledEntry]} />);
+    expect(screen.getByText('read config')).toBeInTheDocument();
+  });
 });
