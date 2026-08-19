@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { app, BrowserWindow, safeStorage, session } from 'electron';
+import { IPC_CHANNELS } from '../shared/types/domain/ipc-channels';
 import type { AuthMode } from '../shared/types/ports/agent-backend';
 import { AgentMessageRouter } from './agent/agent-message-router';
 import { ClaudeSdkBackend } from './agent/claude-sdk-backend';
@@ -87,6 +88,18 @@ function bootstrap(): void {
   sessionHandler.register(ipcMain);
   speechHandler.register(ipcMain);
 
+  // 5a. Admin check and app lifecycle IPC handlers
+  ipcMain.handle(IPC_CHANNELS.ADMIN_RETRY_CHECK, () => adminResult);
+  ipcMain.on(IPC_CHANNELS.QUIT_APP, () => {
+    app.quit();
+  });
+  ipcMain.handle(IPC_CHANNELS.SESSION_GET_INCOMPLETE, (_event: unknown, workspacePath: unknown) => {
+    if (typeof workspacePath !== 'string' || workspacePath === '') {
+      return [];
+    }
+    return sessionRepo.findIncomplete(workspacePath);
+  });
+
   // 6. Grant microphone permission for Web Speech API (STT)
   session.defaultSession.setPermissionCheckHandler((_webContents, permission) => {
     // Allow media (microphone) checks — required before SpeechRecognition.start()
@@ -121,7 +134,7 @@ function bootstrap(): void {
 
   // 7. Send admin check result to renderer
   mainWindow.webContents.on('did-finish-load', () => {
-    mainWindow?.webContents.send('admin:check-result', adminResult);
+    mainWindow?.webContents.send(IPC_CHANNELS.ADMIN_CHECK_RESULT, adminResult);
   });
 
   // Log renderer errors to stderr for debugging
