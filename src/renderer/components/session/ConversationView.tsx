@@ -391,6 +391,9 @@ export function ConversationView({
           setCaption(event.message);
           setIsCaptionVisible(true);
           break;
+        /* c8 ignore next 2 */
+        default:
+          const _exhaustive: never = event;
       }
     });
 

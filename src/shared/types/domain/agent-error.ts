@@ -115,5 +115,9 @@ export function createUserFriendlyMessage(category: ErrorCategory): string {
       return 'I had trouble speaking. Let me try to show you instead.';
     case 'unknown':
       return 'Something went wrong, but we can work through it.';
+    /* c8 ignore next 3 */
+    default:
+      const _exhaustive: never = category;
+      return _exhaustive;
   }
 }
