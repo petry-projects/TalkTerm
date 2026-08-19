@@ -102,3 +102,4 @@ jobs:
           bash scripts/test-pr-review-workflow.sh
           bash scripts/test-ci-workflow.sh
           bash scripts/test-copilot-setup-steps-workflow.sh
+          bash scripts/test-sonarcloud-workflow.sh
