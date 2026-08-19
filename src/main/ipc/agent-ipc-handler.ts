@@ -36,10 +36,17 @@ export class AgentIPCHandler implements IPCRegistrar {
           throw new Error('No active window');
         }
 
+        if (typeof sessionId !== 'string' || sessionId.length === 0) {
+          throw new Error('sessionId must be a non-empty string');
+        }
+        if (typeof message !== 'string' || message.length === 0) {
+          throw new Error('message must be a non-empty string');
+        }
+
         try {
-          const session = this.sessionRepo?.findById(sessionId as string);
+          const session = this.sessionRepo?.findById(sessionId);
           const workspacePath = session?.workspacePath;
-          await this.router.sendMessage(sessionId as string, message as string, workspacePath);
+          await this.router.sendMessage(sessionId, message, workspacePath);
         } catch (err: unknown) {
           console.error('[AgentIPC] Error handling agent action:', err);
           const category = classifyError(err);
@@ -52,7 +59,7 @@ export class AgentIPCHandler implements IPCRegistrar {
       },
     );
 
-    ipcMain.on('agent:cancel', () => {
+    ipcMain.on(IPC_CHANNELS.AGENT_CANCEL, () => {
       this.router.cancel();
     });
   }

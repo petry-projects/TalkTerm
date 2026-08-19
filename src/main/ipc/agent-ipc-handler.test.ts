@@ -59,7 +59,7 @@ describe('AgentIPCHandler', () => {
     const handler = new AgentIPCHandler(router, () => createMockWebContents());
     handler.register(ipcMain);
 
-    expect(listeners.has('agent:cancel')).toBe(true);
+    expect(listeners.has(IPC_CHANNELS.AGENT_CANCEL)).toBe(true);
   });
 
   it('channel names follow agent:verb convention', () => {
@@ -143,6 +143,50 @@ describe('AgentIPCHandler', () => {
     expect(router.sendMessage).toHaveBeenCalledWith('session-1', 'test message', undefined);
   });
 
+  it('throws when sessionId is not a string', async () => {
+    const router = createMockRouter();
+    const handler = new AgentIPCHandler(router, () => createMockWebContents());
+    handler.register(ipcMain);
+
+    const agentAction = handlers.get(IPC_CHANNELS.AGENT_ACTION);
+    await expect(agentAction?.({}, 123, 'test')).rejects.toThrow(
+      'sessionId must be a non-empty string',
+    );
+  });
+
+  it('throws when sessionId is empty string', async () => {
+    const router = createMockRouter();
+    const handler = new AgentIPCHandler(router, () => createMockWebContents());
+    handler.register(ipcMain);
+
+    const agentAction = handlers.get(IPC_CHANNELS.AGENT_ACTION);
+    await expect(agentAction?.({}, '', 'test')).rejects.toThrow(
+      'sessionId must be a non-empty string',
+    );
+  });
+
+  it('throws when message is not a string', async () => {
+    const router = createMockRouter();
+    const handler = new AgentIPCHandler(router, () => createMockWebContents());
+    handler.register(ipcMain);
+
+    const agentAction = handlers.get(IPC_CHANNELS.AGENT_ACTION);
+    await expect(agentAction?.({}, 'session-1', 123)).rejects.toThrow(
+      'message must be a non-empty string',
+    );
+  });
+
+  it('throws when message is empty string', async () => {
+    const router = createMockRouter();
+    const handler = new AgentIPCHandler(router, () => createMockWebContents());
+    handler.register(ipcMain);
+
+    const agentAction = handlers.get(IPC_CHANNELS.AGENT_ACTION);
+    await expect(agentAction?.({}, 'session-1', '')).rejects.toThrow(
+      'message must be a non-empty string',
+    );
+  });
+
   it('throws when no active window is available', async () => {
     const router = createMockRouter();
     const handler = new AgentIPCHandler(router, () => null);
@@ -178,7 +222,7 @@ describe('AgentIPCHandler', () => {
     const handler = new AgentIPCHandler(router, () => createMockWebContents());
     handler.register(ipcMain);
 
-    const cancelHandler = listeners.get('agent:cancel');
+    const cancelHandler = listeners.get(IPC_CHANNELS.AGENT_CANCEL);
     cancelHandler?.({});
 
     expect(router.cancel).toHaveBeenCalled();
