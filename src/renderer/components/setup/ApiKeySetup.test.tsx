@@ -160,6 +160,17 @@ describe('ApiKeySetup', () => {
       await user.keyboard('{Enter}');
       expect(onValidated).toHaveBeenCalledWith('ENV_KEY');
     });
+
+    it('clicking "Enter a different key instead" clears any error state', async () => {
+      const user = userEvent.setup();
+      render(<ApiKeySetup {...defaultProps} detectedEnvKey={true} />);
+      const differentKeyBtn = screen.getByRole('button', {
+        name: /enter a different key instead/i,
+      });
+      expect(differentKeyBtn).toBeInTheDocument();
+      await user.click(differentKeyBtn);
+      expect(screen.getByText(/found an existing api key/i)).toBeInTheDocument();
+    });
   });
 
   describe('expired state', () => {

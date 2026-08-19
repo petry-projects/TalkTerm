@@ -192,6 +192,31 @@ describe('QuestionCardStack', () => {
     expect(screen.getByText(/your answers/i)).toBeInTheDocument();
   });
 
+  it('confirms submission from review screen and calls onSubmit', async () => {
+    const onSubmit = vi.fn();
+    const user = userEvent.setup();
+    render(<QuestionCardStack {...defaultProps} onSubmit={onSubmit} />);
+
+    await user.click(screen.getByRole('button', { name: /question 3/i }));
+    await user.click(screen.getByRole('button', { name: /submit all answers/i }));
+    expect(screen.getByTestId('question-review')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /send to mary/i }));
+    expect(onSubmit).toHaveBeenCalledOnce();
+  });
+
+  it('returns to editing from the review screen when Edit is clicked', async () => {
+    const user = userEvent.setup();
+    render(<QuestionCardStack {...defaultProps} />);
+
+    await user.click(screen.getByRole('button', { name: /question 3/i }));
+    await user.click(screen.getByRole('button', { name: /submit all answers/i }));
+    expect(screen.getByTestId('question-review')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /edit answers/i }));
+    expect(screen.getByTestId('question-progress')).toBeInTheDocument();
+  });
+
   // --- Dismiss ---
 
   it('calls onDismiss when dismiss button is clicked', async () => {

@@ -84,6 +84,14 @@ describe('QuestionReview', () => {
     expect(screen.getByRole('button', { name: /edit answers/i })).toBeInTheDocument();
   });
 
+  it('calls onEdit with index 0 when the back Edit button is clicked', async () => {
+    const onEdit = vi.fn();
+    const user = userEvent.setup();
+    render(<QuestionReview {...defaultProps} onEdit={onEdit} />);
+    await user.click(screen.getByRole('button', { name: /edit answers/i }));
+    expect(onEdit).toHaveBeenCalledWith(0);
+  });
+
   // --- Aggregated message format ---
 
   it('generates correct aggregated message format', () => {

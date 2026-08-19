@@ -29,4 +29,11 @@ describe('TaskProgress', () => {
     render(<TaskProgress steps={steps} counters={{ 'ideas generated': 18 }} />);
     expect(screen.getByText('18 ideas generated')).toBeInTheDocument();
   });
+
+  it('renders zero percent progress bar when steps array is empty', () => {
+    const { container } = render(<TaskProgress steps={[]} />);
+    const bar = container.querySelector('[style]') as HTMLElement;
+    expect(bar).toBeDefined();
+    expect(bar.style.width).toBe('0%');
+  });
 });
