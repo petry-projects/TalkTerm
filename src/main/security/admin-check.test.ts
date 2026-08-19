@@ -129,6 +129,21 @@ describe('checkAdminPrivileges', () => {
     });
   });
 
+  describe('on non-standard Unix platforms', () => {
+    it('returns isAdmin false and falls back to Linux instructions when getuid is unavailable', () => {
+      vi.stubGlobal('process', {
+        ...process,
+        platform: 'freebsd',
+        getuid: undefined,
+      });
+
+      const result: AdminCheckResult = checkAdminPrivileges();
+      expect(result.isAdmin).toBe(false);
+      expect(result.platform).toBe('freebsd');
+      expect(result.instructions).toContain('sudo');
+    });
+  });
+
   it('returns platform-specific instructions only for the current platform', () => {
     vi.stubGlobal('process', {
       ...process,

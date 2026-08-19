@@ -46,6 +46,21 @@ describe('ConfirmPlan', () => {
     expect(onApprove).toHaveBeenCalledOnce();
   });
 
+  it('calls onModify when Modify selected', async () => {
+    const onModify = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <ConfirmPlan
+        actionDescription="test"
+        onApprove={vi.fn()}
+        onModify={onModify}
+        onCancel={vi.fn()}
+      />,
+    );
+    await user.click(screen.getByText('Modify'));
+    expect(onModify).toHaveBeenCalledOnce();
+  });
+
   it('calls onCancel when Cancel selected', async () => {
     const onCancel = vi.fn();
     const user = userEvent.setup();

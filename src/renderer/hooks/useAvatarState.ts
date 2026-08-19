@@ -34,6 +34,7 @@ function avatarReducer(_state: AvatarState, action: AvatarAction): AvatarState {
       return { animationState: 'speaking' };
     case 'avatar:set-error':
       return { animationState: 'error' };
+    /* c8 ignore next 3 */
     default:
       const _exhaustive: never = action;
       return _exhaustive;
