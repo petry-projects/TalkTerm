@@ -138,6 +138,21 @@ describe('ActionPanel', () => {
       expect(onSelect).not.toHaveBeenCalled();
     });
 
+    it('skips disabled cards and wraps to last on ArrowUp when focused card is disabled', async () => {
+      const cardsWithDisabled: ActionCardData[] = [
+        { label: 'A', title: 'Option A', description: 'First', disabled: true },
+        { label: 'B', title: 'Option B', description: 'Second' },
+        { label: 'C', title: 'Option C', description: 'Third' },
+      ];
+      const user = userEvent.setup();
+      render(<ActionPanel title="Choose" cards={cardsWithDisabled} onSelect={vi.fn()} />);
+      screen.getByRole('listbox').focus();
+      // focusedIndex=0 (disabled), enabledIndices=[1,2], currentEnabledPos=-1
+      // ArrowUp with pos=-1 → nextPos = enabledIndices.length-1 = 1 → nextIndex = 2 (Option C)
+      await user.keyboard('{ArrowUp}');
+      expect(screen.getAllByRole('option')[2]).toHaveFocus();
+    });
+
     it('does nothing when all cards are disabled', async () => {
       const allDisabled: ActionCardData[] = [
         { label: 'A', title: 'Option A', description: 'First', disabled: true },
