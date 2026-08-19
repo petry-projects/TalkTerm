@@ -35,6 +35,12 @@ export const IPC_CHANNELS = {
   AUDIO_RESULT: 'audio:result',
   AUDIO_ERROR: 'audio:error',
   AUDIO_END: 'audio:end',
+
+  // Admin check (Main → Renderer events, Renderer → Main invoke)
+  ADMIN_CHECK_RESULT: 'admin:check-result',
+  ADMIN_RETRY_CHECK: 'admin:retry-check',
+  QUIT_APP: 'app:quit',
+  SESSION_GET_INCOMPLETE: 'session:get-incomplete',
 } as const;
 
 export type IPCChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

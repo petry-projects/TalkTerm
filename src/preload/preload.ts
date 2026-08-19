@@ -102,4 +102,34 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.removeListener(IPC_CHANNELS.AUDIO_END, handler);
     };
   },
+
+  // Admin check
+  onAdminCheckResult: (
+    callback: (result: { isAdmin: boolean; platform: string; instructions?: string }) => void,
+  ): (() => void) => {
+    const handler = (_ipcEvent: unknown, result: unknown): void => {
+      callback(result as { isAdmin: boolean; platform: string; instructions?: string });
+    };
+    ipcRenderer.on(IPC_CHANNELS.ADMIN_CHECK_RESULT, handler);
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.ADMIN_CHECK_RESULT, handler);
+    };
+  },
+  retryAdminCheck: (): Promise<{ isAdmin: boolean; platform: string; instructions?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.ADMIN_RETRY_CHECK) as Promise<{
+      isAdmin: boolean;
+      platform: string;
+      instructions?: string;
+    }>,
+  quitApp: (): void => {
+    ipcRenderer.send(IPC_CHANNELS.QUIT_APP);
+  },
+
+  // Session
+  getIncompleteSessions: (
+    workspacePath: string,
+  ): Promise<Array<{ id: string; workspacePath: string; updatedAt: string }>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SESSION_GET_INCOMPLETE, workspacePath) as Promise<
+      Array<{ id: string; workspacePath: string; updatedAt: string }>
+    >,
 });

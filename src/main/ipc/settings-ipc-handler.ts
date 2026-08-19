@@ -16,11 +16,15 @@ export class SettingsIPCHandler implements IPCRegistrar {
     });
 
     ipcMain.handle(IPC_CHANNELS.SETTINGS_STORE_KEY, (_event: unknown, key: unknown) => {
-      this.keyManager.storeKey(key as string);
+      if (typeof key === 'string' && key.length > 0) {
+        this.keyManager.storeKey(key);
+      }
     });
 
     ipcMain.handle(IPC_CHANNELS.SETTINGS_SET_AUTH_MODE, (_event: unknown, mode: unknown) => {
-      this.configStore.set('authMode', mode);
+      if (mode === 'api-key' || mode === 'claude-subscription') {
+        this.configStore.set('authMode', mode);
+      }
     });
 
     ipcMain.handle(IPC_CHANNELS.SETTINGS_GET_AUTH_MODE, () => {
@@ -28,11 +32,16 @@ export class SettingsIPCHandler implements IPCRegistrar {
     });
 
     ipcMain.handle(IPC_CHANNELS.SETTINGS_GET, (_event: unknown, key: unknown) => {
-      return this.configStore.get(key as string);
+      if (typeof key === 'string') {
+        return this.configStore.get(key);
+      }
+      return undefined;
     });
 
     ipcMain.handle(IPC_CHANNELS.SETTINGS_SET, (_event: unknown, key: unknown, value: unknown) => {
-      this.configStore.set(key as string, value);
+      if (typeof key === 'string' && key.length > 0) {
+        this.configStore.set(key, value);
+      }
     });
 
     ipcMain.handle(IPC_CHANNELS.PROFILE_GET, () => {
@@ -53,7 +62,7 @@ export class SettingsIPCHandler implements IPCRegistrar {
       const profile = this.configStore.get('userProfile') as
         | { name: string; avatarPersonaId: string | null; createdAt: string; updatedAt: string }
         | undefined;
-      if (profile !== undefined) {
+      if (profile !== undefined && typeof personaId === 'string' && personaId.length > 0) {
         this.configStore.set('userProfile', {
           ...profile,
           avatarPersonaId: personaId,
