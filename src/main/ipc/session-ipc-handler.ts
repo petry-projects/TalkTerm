@@ -41,7 +41,7 @@ export class SessionIPCHandler implements IPCRegistrar {
         apiKeyValid: hasEnvKey,
         envKeyDetected: hasEnvKey,
         profileComplete: profile !== undefined && profile.name !== '',
-        avatarSelected: profile?.avatarPersonaId != null,
+        avatarSelected: profile?.avatarPersonaId !== null,
         workspaceSelected: this.configStore.has('workspacePath'),
       };
     });

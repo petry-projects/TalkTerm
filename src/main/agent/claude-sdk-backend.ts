@@ -392,7 +392,7 @@ export class ClaudeSdkBackend implements AgentBackend {
     // Include cross-session memory for personalization
     const memoryContext = this.getMemoryContext();
     let appendPrompt = basePrompt;
-    if (bmadContext != null) {
+    if (bmadContext !== null) {
       appendPrompt = `${bmadContext}\n\n${basePrompt}`;
     }
     if (memoryContext !== null) {
