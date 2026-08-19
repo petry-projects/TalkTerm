@@ -537,7 +537,7 @@ export class ClaudeSdkBackend implements AgentBackend {
   ): AsyncIterable<AgentEvent> {
     try {
       for await (const msg of queryStream) {
-        if (this.abortController?.signal.aborted === true) {
+        if (this.abortController?.signal.aborted) {
           yield { type: 'complete', summary: 'Cancelled by user' };
           return;
         }
@@ -634,8 +634,8 @@ export class ClaudeSdkBackend implements AgentBackend {
             if (preview.trim() !== '') {
               events.push({
                 type: 'progress',
-                step: resultBlock.is_error === true ? `Tool error: ${preview}` : preview,
-                status: resultBlock.is_error === true ? 'failed' : 'completed',
+                step: resultBlock.is_error ? `Tool error: ${preview}` : preview,
+                status: resultBlock.is_error ? 'failed' : 'completed',
               });
             }
           }

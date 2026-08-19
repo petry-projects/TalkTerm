@@ -24,7 +24,7 @@ export function ComparisonTable({ rows, criteria }: ComparisonTableProps): React
       {rows.map((row) => (
         <div
           key={row.name}
-          className={`rounded-lg border-2 p-3 ${row.isWinner === true ? 'border-primary' : 'border-surface-muted'}`}
+          className={`rounded-lg border-2 p-3 ${row.isWinner ? 'border-primary' : 'border-surface-muted'}`}
         >
           <button
             type="button"
