@@ -31,9 +31,6 @@ export function App(): ReactElement | null {
   useEffect(() => {
     const unsubscribe = window.electronAPI.onAdminCheckResult((result: AdminCheckResult) => {
       setAdminResult(result);
-      if (result.isAdmin) {
-        setPhase('setup');
-      }
     });
     return () => {
       unsubscribe();
