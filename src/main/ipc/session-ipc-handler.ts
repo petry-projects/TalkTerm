@@ -35,13 +35,13 @@ export class SessionIPCHandler implements IPCRegistrar {
         | { name: string; avatarPersonaId: string | null }
         | undefined;
       // Check for API key: stored key OR ANTHROPIC_API_KEY env var
-      const hasEnvKey =
-        process.env['ANTHROPIC_API_KEY'] !== undefined && process.env['ANTHROPIC_API_KEY'] !== '';
+      const apiKeyEnv = process.env['ANTHROPIC_API_KEY'];
+      const hasEnvKey = apiKeyEnv != null && apiKeyEnv !== '';
       return {
         apiKeyValid: hasEnvKey,
         envKeyDetected: hasEnvKey,
         profileComplete: profile !== undefined && profile.name !== '',
-        avatarSelected: profile?.avatarPersonaId !== null && profile?.avatarPersonaId !== undefined,
+        avatarSelected: profile?.avatarPersonaId != null,
         workspaceSelected: this.configStore.has('workspacePath'),
       };
     });
