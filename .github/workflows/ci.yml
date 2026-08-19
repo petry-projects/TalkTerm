@@ -66,10 +66,10 @@ jobs:
 
       - name: Run gitleaks (CLI — full-history enforcement)
         run: |
-          curl -sSfL \
+          curl -sSfL --retry 3 --retry-delay 2 --retry-all-errors \
             "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz" \
             -o /tmp/gitleaks.tar.gz
-          EXPECTED=$(curl -sSfL \
+          EXPECTED=$(curl -sSfL --retry 3 --retry-delay 2 --retry-all-errors \
             "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_checksums.txt" \
             | grep "gitleaks_8.30.1_linux_x64.tar.gz" | awk '{print $1}')
           echo "${EXPECTED}  /tmp/gitleaks.tar.gz" | sha256sum --check
@@ -88,10 +88,10 @@ jobs:
         env:
           YQ_VERSION: v4.44.6
         run: |
-          curl -sSfL --proto '=https' \
+          curl -sSfL --proto '=https' --retry 3 --retry-delay 2 --retry-all-errors \
             "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" \
             -o /tmp/yq
-          EXPECTED=$(curl -sSfL --proto '=https' \
+          EXPECTED=$(curl -sSfL --proto '=https' --retry 3 --retry-delay 2 --retry-all-errors \
             "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/checksums" \
             | grep "^yq_linux_amd64  " | awk '{print $19}')
           echo "${EXPECTED}  /tmp/yq" | sha256sum --check
