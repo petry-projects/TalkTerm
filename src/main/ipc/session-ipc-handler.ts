@@ -36,7 +36,7 @@ export class SessionIPCHandler implements IPCRegistrar {
         | undefined;
       // Check for API key: stored key OR ANTHROPIC_API_KEY env var
       const apiKeyEnv = process.env['ANTHROPIC_API_KEY'];
-      const hasEnvKey = apiKeyEnv != null && apiKeyEnv !== '';
+      const hasEnvKey = apiKeyEnv !== undefined && apiKeyEnv !== '';
       return {
         apiKeyValid: hasEnvKey,
         envKeyDetected: hasEnvKey,
