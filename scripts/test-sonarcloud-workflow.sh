@@ -141,6 +141,8 @@ fi
 # here: the group must be keyed on github.sha and cancel-in-progress must be true
 # (safe unconditionally once the group is SHA-scoped — it then only affects
 # duplicate runs of the same ref + SHA).
+group_sha_regex='github\.sha'
+group=""
 if ! group=$(yq '.concurrency.group' "$WORKFLOW" 2>/dev/null); then
   echo "FAIL: yq failed to parse $WORKFLOW. Please check if it is valid YAML."
   exit 1
@@ -151,7 +153,7 @@ if [[ "$group" == "null" || -z "$group" ]]; then
     echo "      Add a SHA-scoped group so quick-succession commits do not cancel each other."
   } >&2
   PASS=false
-elif [[ ! "$group" =~ github\.sha ]]; then
+elif [[ ! "$group" =~ $group_sha_regex ]]; then
   {
     echo "FAIL: concurrency group ($group) is not scoped to github.sha in $WORKFLOW"
     echo "      A per-ref group with cancel-in-progress cancels in-progress runs for"
@@ -162,6 +164,7 @@ elif [[ ! "$group" =~ github\.sha ]]; then
   PASS=false
 else
   echo "PASS: concurrency group is scoped to github.sha in $WORKFLOW"
+  cancel=""
   if ! cancel=$(yq '.concurrency.cancel-in-progress' "$WORKFLOW" 2>/dev/null); then
     echo "FAIL: yq failed to parse $WORKFLOW. Please check if it is valid YAML."
     exit 1
