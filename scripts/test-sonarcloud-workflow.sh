@@ -135,6 +135,54 @@ else
   echo "PASS: all third-party actions are SHA-pinned in $WORKFLOW"
 fi
 
+# ── Check 5: the concurrency group is scoped to the commit SHA ─────────────
+# Root cause of the Fleet Monitor warning (#445): a per-ref concurrency group
+# with cancel-in-progress: true cancels an in-progress run for an earlier commit
+# the moment a newer commit lands on the same ref, so quick-succession pushes
+# leave earlier commits cancelled — inflating the workflow's instability metric.
+# ci.yml already fixed this (Fleet Monitor #380) by including github.sha in the
+# group, giving each commit its own slot. This check locks the same invariant
+# here: the group must be keyed on github.sha and cancel-in-progress must be true
+# (safe unconditionally once the group is SHA-scoped — it then only affects
+# duplicate runs of the same ref + SHA).
+group_sha_regex='\$\{\{[^}]*github\.sha[^}]*\}\}'
+group=""
+if ! group=$(yq '.concurrency.group' "$WORKFLOW" 2>/dev/null); then
+  echo "FAIL: yq failed to parse $WORKFLOW. Please check if it is valid YAML."
+  exit 1
+fi
+if [[ "$group" == "null" || -z "$group" ]]; then
+  {
+    echo "FAIL: no top-level 'concurrency.group' block in $WORKFLOW"
+    echo "      Add a SHA-scoped group so quick-succession commits do not cancel each other."
+  } >&2
+  PASS=false
+elif [[ ! "$group" =~ $group_sha_regex ]]; then
+  {
+    echo "FAIL: concurrency group ($group) is not scoped to github.sha in $WORKFLOW"
+    echo "      A per-ref group with cancel-in-progress cancels in-progress runs for"
+    echo "      earlier commits (Fleet Monitor #445). Include github.sha so each commit"
+    echo "      gets its own slot, e.g.:"
+    echo "        group: \${{ github.workflow }}-\${{ github.ref }}-\${{ github.sha }}"
+  } >&2
+  PASS=false
+else
+  echo "PASS: concurrency group is scoped to github.sha in $WORKFLOW"
+  cancel=""
+  if ! cancel=$(yq '.concurrency.cancel-in-progress' "$WORKFLOW" 2>/dev/null); then
+    echo "FAIL: yq failed to parse $WORKFLOW. Please check if it is valid YAML."
+    exit 1
+  fi
+  if [[ "$cancel" != "true" ]]; then
+    {
+      echo "FAIL: 'concurrency.cancel-in-progress' (found: '$cancel') must be 'true' in $WORKFLOW"
+    } >&2
+    PASS=false
+  else
+    echo "PASS: 'concurrency.cancel-in-progress' is unconditionally true in $WORKFLOW"
+  fi
+fi
+
 echo ""
 if [[ "$PASS" == "true" ]]; then
   echo "All checks passed."

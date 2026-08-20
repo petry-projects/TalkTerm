@@ -27,8 +27,17 @@ on:
 
 permissions: {}
 
+# Scope the concurrency group to the commit SHA so every pushed commit gets its
+# own slot (Fleet Monitor #445; mirrors the ci.yml #380 fix). A per-ref group
+# with cancel-in-progress cancels an in-progress run for an earlier commit the
+# moment a newer commit lands on the same ref, so quick-succession pushes leave
+# earlier commits cancelled — the cancelled runs that inflated this workflow's
+# instability metric. Including github.sha gives each commit a distinct slot, so
+# no commit is cancelled by a later one. cancel-in-progress: true still cancels
+# duplicate runs for the same ref + SHA, but cannot cancel runs for different
+# commits because their groups are distinct.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.sha }}
   cancel-in-progress: true
 
 jobs:
