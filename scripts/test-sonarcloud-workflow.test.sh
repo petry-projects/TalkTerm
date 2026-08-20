@@ -41,9 +41,44 @@ fi
 trap 'rm -rf "$TMP"' EXIT
 
 # ── Fixture fragments ──────────────────────────────────────────────────────
-# A valid header shared by every fixture: top-level permissions, per-ref
-# concurrency, and a checkout with fetch-depth: 0 (SHA-pinned).
+# A valid header shared by every fixture: top-level permissions, SHA-scoped
+# concurrency (Fleet Monitor #445 — each commit gets its own slot so
+# quick-succession pushes do not cancel each other), and a checkout with
+# fetch-depth: 0 (SHA-pinned).
 write_header() {
+  local file="$1"
+  cat > "$file" <<'YAML'
+name: SonarCloud Analysis
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+permissions: {}
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.sha }}
+  cancel-in-progress: true
+jobs:
+  sonarcloud:
+    name: SonarCloud
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+YAML
+}
+
+# A header whose concurrency group is keyed only on github.ref (no github.sha):
+# a newer commit on the same ref cancels an in-progress run for an earlier
+# commit — the exact cancelled-run flakiness this guard now prevents (#445).
+write_header_per_ref() {
   local file="$1"
   cat > "$file" <<'YAML'
 name: SonarCloud Analysis
@@ -216,6 +251,100 @@ if run_guard "$wrongid"; then
   fail "retry condition referencing an unrelated step ID should be REJECTED"
 else
   pass "retry condition referencing an unrelated step ID is rejected"
+fi
+
+# ── Case 8: a per-ref-only concurrency group is rejected ───────────────────
+perref="${TMP}/sonar-per-ref.yml"
+write_header_per_ref "$perref"
+append_good_scan "$perref"
+if run_guard "$perref"; then
+  fail "a per-ref-only concurrency group (no github.sha) should be REJECTED"
+else
+  pass "a per-ref-only concurrency group (no github.sha) is rejected"
+fi
+
+# ── Case 9: concurrency group with suffixed github.sha is rejected ──────────
+# A literal string containing github.sha_suffix (not an expression reference)
+# should be rejected because it's not a valid ${{ github.sha }} expression.
+write_header_suffixed_sha() {
+  local file="$1"
+  cat > "$file" <<'YAML'
+name: SonarCloud Analysis
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+permissions: {}
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-{{ github.sha_suffix }}
+  cancel-in-progress: true
+jobs:
+  sonarcloud:
+    name: SonarCloud
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+YAML
+}
+
+suffixed="${TMP}/sonar-suffixed-sha.yml"
+write_header_suffixed_sha "$suffixed"
+append_good_scan "$suffixed"
+if run_guard "$suffixed"; then
+  fail "a concurrency group with github.sha_suffix (not github.sha) should be REJECTED"
+else
+  pass "a concurrency group with github.sha_suffix (not github.sha) is rejected"
+fi
+
+# ── Case 10: concurrency group with prefixed github.sha is rejected ────────
+# A literal string like sonar-github.sha (not an expression reference) should
+# be rejected because it's not a valid ${{ github.sha }} expression.
+write_header_prefixed_sha() {
+  local file="$1"
+  cat > "$file" <<'YAML'
+name: SonarCloud Analysis
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+permissions: {}
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-sonar-github.sha
+  cancel-in-progress: true
+jobs:
+  sonarcloud:
+    name: SonarCloud
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+YAML
+}
+
+prefixed="${TMP}/sonar-prefixed-sha.yml"
+write_header_prefixed_sha "$prefixed"
+append_good_scan "$prefixed"
+if run_guard "$prefixed"; then
+  fail "a concurrency group with sonar-github.sha (not github.sha expression) should be REJECTED"
+else
+  pass "a concurrency group with sonar-github.sha (not github.sha expression) is rejected"
 fi
 
 echo ""
