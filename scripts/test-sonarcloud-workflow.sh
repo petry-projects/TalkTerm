@@ -141,7 +141,7 @@ fi
 # here: the group must be keyed on github.sha and cancel-in-progress must be true
 # (safe unconditionally once the group is SHA-scoped — it then only affects
 # duplicate runs of the same ref + SHA).
-group_sha_regex='github\.sha'
+group_sha_regex='\$\{\{[^}]*github\.sha[^}]*\}\}'
 group=""
 if ! group=$(yq '.concurrency.group' "$WORKFLOW" 2>/dev/null); then
   echo "FAIL: yq failed to parse $WORKFLOW. Please check if it is valid YAML."
