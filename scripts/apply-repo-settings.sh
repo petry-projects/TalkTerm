@@ -193,6 +193,34 @@ pr_quality_require_last_push_approval_status() {
       end'
 }
 
+# pr_quality_reconcile_payload <ruleset_json>
+# Builds the PUT body that reconciles the pr-quality ruleset's pull_request rule
+# to the codified standard: allowed_merge_methods=[squash],
+# require_last_push_approval=true, dismiss_stale_reviews_on_push=true. Structural
+# fields (name, target, enforcement, bypass_actors, conditions) are carried over
+# from the current ruleset; absent bypass_actors default to []. Non-pull_request
+# rules pass through unchanged. Pure and side-effect-free so it can be
+# unit-tested without hitting the API.
+pr_quality_reconcile_payload() {
+  local ruleset="${1:-}"
+  printf '%s' "$ruleset" | jq \
+    --arg method "$PR_QUALITY_MERGE_METHOD" '
+    {
+      name: .name,
+      target: .target,
+      enforcement: .enforcement,
+      bypass_actors: (.bypass_actors // []),
+      conditions: .conditions,
+      rules: [
+        (.rules // [])[]
+        | if .type == "pull_request"
+          then .parameters.allowed_merge_methods = [$method]
+            | .parameters = ((.parameters // {}) + {require_last_push_approval: true, dismiss_stale_reviews_on_push: true})
+          else . end
+      ]
+    }'
+}
+
 # apply_pr_quality_ruleset <owner/repo>
 # Reconciles the allowed_merge_methods, require_last_push_approval, and
 # dismiss_stale_reviews_on_push settings in the pr-quality ruleset in a single
@@ -266,22 +294,7 @@ apply_pr_quality_ruleset() {
   fi
 
   local payload
-  if ! payload=$(printf '%s' "$ruleset" | jq \
-    --arg method "$PR_QUALITY_MERGE_METHOD" '
-    {
-      name: .name,
-      target: .target,
-      enforcement: .enforcement,
-      bypass_actors: (.bypass_actors // []),
-      conditions: .conditions,
-      rules: [
-        (.rules // [])[]
-        | if .type == "pull_request"
-          then .parameters.allowed_merge_methods = [$method]
-            | .parameters = ((.parameters // {}) + {require_last_push_approval: true, dismiss_stale_reviews_on_push: true})
-          else . end
-      ]
-    }'); then
+  if ! payload=$(pr_quality_reconcile_payload "$ruleset"); then
     echo "  failed to generate payload for ruleset update"
     return 1
   fi
