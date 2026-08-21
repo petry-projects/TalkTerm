@@ -29,8 +29,6 @@ on:
   pull_request:
     branches: [main]
 
-permissions: {}
-
 # Scope the concurrency group to the commit SHA so every pushed commit gets its
 # own slot (Fleet Monitor #445; mirrors the ci.yml #380 fix). A per-ref group
 # with cancel-in-progress cancels an in-progress run for an earlier commit the
