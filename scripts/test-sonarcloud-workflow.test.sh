@@ -108,9 +108,29 @@ jobs:
 YAML
 }
 
-# The correct pair: a continue-on-error primary scan (id: sonar) followed by a
-# retry guarded on that step's outcome == 'failure'. Both SHA-pinned.
+# The correct pair: a continue-on-error primary scan (id: sonar), a backoff step
+# guarded on that step's failure, then a retry guarded on the same. Both SHA-pinned.
 append_good_scan() {
+  local file="$1"
+  cat >> "$file" <<'YAML'
+      - name: SonarCloud Scan
+        id: sonar
+        if: env.SONAR_TOKEN != ''
+        uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
+        continue-on-error: true
+      - name: Back off before retry
+        if: env.SONAR_TOKEN != '' && steps.sonar.outcome == 'failure'
+        run: sleep 30
+      - name: SonarCloud Scan (retry)
+        if: env.SONAR_TOKEN != '' && steps.sonar.outcome == 'failure'
+        uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
+YAML
+}
+
+# A continue-on-error primary scan and a failure-guarded retry, but NO backoff
+# step between them: the retry fires immediately, so a transient endpoint blip
+# lasting longer than a moment fails both attempts (the #447 regression).
+append_scan_without_backoff() {
   local file="$1"
   cat >> "$file" <<'YAML'
       - name: SonarCloud Scan
@@ -121,6 +141,25 @@ append_good_scan() {
       - name: SonarCloud Scan (retry)
         if: env.SONAR_TOKEN != '' && steps.sonar.outcome == 'failure'
         uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
+YAML
+}
+
+# The backoff appears AFTER the retry, where it does nothing to protect the
+# retry — the guard must reject this ordering.
+append_scan_backoff_after_retry() {
+  local file="$1"
+  cat >> "$file" <<'YAML'
+      - name: SonarCloud Scan
+        id: sonar
+        if: env.SONAR_TOKEN != ''
+        uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
+        continue-on-error: true
+      - name: SonarCloud Scan (retry)
+        if: env.SONAR_TOKEN != '' && steps.sonar.outcome == 'failure'
+        uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
+      - name: Back off (too late)
+        if: env.SONAR_TOKEN != '' && steps.sonar.outcome == 'failure'
+        run: sleep 30
 YAML
 }
 
@@ -139,8 +178,9 @@ append_scan_without_continue_on_error() {
 YAML
 }
 
-# A continue-on-error primary scan with NO retry: the first blip is swallowed and
-# the analysis never runs — the resilience is only half present.
+# A continue-on-error primary scan (and a backoff) with NO retry: the first blip
+# is swallowed and the analysis never runs — the resilience is only half present.
+# The backoff keeps the only defect the missing retry, so this isolates Check 3.
 append_scan_without_retry() {
   local file="$1"
   cat >> "$file" <<'YAML'
@@ -149,11 +189,15 @@ append_scan_without_retry() {
         if: env.SONAR_TOKEN != ''
         uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
         continue-on-error: true
+      - name: Back off before retry
+        if: env.SONAR_TOKEN != '' && steps.sonar.outcome == 'failure'
+        run: sleep 30
 YAML
 }
 
 # A retry condition that guards on an unrelated step's failure rather than the
 # primary scan's id, so the retry does not reliably fire on a primary-scan blip.
+# A valid backoff is present so the only defect is the wrong retry id (Check 3).
 append_scan_wrong_retry_id() {
   local file="$1"
   cat >> "$file" <<'YAML'
@@ -162,13 +206,17 @@ append_scan_wrong_retry_id() {
         if: env.SONAR_TOKEN != ''
         uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
         continue-on-error: true
+      - name: Back off before retry
+        if: env.SONAR_TOKEN != '' && steps.sonar.outcome == 'failure'
+        run: sleep 30
       - name: SonarCloud Scan (retry)
         if: env.SONAR_TOKEN != '' && steps.other.outcome == 'failure'
         uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
 YAML
 }
 
-# Correct scan pair but the retry action is pinned to a mutable tag, not a SHA.
+# Correct scan pair (with backoff) but the retry action is pinned to a mutable
+# tag, not a SHA — so the ONLY defect is the unpinned action.
 append_good_scan_unpinned_retry() {
   local file="$1"
   cat >> "$file" <<'YAML'
@@ -177,6 +225,9 @@ append_good_scan_unpinned_retry() {
         if: env.SONAR_TOKEN != ''
         uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
         continue-on-error: true
+      - name: Back off before retry
+        if: env.SONAR_TOKEN != '' && steps.sonar.outcome == 'failure'
+        run: sleep 30
       - name: SonarCloud Scan (retry)
         if: env.SONAR_TOKEN != '' && steps.sonar.outcome == 'failure'
         uses: SonarSource/sonarqube-scan-action@v8.2.1
@@ -345,6 +396,26 @@ if run_guard "$prefixed"; then
   fail "a concurrency group with sonar-github.sha (not github.sha expression) should be REJECTED"
 else
   pass "a concurrency group with sonar-github.sha (not github.sha expression) is rejected"
+fi
+
+# ── Case 11: a retry with no backoff step is rejected ──────────────────────
+nobackoff="${TMP}/sonar-no-backoff.yml"
+write_header "$nobackoff"
+append_scan_without_backoff "$nobackoff"
+if run_guard "$nobackoff"; then
+  fail "a failure-guarded retry with no preceding backoff step should be REJECTED"
+else
+  pass "a failure-guarded retry with no preceding backoff step is rejected"
+fi
+
+# ── Case 12: a backoff step placed after the retry is rejected ─────────────
+latebackoff="${TMP}/sonar-backoff-after-retry.yml"
+write_header "$latebackoff"
+append_scan_backoff_after_retry "$latebackoff"
+if run_guard "$latebackoff"; then
+  fail "a backoff step placed after the retry should be REJECTED"
+else
+  pass "a backoff step placed after the retry is rejected"
 fi
 
 echo ""

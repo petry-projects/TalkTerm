@@ -179,6 +179,78 @@ else
   fi
 fi
 
+# ── Check 6: a backoff delay precedes the retry ────────────────────────────
+# Root cause of the residual Fleet Monitor failure rate (#447): the retry fires
+# immediately after the primary scan, so a transient endpoint blip lasting more
+# than a second or two fails both the primary and the back-to-back retry and the
+# job goes red. A short backoff between the two attempts gives the endpoint time
+# to recover, turning most double-blips into a self-healing run. Require a step
+# that runs `sleep`, is guarded on the primary scan's `outcome == 'failure'` (so
+# it only costs wall-clock on the rare retry path), and appears before the retry.
+if [[ "$primary_ce" -ge 1 && -n "$primary_id" && "$primary_id" != "null" ]]; then
+  guard_re="steps\\.${primary_id}\\.outcome *== *'failure'"
+  # Emit one boolean per step (in order) for "is a failure-guarded backoff sleep"
+  # and "is the failure-guarded scan retry", then find each one's first position
+  # in bash. mikefarah yq has no if/then/else, so ordering is checked here rather
+  # than in the query. A backoff is a step that runs `sleep` and is guarded on the
+  # primary scan's failure; the retry is the scan re-run guarded on the same.
+  # Wrapping each step in a single-element array and chaining `select` filters
+  # (rather than `and`-ing piped predicates) sidesteps a mikefarah yq quirk where
+  # `((x)|test) and ((y)|test)` collapses to false; `map(select…)|length > 0`
+  # evaluates each condition against the same node and yields the right boolean.
+  if ! mapfile -t is_backoff < <(yq "
+    .jobs[].steps[] | [.]
+    | (map(
+        select((.run // \"\") | test(\"(^|[^[:alnum:]_])sleep([^[:alnum:]_]|\$)\"))
+        | select((.if // \"\") | test(\"${guard_re}\"))
+      ) | length) > 0
+  " "$WORKFLOW" 2>/dev/null); then
+    echo "FAIL: yq failed to parse $WORKFLOW. Please check if it is valid YAML." >&2
+    exit 1
+  fi
+  if ! mapfile -t is_retry < <(yq "
+    .jobs[].steps[] | [.]
+    | (map(
+        select((.uses // \"\") | test(\"^${SCAN_ACTION}@\"))
+        | select((.[\"continue-on-error\"] // false) != true)
+        | select((.if // \"\") | test(\"${guard_re}\"))
+      ) | length) > 0
+  " "$WORKFLOW" 2>/dev/null); then
+    echo "FAIL: yq failed to parse $WORKFLOW. Please check if it is valid YAML." >&2
+    exit 1
+  fi
+  backoff_pos=-1
+  retry_pos=-1
+  for i in "${!is_backoff[@]}"; do
+    if [[ "${is_backoff[$i]}" == "true" && "$backoff_pos" -lt 0 ]]; then
+      backoff_pos="$i"
+    fi
+    if [[ "${is_retry[$i]:-false}" == "true" && "$retry_pos" -lt 0 ]]; then
+      retry_pos="$i"
+    fi
+  done
+  if [[ "$backoff_pos" -lt 0 ]]; then
+    {
+      echo "FAIL: no backoff step (run: sleep) guarded on \"steps.${primary_id}.outcome == 'failure'\" in $WORKFLOW"
+      echo "      Add a step between the primary scan and the retry, e.g.:"
+      echo "        - name: Back off before retry"
+      echo "          if: ... && steps.${primary_id}.outcome == 'failure'"
+      echo "          run: sleep 30"
+      echo "      so a transient endpoint blip has time to clear before the retry runs."
+    } >&2
+    PASS=false
+  elif [[ "$retry_pos" -ge 0 && "$backoff_pos" -gt "$retry_pos" ]]; then
+    {
+      echo "FAIL: the backoff (run: sleep) step must appear before the retry step in $WORKFLOW"
+      echo "      A backoff after the retry does nothing — move the sleep between the"
+      echo "      primary scan and the retry."
+    } >&2
+    PASS=false
+  else
+    echo "PASS: backoff delay precedes the failure-guarded retry in $WORKFLOW"
+  fi
+fi
+
 echo ""
 if [[ "$PASS" == "true" ]]; then
   echo "All checks passed."
