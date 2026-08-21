@@ -144,6 +144,44 @@ append_scan_without_backoff() {
 YAML
 }
 
+# The backoff step uses 'echo sleep' rather than executing sleep directly — the
+# guard must reject this because 'sleep' is an argument to echo, not the command.
+append_scan_backoff_not_executed() {
+  local file="$1"
+  cat >> "$file" <<'YAML'
+      - name: SonarCloud Scan
+        id: sonar
+        if: env.SONAR_TOKEN != ''
+        uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
+        continue-on-error: true
+      - name: Back off before retry
+        if: env.SONAR_TOKEN != '' && steps.sonar.outcome == 'failure'
+        run: echo sleep
+      - name: SonarCloud Scan (retry)
+        if: env.SONAR_TOKEN != '' && steps.sonar.outcome == 'failure'
+        uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
+YAML
+}
+
+# The backoff step uses 'sleep 0' rather than 'sleep 30' — the guard must
+# reject this because an instant sleep provides no effective backoff delay.
+append_scan_backoff_wrong_duration() {
+  local file="$1"
+  cat >> "$file" <<'YAML'
+      - name: SonarCloud Scan
+        id: sonar
+        if: env.SONAR_TOKEN != ''
+        uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
+        continue-on-error: true
+      - name: Back off before retry
+        if: env.SONAR_TOKEN != '' && steps.sonar.outcome == 'failure'
+        run: sleep 0
+      - name: SonarCloud Scan (retry)
+        if: env.SONAR_TOKEN != '' && steps.sonar.outcome == 'failure'
+        uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
+YAML
+}
+
 # The backoff appears AFTER the retry, where it does nothing to protect the
 # retry — the guard must reject this ordering.
 append_scan_backoff_after_retry() {
@@ -231,6 +269,25 @@ append_good_scan_unpinned_retry() {
       - name: SonarCloud Scan (retry)
         if: env.SONAR_TOKEN != '' && steps.sonar.outcome == 'failure'
         uses: SonarSource/sonarqube-scan-action@v8.2.1
+YAML
+}
+
+# The backoff appears BEFORE the primary scan — GitHub Actions skips it because
+# steps.sonar.outcome is not set yet, so the retry runs without a delay.
+append_scan_backoff_before_primary() {
+  local file="$1"
+  cat >> "$file" <<'YAML'
+      - name: Back off (too early)
+        if: env.SONAR_TOKEN != '' && steps.sonar.outcome == 'failure'
+        run: sleep 30
+      - name: SonarCloud Scan
+        id: sonar
+        if: env.SONAR_TOKEN != ''
+        uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
+        continue-on-error: true
+      - name: SonarCloud Scan (retry)
+        if: env.SONAR_TOKEN != '' && steps.sonar.outcome == 'failure'
+        uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
 YAML
 }
 
@@ -416,6 +473,36 @@ if run_guard "$latebackoff"; then
   fail "a backoff step placed after the retry should be REJECTED"
 else
   pass "a backoff step placed after the retry is rejected"
+fi
+
+# ── Case 13: backoff using 'echo sleep' (not executed) is rejected ──────────
+notexec="${TMP}/sonar-backoff-not-executed.yml"
+write_header "$notexec"
+append_scan_backoff_not_executed "$notexec"
+if run_guard "$notexec"; then
+  fail "a backoff step using 'echo sleep' (not executed) should be REJECTED"
+else
+  pass "a backoff step using 'echo sleep' (not executed) is rejected"
+fi
+
+# ── Case 14: backoff with wrong duration ('sleep 0') is rejected ─────────────
+wrongdur="${TMP}/sonar-backoff-wrong-duration.yml"
+write_header "$wrongdur"
+append_scan_backoff_wrong_duration "$wrongdur"
+if run_guard "$wrongdur"; then
+  fail "a backoff step using 'sleep 0' (wrong duration) should be REJECTED"
+else
+  pass "a backoff step using 'sleep 0' (wrong duration) is rejected"
+fi
+
+# ── Case 15: a backoff step placed before the primary scan is rejected ───────
+earlybackoff="${TMP}/sonar-backoff-before-primary.yml"
+write_header "$earlybackoff"
+append_scan_backoff_before_primary "$earlybackoff"
+if run_guard "$earlybackoff"; then
+  fail "a backoff step placed before the primary scan should be REJECTED"
+else
+  pass "a backoff step placed before the primary scan is rejected"
 fi
 
 echo ""

@@ -201,7 +201,7 @@ if [[ "$primary_ce" -ge 1 && -n "$primary_id" && "$primary_id" != "null" ]]; the
   if ! mapfile -t is_backoff < <(yq "
     .jobs[].steps[] | [.]
     | (map(
-        select((.run // \"\") | test(\"(^|[^[:alnum:]_])sleep([^[:alnum:]_]|\$)\"))
+        select((.run // \"\") | test(\"(^|\\n)[[:space:]]*sleep[[:space:]]+30([[:space:]]|\$)\"))
         | select((.if // \"\") | test(\"${guard_re}\"))
       ) | length) > 0
   " "$WORKFLOW" 2>/dev/null); then
@@ -219,9 +219,23 @@ if [[ "$primary_ce" -ge 1 && -n "$primary_id" && "$primary_id" != "null" ]]; the
     echo "FAIL: yq failed to parse $WORKFLOW. Please check if it is valid YAML." >&2
     exit 1
   fi
+  if ! mapfile -t is_primary < <(yq "
+    .jobs[].steps[] | [.]
+    | (map(
+        select((.uses // \"\") | test(\"^${SCAN_ACTION}@\"))
+        | select(.[\"continue-on-error\"] == true)
+      ) | length) > 0
+  " "$WORKFLOW" 2>/dev/null); then
+    echo "FAIL: yq failed to parse $WORKFLOW. Please check if it is valid YAML." >&2
+    exit 1
+  fi
+  primary_pos=-1
   backoff_pos=-1
   retry_pos=-1
   for i in "${!is_backoff[@]}"; do
+    if [[ "${is_primary[$i]:-false}" == "true" && "$primary_pos" -lt 0 ]]; then
+      primary_pos="$i"
+    fi
     if [[ "${is_backoff[$i]}" == "true" && "$backoff_pos" -lt 0 ]]; then
       backoff_pos="$i"
     fi
@@ -231,7 +245,7 @@ if [[ "$primary_ce" -ge 1 && -n "$primary_id" && "$primary_id" != "null" ]]; the
   done
   if [[ "$backoff_pos" -lt 0 ]]; then
     {
-      echo "FAIL: no backoff step (run: sleep) guarded on \"steps.${primary_id}.outcome == 'failure'\" in $WORKFLOW"
+      echo "FAIL: no backoff step (run: sleep 30) guarded on \"steps.${primary_id}.outcome == 'failure'\" in $WORKFLOW"
       echo "      Add a step between the primary scan and the retry, e.g.:"
       echo "        - name: Back off before retry"
       echo "          if: ... && steps.${primary_id}.outcome == 'failure'"
@@ -239,9 +253,17 @@ if [[ "$primary_ce" -ge 1 && -n "$primary_id" && "$primary_id" != "null" ]]; the
       echo "      so a transient endpoint blip has time to clear before the retry runs."
     } >&2
     PASS=false
+  elif [[ "$primary_pos" -ge 0 && "$backoff_pos" -le "$primary_pos" ]]; then
+    {
+      echo "FAIL: the backoff (run: sleep 30) step must appear after the primary scan step in $WORKFLOW"
+      echo "      A backoff before the primary scan is skipped by GitHub Actions"
+      echo "      (steps.${primary_id}.outcome is not available yet) — move the sleep"
+      echo "      to between the primary scan and the retry."
+    } >&2
+    PASS=false
   elif [[ "$retry_pos" -ge 0 && "$backoff_pos" -gt "$retry_pos" ]]; then
     {
-      echo "FAIL: the backoff (run: sleep) step must appear before the retry step in $WORKFLOW"
+      echo "FAIL: the backoff (run: sleep 30) step must appear before the retry step in $WORKFLOW"
       echo "      A backoff after the retry does nothing — move the sleep between the"
       echo "      primary scan and the retry."
     } >&2
