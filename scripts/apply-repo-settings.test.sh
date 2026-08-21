@@ -110,7 +110,11 @@ assert_eq "pr_quality_require_last_push_approval_status: empty string -> missing
 # transform untouched.
 ruleset_drifted_full='{"name":"pr-quality","target":"branch","enforcement":"active","bypass_actors":[{"actor_id":5,"actor_type":"Team"}],"conditions":{"ref_name":{"include":["~DEFAULT_BRANCH"],"exclude":[]}},"rules":[{"type":"required_status_checks","parameters":{"strict_required_status_checks_policy":true}},{"type":"pull_request","parameters":{"allowed_merge_methods":["merge","rebase","squash"],"require_last_push_approval":false,"dismiss_stale_reviews_on_push":false}}]}'
 
-payload_drifted="$(pr_quality_reconcile_payload "$ruleset_drifted_full")"
+payload_drifted=""
+if ! payload_drifted="$(pr_quality_reconcile_payload "$ruleset_drifted_full")"; then
+  echo "Failed to reconcile payload" >&2
+  exit 1
+fi
 
 assert_eq "pr_quality_reconcile_payload: dismiss_stale_reviews_on_push drifted -> true" \
   "true" "$(printf '%s' "$payload_drifted" | jq -r '.rules[] | select(.type=="pull_request") | .parameters.dismiss_stale_reviews_on_push')"
@@ -136,6 +140,13 @@ assert_eq "pr_quality_reconcile_payload: absent bypass_actors -> empty array" \
   "0" "$(printf '%s' "$(pr_quality_reconcile_payload "$ruleset_no_bypass")" | jq -r '.bypass_actors | length')"
 assert_eq "pr_quality_reconcile_payload: reconciles dismiss even when parameter absent-defaulted" \
   "true" "$(printf '%s' "$(pr_quality_reconcile_payload "$ruleset_no_bypass")" | jq -r '.rules[] | select(.type=="pull_request") | .parameters.dismiss_stale_reviews_on_push')"
+
+# Empty input must return a non-zero exit so callers can detect failure.
+if pr_quality_reconcile_payload "" >/dev/null 2>&1; then
+  fail "pr_quality_reconcile_payload: empty input -> non-zero exit"
+else
+  pass "pr_quality_reconcile_payload: empty input -> non-zero exit"
+fi
 
 # ── resolve_repo ──────────────────────────────────────────────────────────────
 assert_eq "resolve_repo: bare name -> org/name" \

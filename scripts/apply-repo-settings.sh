@@ -203,8 +203,13 @@ pr_quality_require_last_push_approval_status() {
 # of the GitHub API; apply_pr_quality_ruleset delegates the transform here.
 pr_quality_reconcile_payload() {
   local json="${1:-}"
+  if [[ -z "$json" ]]; then
+    return 1
+  fi
   printf '%s' "$json" | jq \
-    --arg method "$PR_QUALITY_MERGE_METHOD" '
+    --arg method "$PR_QUALITY_MERGE_METHOD" \
+    --argjson rlpa "$PR_QUALITY_REQUIRE_LAST_PUSH_APPROVAL" \
+    --argjson ds "$PR_QUALITY_DISMISS_STALE_REVIEWS" '
     {
       name: .name,
       target: .target,
@@ -215,7 +220,7 @@ pr_quality_reconcile_payload() {
         (.rules // [])[]
         | if .type == "pull_request"
           then .parameters.allowed_merge_methods = [$method]
-            | .parameters = ((.parameters // {}) + {require_last_push_approval: true, dismiss_stale_reviews_on_push: true})
+            | .parameters = ((.parameters // {}) + {require_last_push_approval: $rlpa, dismiss_stale_reviews_on_push: $ds})
           else . end
       ]
     }'
