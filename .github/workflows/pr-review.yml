@@ -74,6 +74,15 @@ concurrency:
 
 jobs:
   review:
+    # Skip Dependabot-triggered runs. Dependabot events read the separate
+    # Dependabot secret store, so `secrets: inherit` forwards EMPTY PAT/OAuth
+    # secrets and the reusable's "Verify auth scopes" step fails outright
+    # (`gh auth status failed`) — the recurring failed run behind Fleet Monitor
+    # #465. A guarded job skips (neutral), keeping the failure rate clean, and a
+    # Dependabot PR gains nothing from this reviewer anyway. A human-initiated
+    # workflow_dispatch on a Dependabot PR still runs because github.actor is
+    # then the human, not dependabot[bot].
+    if: ${{ github.actor != 'dependabot[bot]' }}
     permissions:
       contents: read
       pull-requests: write
