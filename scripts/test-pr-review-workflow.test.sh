@@ -149,6 +149,19 @@ else
   pass "a missing workflow file is rejected"
 fi
 
+# ── Case 8: an always-true if: guard is rejected ───────────────────────────
+# "${{ github.actor != 'dependabot[bot]' || github.actor == 'dependabot[bot]' }}"
+# contains both required tokens so old regex checks passed it, but the
+# condition is always true — Dependabot runs are NOT skipped. The exact-match
+# check must reject it.
+alwaystrue="${TMP}/always-true.yml"
+write_workflow "$alwaystrue" "\${{ github.actor != 'dependabot[bot]' || github.actor == 'dependabot[bot]' }}"
+if run_guard "$alwaystrue"; then
+  fail "an always-true if: guard should be REJECTED (counterexample for exact-match check)"
+else
+  pass "an always-true if: guard is rejected (exact-match check rejects always-true expressions)"
+fi
+
 echo ""
 if [[ "$fails" -eq 0 ]]; then
   echo "All tests passed."
