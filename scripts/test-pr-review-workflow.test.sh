@@ -135,7 +135,7 @@ fi
 nocancel="${TMP}/no-cancel.yml"
 write_workflow "$nocancel" "\${{ github.actor != 'dependabot[bot]' }}"
 # Flip cancel-in-progress: false -> true.
-sed -i 's/cancel-in-progress: false/cancel-in-progress: true/' "$nocancel"
+sed 's/cancel-in-progress: false/cancel-in-progress: true/' "$nocancel" > "${nocancel}.tmp" && mv "${nocancel}.tmp" "$nocancel"
 if run_guard "$nocancel"; then
   fail "cancel-in-progress: true should be REJECTED (concurrency invariant)"
 else

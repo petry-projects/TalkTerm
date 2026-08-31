@@ -73,15 +73,20 @@ fi
 # job on the triggering actor makes those runs skip (neutral) instead of
 # failing. A human-initiated workflow_dispatch on a Dependabot PR still runs
 # because github.actor is then the human.
-job_if=$(yq '.jobs.review.if' "$WORKFLOW" 2>/dev/null)
+job_if=""
+if ! job_if=$(yq '.jobs.review.if' "$WORKFLOW" 2>/dev/null); then
+  job_if=""
+fi
+regex_dependabot='dependabot\[bot\]'
+regex_actor='github\.actor[[:space:]]*!='
 if [[ "$job_if" == "null" || -z "$job_if" ]]; then
   echo "FAIL: 'jobs.review.if' guard is missing in $WORKFLOW"
   echo "      Add \"if: \${{ github.actor != 'dependabot[bot]' }}\" so Dependabot runs skip."
   PASS=false
-elif [[ ! "$job_if" =~ dependabot\[bot\] ]]; then
+elif [[ ! "$job_if" =~ $regex_dependabot ]]; then
   echo "FAIL: 'jobs.review.if' ($job_if) does not reference dependabot[bot] in $WORKFLOW"
   PASS=false
-elif [[ ! "$job_if" =~ github\.actor[[:space:]]*!= ]]; then
+elif [[ ! "$job_if" =~ $regex_actor ]]; then
   echo "FAIL: 'jobs.review.if' ($job_if) does not skip on github.actor == 'dependabot[bot]' in $WORKFLOW"
   PASS=false
 else
