@@ -55,8 +55,7 @@ jobs:
     # Dependabot PRs is still evaluated via workflow_run (CI green) and
     # check_suite, which run in the base-repo context with the PAT available.
     # Guarded by scripts/test-pr-auto-review-workflow.sh.
-    if: >-
-      !(github.event_name == 'pull_request' && github.actor == 'dependabot[bot]')
+    if: "!(github.event_name == 'pull_request' && github.actor == 'dependabot[bot]')" # NOSONAR(githubactions:S6549)
     permissions:
       pull-requests: read
       checks: read

@@ -10,6 +10,7 @@
 # Run: bash scripts/test-pr-auto-review-workflow.test.sh
 set -euo pipefail
 
+SCRIPT_DIR=""
 if ! SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"; then
   echo "FAIL: Failed to determine script directory" >&2
   exit 1
@@ -34,6 +35,7 @@ if ! command -v yq >/dev/null 2>&1; then
   exit 0
 fi
 
+TMP=""
 if ! TMP="$(mktemp -d)"; then
   echo "FAIL: Failed to create temporary directory" >&2
   exit 1
@@ -158,6 +160,73 @@ if run_guard "${TMP}/does-not-exist.yml"; then
   fail "a missing workflow file should be REJECTED"
 else
   pass "a missing workflow file is rejected"
+fi
+
+# ── Case 9: a reusable from a different org is rejected ─────────────────────
+# A file with the correct name but a different owner must not satisfy the check.
+difforg="${TMP}/diff-org.yml"
+write_fixture "$difforg" "$GOOD_IF" "other-org/.github/.github/workflows/pr-auto-review-reusable.yml@pr-auto-review/v1-ring1"
+if run_guard "$difforg"; then
+  fail "a reusable from a different org should be REJECTED"
+else
+  pass "a reusable from a different org is rejected"
+fi
+
+# ── Case 10: two jobs calling the same reusable is rejected ─────────────────
+# A second caller could bypass the if-guard entirely.
+multicallers="${TMP}/multi-callers.yml"
+{
+  cat <<'YAML'
+name: PR Auto-Review — Ready Check
+on:
+  pull_request:
+    types: [opened]
+permissions: {}
+jobs:
+  pr-auto-review-1:
+    if: "!(github.event_name == 'pull_request' && github.actor == 'dependabot[bot]')"
+    permissions:
+      pull-requests: read
+    uses: petry-projects/.github/.github/workflows/pr-auto-review-reusable.yml@pr-auto-review/v1-ring1
+    secrets:
+      GH_PAT_WORKFLOWS: ${{ secrets.GH_PAT_WORKFLOWS }}
+  pr-auto-review-2:
+    if: "!(github.event_name == 'pull_request' && github.actor == 'dependabot[bot]')"
+    permissions:
+      pull-requests: read
+    uses: petry-projects/.github/.github/workflows/pr-auto-review-reusable.yml@pr-auto-review/v1-ring1
+    secrets:
+      GH_PAT_WORKFLOWS: ${{ secrets.GH_PAT_WORKFLOWS }}
+YAML
+} > "$multicallers"
+if run_guard "$multicallers"; then
+  fail "a workflow with multiple reusable callers should be REJECTED"
+else
+  pass "a workflow with multiple reusable callers is rejected"
+fi
+
+# ── Case 11: a guard with a stray negation (e.g. !false) is rejected ────────
+# A bare ! not wrapping a group is too coarse to correctly exclude the
+# Dependabot pull_request combination.
+falsenegation="${TMP}/false-negation.yml"
+write_fixture "$falsenegation" "!false && github.event_name == 'pull_request' && github.actor == 'dependabot[bot]'" "$REUSABLE_REF"
+if run_guard "$falsenegation"; then
+  fail "a guard with a stray negation (!false) should be REJECTED"
+else
+  pass "a guard with a stray negation (!false) is rejected"
+fi
+
+# ── Case 12: a guard scoped to non-Dependabot pull_request only is rejected ──
+# "pull_request && actor != dependabot" passes the three simple keyword checks
+# (contains dependabot[bot], pull_request, and !=) but silences workflow_run /
+# check_suite readiness events entirely — the job would never run for those
+# events and Dependabot PRs would never get an auto-review signal.
+badinverted="${TMP}/bad-inverted.yml"
+write_fixture "$badinverted" "github.event_name == 'pull_request' && github.actor != 'dependabot[bot]'" "$REUSABLE_REF"
+if run_guard "$badinverted"; then
+  fail "a guard scoping to non-Dependabot pull_request only should be REJECTED"
+else
+  pass "a guard scoping to non-Dependabot pull_request only is rejected"
 fi
 
 echo ""

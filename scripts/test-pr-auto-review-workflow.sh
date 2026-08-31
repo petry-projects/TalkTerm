@@ -25,6 +25,7 @@ set -euo pipefail
 
 WORKFLOW="${1:-.github/workflows/pr-auto-review.yml}"
 REUSABLE="pr-auto-review-reusable"
+REUSABLE_ORG_PATH="petry-projects/.github/.github/workflows"
 PASS=true
 
 echo "=== test-pr-auto-review-workflow ==="
@@ -44,31 +45,53 @@ fi
 echo "PASS: $WORKFLOW exists"
 
 # ── Check 2: the caller still delegates to the org reusable ────────────────
-# Locate the job that calls the pr-auto-review reusable. Everything else keys off
-# this job, and a stub that no longer references the reusable has stopped being a
-# thin caller entirely.
-if ! uses_ref=$(yq "
-  [ .jobs[]
-    | select((.uses // \"\") | test(\"${REUSABLE}\\.yml@\")) ] | .[0].uses // \"\"
+# Count every job that calls the pr-auto-review reusable. Exactly one caller
+# must exist — a second caller could slip through without the if-guard, and
+# zero means the stub has stopped delegating entirely.
+caller_count=""
+if ! caller_count=$(yq "
+  [ (.jobs // {})[]
+    | select((.uses // \"\") | test(\"${REUSABLE}\\.yml@\")) ] | length
 " "$WORKFLOW" 2>/dev/null); then
   echo "FAIL: yq failed to parse $WORKFLOW. Please check if it is valid YAML."
   exit 1
 fi
-if [[ -z "$uses_ref" || "$uses_ref" == "null" ]]; then
+if [[ "$caller_count" -eq 0 ]]; then
   {
     echo "FAIL: no job in $WORKFLOW delegates to the '${REUSABLE}' reusable"
-    echo "      The stub must keep 'uses: petry-projects/.github/.github/workflows/${REUSABLE}.yml@<ref>'."
+    echo "      The stub must keep 'uses: ${REUSABLE_ORG_PATH}/${REUSABLE}.yml@<ref>'."
   } >&2
   PASS=false
+elif [[ "$caller_count" -gt 1 ]]; then
+  echo "FAIL: $caller_count jobs in $WORKFLOW call the '${REUSABLE}' reusable — expected exactly one" >&2
+  PASS=false
 else
-  echo "PASS: caller delegates to the '${REUSABLE}' reusable in $WORKFLOW"
+  uses_ref=""
+  if ! uses_ref=$(yq "
+    [ (.jobs // {})[]
+      | select((.uses // \"\") | test(\"${REUSABLE}\\.yml@\")) ] | .[0].uses // \"\"
+  " "$WORKFLOW" 2>/dev/null); then
+    echo "FAIL: yq failed to parse $WORKFLOW. Please check if it is valid YAML."
+    exit 1
+  fi
+  # Reject a ref from a different org that happens to share the filename.
+  if [[ "$uses_ref" != "${REUSABLE_ORG_PATH}/"* ]]; then
+    {
+      echo "FAIL: reusable ref '$uses_ref' is not from the required org path"
+      echo "      Expected prefix: ${REUSABLE_ORG_PATH}/"
+    } >&2
+    PASS=false
+  else
+    echo "PASS: caller delegates to the '${REUSABLE}' reusable in $WORKFLOW"
+  fi
 fi
 
 # ── Check 3: the reusable-calling job carries an `if:` guard ────────────────
 # The guard is what keeps a Dependabot `pull_request` event — which can never
 # obtain the PAT — from ever entering (and failing) the job.
+job_if=""
 if ! job_if=$(yq "
-  [ .jobs[]
+  [ (.jobs // {})[]
     | select((.uses // \"\") | test(\"${REUSABLE}\\.yml@\"))
     | .if // \"\" ] | .[0] // \"\"
 " "$WORKFLOW" 2>/dev/null); then
@@ -79,8 +102,7 @@ if [[ -z "$job_if" || "$job_if" == "null" ]]; then
   {
     echo "FAIL: the reusable-calling job in $WORKFLOW has no 'if:' guard"
     echo "      Add a job-level 'if:' that skips Dependabot 'pull_request' events, e.g.:"
-    echo "        if: >-"
-    echo "          !(github.event_name == 'pull_request' && github.actor == 'dependabot[bot]')"
+    echo "        if: \"!(github.event_name == 'pull_request' && github.actor == 'dependabot[bot]')\""
     echo "      Dependabot 'pull_request' events run without GH_PAT_WORKFLOWS and can"
     echo "      never succeed (Fleet Monitor #466)."
   } >&2
@@ -95,7 +117,10 @@ else
   #   • references pull_request         — the event that runs without the PAT
   #                                       (workflow_run / check_suite keep secrets,
   #                                       so they must NOT be disabled)
-  #   • contains a negation (! or !=)   — the combination is excluded, not required
+  #   • uses a negated group !( … )     — the combination is excluded, not required.
+  #                                       Bare != can inadvertently scope the job to
+  #                                       pull_request-only, silencing workflow_run
+  #                                       and check_suite readiness paths.
   guard_ok=true
   if [[ "$job_if" != *"dependabot[bot]"* ]]; then
     echo "FAIL: the job 'if:' in $WORKFLOW does not reference 'dependabot[bot]'" >&2
@@ -109,10 +134,16 @@ else
     } >&2
     guard_ok=false
   fi
-  if [[ "$job_if" != *"!"* ]]; then
+  # Require a negated group !(…) rather than a bare ! or !=. A bare !=
+  # expression (e.g. "pull_request && actor != 'dependabot[bot]'") passes the
+  # actor and event checks but silences workflow_run / check_suite entirely.
+  if [[ "$job_if" != *"!("* ]]; then
     {
-      echo "FAIL: the job 'if:' in $WORKFLOW has no negation — it does not EXCLUDE"
-      echo "      Dependabot 'pull_request' events (found: $job_if)"
+      echo "FAIL: the job 'if:' in $WORKFLOW does not use a negated group !(…)"
+      echo "      Use: !(github.event_name == 'pull_request' && github.actor == 'dependabot[bot]')"
+      echo "      A bare != or stray ! does not correctly exclude the Dependabot"
+      echo "      pull_request combination while keeping workflow_run / check_suite enabled."
+      echo "      (found: $job_if)"
     } >&2
     guard_ok=false
   fi
