@@ -57,7 +57,11 @@ if [[ "$primary_ce" -lt 1 ]]; then
   } >&2
   PASS=false
 else
-  echo "PASS: primary scan step is 'continue-on-error: true' in $WORKFLOW"
+  # NOSONAR(shelldre:S7677): false positive — this is a success ("PASS: ...")
+  # message that correctly goes to stdout, like every other PASS line here. It is
+  # only flagged because it sits in the else-branch of a check whose then-branch
+  # does error handling; redirecting it to stderr would be semantically wrong.
+  echo "PASS: primary scan step is 'continue-on-error: true' in $WORKFLOW" # NOSONAR(shelldre:S7677)
 fi
 
 # ── Check 3: a retry scan step is guarded on the primary's failure ─────────
