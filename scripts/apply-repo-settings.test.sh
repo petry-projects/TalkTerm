@@ -119,6 +119,7 @@ ruleset_drifted_full='{
     {"type":"required_status_checks","parameters":{"strict_required_status_checks_policy":true}}
   ]
 }'
+payload_drifted=""
 payload_drifted="$(pr_quality_reconcile_payload "$ruleset_drifted_full")"
 
 assert_eq "pr_quality_reconcile_payload: require_last_push_approval reconciled to true" \
@@ -151,6 +152,7 @@ ruleset_minimal='{
   "conditions":{"ref_name":{"include":["~DEFAULT_BRANCH"],"exclude":[]}},
   "rules":[{"type":"pull_request"}]
 }'
+payload_minimal=""
 payload_minimal="$(pr_quality_reconcile_payload "$ruleset_minimal")"
 
 assert_eq "pr_quality_reconcile_payload: absent bypass_actors defaults to []" \

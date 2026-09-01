@@ -214,8 +214,7 @@ pr_quality_reconcile_payload() {
       rules: [
         (.rules // [])[]
         | if .type == "pull_request"
-          then .parameters.allowed_merge_methods = [$method]
-            | .parameters = ((.parameters // {}) + {require_last_push_approval: true, dismiss_stale_reviews_on_push: true})
+          then .parameters = ((.parameters // {}) + {allowed_merge_methods: [$method], require_last_push_approval: true, dismiss_stale_reviews_on_push: true})
           else . end
       ]
     }'
@@ -293,8 +292,15 @@ apply_pr_quality_ruleset() {
     return 0
   fi
 
+  # Refetch immediately before PUT to narrow the GET-then-PUT race window.
+  local fresh_ruleset
+  if ! fresh_ruleset=$(gh api "repos/${repo}/rulesets/${ruleset_id}" 2>/dev/null) || [[ -z "$fresh_ruleset" ]]; then
+    echo "  could not re-read ruleset ${ruleset_id} before update — skipping"
+    return 0
+  fi
+
   local payload
-  if ! payload=$(pr_quality_reconcile_payload "$ruleset"); then
+  if ! payload=$(pr_quality_reconcile_payload "$fresh_ruleset"); then
     echo "  failed to generate payload for ruleset update"
     return 1
   fi
