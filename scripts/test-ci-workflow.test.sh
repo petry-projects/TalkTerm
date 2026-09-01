@@ -51,6 +51,7 @@ jobs:
   secret-scan:
     name: Secret scan
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - run: echo scan
 YAML
@@ -65,6 +66,7 @@ append_buggy_yq() {
   workflow-tests:
     name: Workflow regression guards
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Install yq
         env:
@@ -84,6 +86,7 @@ append_correct_yq() {
   workflow-tests:
     name: Workflow regression guards
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Install yq
         env:
@@ -103,6 +106,7 @@ append_buggy_yq_with_decoy() {
   workflow-tests:
     name: Workflow regression guards
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Install yq
         env:
@@ -117,6 +121,52 @@ append_buggy_yq_with_decoy() {
 YAML
 }
 
+# A second job that declares a positive-integer `timeout-minutes` and no curl.
+# Appended after a valid header so ONLY the timeout invariant (Check 7) is at
+# play: with it present on every job the guard accepts, without it the guard
+# rejects.
+append_job_with_timeout() {
+  local file="$1"
+  cat >> "$file" <<'YAML'
+  workflow-tests:
+    name: Workflow regression guards
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - run: echo guards
+YAML
+}
+
+# A second job that declares NO `timeout-minutes`. Without a job timeout a
+# stalled step runs to GitHub's 6-hour default before being killed and counted
+# as a failure — the class of noise that inflates the Fleet Monitor failure rate
+# (#470). ONLY the missing timeout differentiates this fixture (Check 7).
+append_job_without_timeout() {
+  local file="$1"
+  cat >> "$file" <<'YAML'
+  workflow-tests:
+    name: Workflow regression guards
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo guards
+YAML
+}
+
+# A second job that declares `timeout-minutes: 0`. Zero is not a valid job
+# timeout (GitHub requires a positive integer) and must be rejected just like a
+# missing value.
+append_job_zero_timeout() {
+  local file="$1"
+  cat >> "$file" <<'YAML'
+  workflow-tests:
+    name: Workflow regression guards
+    runs-on: ubuntu-latest
+    timeout-minutes: 0
+    steps:
+      - run: echo guards
+YAML
+}
+
 # A job whose curl download omits --retry. A transient network blip would then
 # fail CI deterministically and inflate the Fleet Monitor failure rate. The
 # filename is anchored correctly and column 19 is selected so ONLY the missing
@@ -127,6 +177,7 @@ append_curl_without_retry() {
   workflow-tests:
     name: Workflow regression guards
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Install yq
         env:
@@ -146,6 +197,7 @@ append_curl_with_retry_multiline() {
   workflow-tests:
     name: Workflow regression guards
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Install yq
         env:
@@ -170,6 +222,7 @@ append_curl_without_retry_chained() {
   workflow-tests:
     name: Workflow regression guards
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Download tools
         run: |
@@ -185,6 +238,7 @@ append_correct_yq_with_unnamed_step() {
   workflow-tests:
     name: Workflow regression guards
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Install yq
         env:
@@ -244,6 +298,7 @@ jobs:
   secret-scan:
     name: Secret scan
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - run: echo scan
 YAML
@@ -301,6 +356,36 @@ if run_guard "$chained"; then
   fail "curl without --retry chained with one that has --retry should be REJECTED"
 else
   pass "curl without --retry chained with one that has --retry is rejected"
+fi
+
+# ── Case 10: every job declaring timeout-minutes is accepted (Check 7) ──────
+timeout_ok="${TMP}/ci-timeout-ok.yml"
+write_header "$timeout_ok"
+append_job_with_timeout "$timeout_ok"
+if run_guard "$timeout_ok"; then
+  pass "every job declaring timeout-minutes is accepted"
+else
+  fail "every job declaring timeout-minutes should be ACCEPTED"
+fi
+
+# ── Case 11: a job missing timeout-minutes is rejected (root cause of #470) ─
+timeout_missing="${TMP}/ci-timeout-missing.yml"
+write_header "$timeout_missing"
+append_job_without_timeout "$timeout_missing"
+if run_guard "$timeout_missing"; then
+  fail "a job missing timeout-minutes should be REJECTED"
+else
+  pass "a job missing timeout-minutes is rejected"
+fi
+
+# ── Case 12: timeout-minutes: 0 (not a positive integer) is rejected ────────
+timeout_zero="${TMP}/ci-timeout-zero.yml"
+write_header "$timeout_zero"
+append_job_zero_timeout "$timeout_zero"
+if run_guard "$timeout_zero"; then
+  fail "timeout-minutes: 0 should be REJECTED"
+else
+  pass "timeout-minutes: 0 is rejected"
 fi
 
 echo ""

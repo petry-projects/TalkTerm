@@ -1,17 +1,23 @@
 #!/usr/bin/env bash
-# Regression guard for ci.yml. Locks two durable invariants whose loss inflates
-# the Fleet Monitor failure rate:
+# Regression guard for ci.yml. Locks durable invariants whose loss inflates the
+# Fleet Monitor failure rate:
 #
 #   1. (#380) ci.yml serializes redundant runs per Git ref via a top-level
 #      `concurrency:` block. Without one, a bot pushing several commits to a PR
 #      branch in quick succession fans out redundant runs that pile up as
 #      `action_required`. Mirrors every sibling caller (pr-review.yml,
-#      ci-failure-analyst.yml, add-to-project.yml, ...).
+#      ci-failure-analyst.yml, add-to-project.yml, ...). See Checks 2-4.
 #   2. (#430) any `Install yq` step extracts the SHA-256 from the mikefarah/yq
 #      `checksums` release asset correctly (filename anchored at line start,
 #      column 19). The buggy end-anchored / column-1 extraction produced an empty
 #      checksum and a deterministic `sha256sum: no properly formatted checksum
 #      lines found` failure that degraded CI. See Check 5.
+#   3. (#438) every `curl` download retries on transient network failures
+#      (`--retry`), so a DNS/connection blip is absorbed rather than failing CI
+#      deterministically. See Check 6.
+#   4. (#470) every job declares a positive-integer `timeout-minutes`, so a
+#      stalled step fails fast instead of inheriting GitHub's 6-hour default and
+#      landing as a timeout failure. See Check 7.
 #
 # Accepts an optional workflow path (default: .github/workflows/ci.yml) so the
 # checks can be exercised against fixtures — see test-ci-workflow.test.sh.
@@ -172,6 +178,41 @@ if [[ "$curl_missing_retry" == "true" ]]; then
 else
   echo "PASS: every 'curl' download retries on transient failures in $WORKFLOW"
 fi
+
+# ── Check 7: every job declares a positive-integer `timeout-minutes` ───────
+# Root cause class for Fleet Monitor #470: a job without `timeout-minutes`
+# inherits GitHub's 6-hour default. A step that *stalls* rather than errors — a
+# curl that connects then hangs (which --retry does not cover), or any wedged
+# process — then runs for hours before being killed and counted as a timeout
+# failure, inflating the Fleet Monitor failure rate and burning runner minutes.
+# p95 for this workflow is ~150s, so a bounded per-job timeout turns a hang into
+# a fast, obvious failure instead of a 6-hour one. Mirrors the timeout-minutes
+# convention already used by sonarcloud.yml, copilot-setup-steps.yml,
+# initiative-driver.yml and feature-ideation.yml.
+if ! job_names=$(yq '.jobs | keys | .[]' "$WORKFLOW" 2>/dev/null); then
+  echo "FAIL: yq failed to parse $WORKFLOW. Please check if it is valid YAML."
+  exit 1
+fi
+
+while IFS= read -r job; do
+  [[ -z "$job" ]] && continue
+  if ! timeout=$(J="$job" yq '.jobs[env(J)]["timeout-minutes"]' "$WORKFLOW" 2>/dev/null); then
+    echo "FAIL: yq failed to read timeout-minutes for job '$job' in $WORKFLOW."
+    exit 1
+  fi
+  if [[ "$timeout" == "null" || -z "$timeout" ]]; then
+    echo "FAIL: job '$job' in $WORKFLOW declares no 'timeout-minutes'. Without one"
+    echo "      it inherits GitHub's 6-hour default, so a stalled step runs for"
+    echo "      hours and lands as a timeout failure. Add e.g. 'timeout-minutes: 10'."
+    PASS=false
+  elif [[ ! "$timeout" =~ ^[0-9]+$ || "$timeout" -le 0 ]]; then
+    echo "FAIL: job '$job' in $WORKFLOW has an invalid 'timeout-minutes'"
+    echo "      (found: '$timeout'). It must be a positive integer."
+    PASS=false
+  else
+    echo "PASS: job '$job' declares timeout-minutes ($timeout) in $WORKFLOW"
+  fi
+done <<< "$job_names"
 
 echo ""
 if [[ "$PASS" == "true" ]]; then
