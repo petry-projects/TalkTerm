@@ -261,3 +261,15 @@ b9ad0c5f78bf39d721924e8925c269d85b338735:_bmad/_config/files-manifest.csv:generi
 b9ad0c5f78bf39d721924e8925c269d85b338735:_bmad/_config/files-manifest.csv:generic-api-key:300
 b9ad0c5f78bf39d721924e8925c269d85b338735:_bmad/_config/files-manifest.csv:generic-api-key:409
 b9ad0c5f78bf39d721924e8925c269d85b338735:_bmad/_config/files-manifest.csv:generic-api-key:433
+
+# Commit fdbb5983 (PR #472 test-merge commit): same _bmad/_config/files-manifest.csv CSV rows
+# (SHA256 content checksums of BMAD skill files) and _bmad/tea/testarch/knowledge/api-testing-patterns.md
+# L681 (expired/example token in a test-design knowledge article). Same false-positive rationale as
+# prior entries — file-content checksums in CSV and documented expired example token, not real credentials.
+fdbb5983697cf867bf3a08d1483322f2a9476c28:_bmad/_config/files-manifest.csv:generic-api-key:281
+fdbb5983697cf867bf3a08d1483322f2a9476c28:_bmad/_config/files-manifest.csv:generic-api-key:282
+fdbb5983697cf867bf3a08d1483322f2a9476c28:_bmad/_config/files-manifest.csv:generic-api-key:284
+fdbb5983697cf867bf3a08d1483322f2a9476c28:_bmad/_config/files-manifest.csv:generic-api-key:300
+fdbb5983697cf867bf3a08d1483322f2a9476c28:_bmad/_config/files-manifest.csv:generic-api-key:409
+fdbb5983697cf867bf3a08d1483322f2a9476c28:_bmad/_config/files-manifest.csv:generic-api-key:433
+fdbb5983697cf867bf3a08d1483322f2a9476c28:_bmad/tea/testarch/knowledge/api-testing-patterns.md:generic-api-key:681
