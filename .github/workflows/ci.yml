@@ -101,6 +101,11 @@ jobs:
   secret-scan:
     name: Secret scan (gitleaks)
     runs-on: ubuntu-latest
+    # Bound the job so a stalled download (a curl that connects then hangs — which
+    # --retry does not cover) fails fast instead of inheriting GitHub's 6-hour
+    # default and landing as a timeout that inflates the Fleet Monitor failure
+    # rate (#470). p95 for this workflow is ~150s, so 10m is ample headroom.
+    timeout-minutes: 10
     permissions:
       contents: read
       security-events: write
@@ -144,6 +149,9 @@ jobs:
   workflow-tests:
     name: Workflow regression guards
     runs-on: ubuntu-latest
+    # See secret-scan above: bound the job so a stalled yq download or a wedged
+    # guard script fails fast rather than inheriting GitHub's 6-hour default (#470).
+    timeout-minutes: 10
     permissions:
       contents: read
     steps:
