@@ -152,6 +152,21 @@ append_job_without_timeout() {
 YAML
 }
 
+# A second job that declares `timeout-minutes: "10"` (quoted string). GitHub
+# Actions requires a bare YAML integer; a quoted value is a YAML type error
+# that yq masks by stripping quotes, so the guard checks the YAML tag (#471).
+append_job_with_quoted_timeout() {
+  local file="$1"
+  cat >> "$file" <<'YAML'
+  workflow-tests:
+    name: Workflow regression guards
+    runs-on: ubuntu-latest
+    timeout-minutes: "10"
+    steps:
+      - run: echo guards
+YAML
+}
+
 # A second job that declares `timeout-minutes: 0`. Zero is not a valid job
 # timeout (GitHub requires a positive integer) and must be rejected just like a
 # missing value.
@@ -386,6 +401,16 @@ if run_guard "$timeout_zero"; then
   fail "timeout-minutes: 0 should be REJECTED"
 else
   pass "timeout-minutes: 0 is rejected"
+fi
+
+# ── Case 13: timeout-minutes: "10" (quoted string) is rejected ───────────────
+timeout_quoted="${TMP}/ci-timeout-quoted.yml"
+write_header "$timeout_quoted"
+append_job_with_quoted_timeout "$timeout_quoted"
+if run_guard "$timeout_quoted"; then
+  fail 'timeout-minutes: "10" (quoted string) should be REJECTED'
+else
+  pass 'timeout-minutes: "10" (quoted string) is rejected'
 fi
 
 echo ""

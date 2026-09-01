@@ -189,13 +189,16 @@ fi
 # a fast, obvious failure instead of a 6-hour one. Mirrors the timeout-minutes
 # convention already used by sonarcloud.yml, copilot-setup-steps.yml,
 # initiative-driver.yml and feature-ideation.yml.
+job_names=""
 if ! job_names=$(yq '.jobs | keys | .[]' "$WORKFLOW" 2>/dev/null); then
   echo "FAIL: yq failed to parse $WORKFLOW. Please check if it is valid YAML."
   exit 1
 fi
 
+timeout_pattern='^[0-9]+$'
 while IFS= read -r job; do
   [[ -z "$job" ]] && continue
+  timeout=""
   if ! timeout=$(J="$job" yq '.jobs[env(J)]["timeout-minutes"]' "$WORKFLOW" 2>/dev/null); then
     echo "FAIL: yq failed to read timeout-minutes for job '$job' in $WORKFLOW."
     exit 1
@@ -205,12 +208,20 @@ while IFS= read -r job; do
     echo "      it inherits GitHub's 6-hour default, so a stalled step runs for"
     echo "      hours and lands as a timeout failure. Add e.g. 'timeout-minutes: 10'."
     PASS=false
-  elif [[ ! "$timeout" =~ ^[0-9]+$ || "$timeout" -le 0 ]]; then
+  elif [[ ! "$timeout" =~ $timeout_pattern || "$timeout" -le 0 ]]; then
     echo "FAIL: job '$job' in $WORKFLOW has an invalid 'timeout-minutes'"
     echo "      (found: '$timeout'). It must be a positive integer."
     PASS=false
   else
-    echo "PASS: job '$job' declares timeout-minutes ($timeout) in $WORKFLOW"
+    timeout_tag=""
+    timeout_tag=$(J="$job" yq '.jobs[env(J)]["timeout-minutes"] | tag' "$WORKFLOW" 2>/dev/null) || true
+    if [[ "$timeout_tag" != "!!int" ]]; then
+      echo "FAIL: job '$job' in $WORKFLOW declares 'timeout-minutes' as a quoted string"
+      echo "      (found: '\"$timeout\"'). GitHub Actions requires a bare integer, e.g. 'timeout-minutes: $timeout'."
+      PASS=false
+    else
+      echo "PASS: job '$job' declares timeout-minutes ($timeout) in $WORKFLOW"
+    fi
   fi
 done <<< "$job_names"
 
