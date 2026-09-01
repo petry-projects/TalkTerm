@@ -194,22 +194,17 @@ pr_quality_require_last_push_approval_status() {
 }
 
 # pr_quality_reconcile_payload <ruleset_json>
-# Builds the PUT payload that reconciles the pr-quality ruleset's pull_request
-# rule to the codified standard — squash-only merges, require_last_push_approval,
-# and dismiss_stale_reviews_on_push all set to their standard values — while
-# preserving the ruleset's name, target, enforcement, bypass_actors, conditions,
-# and any non-pull_request rules verbatim. Absent bypass_actors default to an
-# empty array. Pure and side-effect-free so it can be unit-tested independently
-# of the GitHub API; apply_pr_quality_ruleset delegates the transform here.
+# Builds the PUT body that reconciles the pr-quality ruleset's pull_request rule
+# to the codified standard: allowed_merge_methods=[squash],
+# require_last_push_approval=true, dismiss_stale_reviews_on_push=true. Structural
+# fields (name, target, enforcement, bypass_actors, conditions) are carried over
+# from the current ruleset; absent bypass_actors default to []. Non-pull_request
+# rules pass through unchanged. Pure and side-effect-free so it can be
+# unit-tested without hitting the API.
 pr_quality_reconcile_payload() {
-  local json="${1:-}"
-  if [[ -z "$json" ]]; then
-    return 1
-  fi
-  printf '%s' "$json" | jq \
-    --arg method "$PR_QUALITY_MERGE_METHOD" \
-    --argjson rlpa "$PR_QUALITY_REQUIRE_LAST_PUSH_APPROVAL" \
-    --argjson ds "$PR_QUALITY_DISMISS_STALE_REVIEWS" '
+  local ruleset="${1:-}"
+  printf '%s' "$ruleset" | jq \
+    --arg method "$PR_QUALITY_MERGE_METHOD" '
     {
       name: .name,
       target: .target,
@@ -219,8 +214,7 @@ pr_quality_reconcile_payload() {
       rules: [
         (.rules // [])[]
         | if .type == "pull_request"
-          then .parameters.allowed_merge_methods = [$method]
-            | .parameters = ((.parameters // {}) + {require_last_push_approval: $rlpa, dismiss_stale_reviews_on_push: $ds})
+          then .parameters = ((.parameters // {}) + {allowed_merge_methods: [$method], require_last_push_approval: true, dismiss_stale_reviews_on_push: true})
           else . end
       ]
     }'
@@ -298,8 +292,15 @@ apply_pr_quality_ruleset() {
     return 0
   fi
 
+  # Refetch immediately before PUT to narrow the GET-then-PUT race window.
+  local fresh_ruleset
+  if ! fresh_ruleset=$(gh api "repos/${repo}/rulesets/${ruleset_id}" 2>/dev/null) || [[ -z "$fresh_ruleset" ]]; then
+    echo "  could not re-read ruleset ${ruleset_id} before update — skipping"
+    return 0
+  fi
+
   local payload
-  if ! payload=$(pr_quality_reconcile_payload "$ruleset"); then
+  if ! payload=$(pr_quality_reconcile_payload "$fresh_ruleset"); then
     echo "  failed to generate payload for ruleset update"
     return 1
   fi

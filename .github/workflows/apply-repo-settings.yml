@@ -7,7 +7,8 @@
 # compliance audits. Also triggerable manually for out-of-band remediation.
 # Reconciles: security_and_analysis settings (secret_scanning_ai_detection, etc.),
 # check-suite auto-trigger preferences, and the pr-quality ruleset's
-# allowed_merge_methods (squash-only) and dismiss_stale_reviews_on_push (true).
+# allowed_merge_methods (squash-only), dismiss_stale_reviews_on_push (true), and
+# require_last_push_approval (true).
 #
 # Token: GH_PAT_WORKFLOWS (classic PAT with repo scope).
 # `administration` is not a valid GITHUB_TOKEN scope in Actions; and the
