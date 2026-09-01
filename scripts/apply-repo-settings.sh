@@ -218,6 +218,7 @@ pr_quality_reconcile_payload() {
           else . end
       ]
     }'
+  return
 }
 
 # apply_pr_quality_ruleset <owner/repo>
