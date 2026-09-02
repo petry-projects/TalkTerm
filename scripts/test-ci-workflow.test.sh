@@ -268,9 +268,73 @@ append_correct_yq_with_unnamed_step() {
 YAML
 }
 
+# A gitleaks CLI enforcement step that runs a full-history scan but passes NO
+# --config. Root cause of Fleet Monitor #474: without a committed --config the
+# scan suppresses false positives only via .gitleaksignore commit-SHA
+# fingerprints, so a reviewed false positive reappears under a fresh SHA on
+# every commit touching the file and fails CI until hand-suppressed (Check 8).
+append_gitleaks_no_config() {
+  local file="$1"
+  cat >> "$file" <<'YAML'
+  gitleaks-scan:
+    name: Gitleaks CLI
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Run gitleaks (CLI)
+        run: |
+          /tmp/gitleaks detect --source . --redact --verbose --exit-code 1
+YAML
+}
+
+# A gitleaks step whose --config points at a file that does not exist in the
+# repo. A committed, present config is what makes the path-based allowlists
+# actually load, so a dangling reference must be rejected (Check 8).
+append_gitleaks_config_missing() {
+  local file="$1"
+  cat >> "$file" <<'YAML'
+  gitleaks-scan:
+    name: Gitleaks CLI
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Run gitleaks (CLI)
+        run: |
+          /tmp/gitleaks detect --source . --config .gitleaks-does-not-exist.toml --redact --exit-code 1
+YAML
+}
+
+# A gitleaks step whose --config points at the repo's committed .gitleaks.toml.
+# This is the fixed shape (Check 8 accepts it). The referenced file must exist
+# in the directory the guard runs from — the fixture is exercised with CWD set
+# to a scratch dir that contains a .gitleaks.toml, mirroring how CI resolves the
+# path relative to the checked-out repo root.
+append_gitleaks_config_ok() {
+  local file="$1"
+  cat >> "$file" <<'YAML'
+  gitleaks-scan:
+    name: Gitleaks CLI
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Run gitleaks (CLI)
+        run: |
+          /tmp/gitleaks detect --source . --config .gitleaks.toml --redact --verbose --exit-code 1
+YAML
+}
+
 run_guard() {
   local file="$1"
   bash "$GUARD" "$file" >/dev/null 2>&1
+}
+
+# Run the guard with a chosen working directory so a workflow's `--config
+# <path>` (a repo-root-relative path, exactly as CI resolves it) is checked
+# against a file that actually exists there. Uses an absolute path to both the
+# guard and the workflow so the cd does not disturb resolution of either.
+run_guard_in() {
+  local cwd="$1" file="$2"
+  ( cd "$cwd" && bash "$GUARD" "$file" ) >/dev/null 2>&1
 }
 
 # ── Case 1: buggy yq extraction is rejected (root cause of #430) ────────────
@@ -411,6 +475,52 @@ if run_guard "$timeout_quoted"; then
   fail 'timeout-minutes: "10" (quoted string) should be REJECTED'
 else
   pass 'timeout-minutes: "10" (quoted string) is rejected'
+fi
+
+# ── Case 14: gitleaks step with no --config is rejected (root cause of #474) ─
+gl_noconfig="${TMP}/ci-gl-noconfig.yml"
+write_header "$gl_noconfig"
+append_gitleaks_no_config "$gl_noconfig"
+if run_guard "$gl_noconfig"; then
+  fail "gitleaks step without --config should be REJECTED"
+else
+  pass "gitleaks step without --config is rejected"
+fi
+
+# ── Case 15: gitleaks --config pointing at a missing file is rejected ───────
+gl_missing="${TMP}/ci-gl-missing.yml"
+write_header "$gl_missing"
+append_gitleaks_config_missing "$gl_missing"
+if run_guard "$gl_missing"; then
+  fail "gitleaks --config pointing at a missing file should be REJECTED"
+else
+  pass "gitleaks --config pointing at a missing file is rejected"
+fi
+
+# ── Case 16: gitleaks --config to an existing committed config is accepted ──
+# The guard resolves the repo-root-relative --config path against its working
+# directory (as CI does against the checked-out repo). Exercise it from a
+# scratch dir that contains a .gitleaks.toml so the accept path is hermetic.
+gl_ok_dir="${TMP}/gl-ok"
+mkdir -p "$gl_ok_dir"
+: > "${gl_ok_dir}/.gitleaks.toml"
+gl_ok="${gl_ok_dir}/ci-gl-ok.yml"
+write_header "$gl_ok"
+append_gitleaks_config_ok "$gl_ok"
+if run_guard_in "$gl_ok_dir" "ci-gl-ok.yml"; then
+  pass "gitleaks --config to an existing committed config is accepted"
+else
+  fail "gitleaks --config to an existing committed config should be ACCEPTED"
+fi
+
+# ── Case 17: no gitleaks step present — Check 8 is a no-op, guard still passes
+gl_none="${TMP}/ci-gl-none.yml"
+write_header "$gl_none"
+append_job_with_timeout "$gl_none"
+if run_guard "$gl_none"; then
+  pass "workflow without a gitleaks step passes (Check 8 skipped)"
+else
+  fail "workflow without a gitleaks step should pass"
 fi
 
 echo ""
