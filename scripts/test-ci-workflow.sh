@@ -245,6 +245,7 @@ done <<< "$job_names"
 # allowlists ends it. Lock the invariant: any `gitleaks detect` step must pass
 # `--config <file>` and that file must exist in the repo. No-op when the
 # workflow has no gitleaks step.
+gitleaks_run=""
 if ! gitleaks_run=$(yq '.jobs[].steps[] | select(.run // "" | test("gitleaks detect")) | .run' "$WORKFLOW" 2>/dev/null); then
   echo "FAIL: yq failed to parse $WORKFLOW. Please check if it is valid YAML."
   exit 1
@@ -259,26 +260,35 @@ else
     echo "FAIL: failed to fold multi-line gitleaks command."
     exit 1
   fi
-  # Accept both `--config <path>` and `--config=<path>`.
-  config_path=""
-  config_path=$(grep -Eo -- '--config[= ][^[:space:]]+' <<< "$folded_gitleaks" | head -1 | sed -E 's/^--config[= ]//') || true
-  if [[ -z "$config_path" ]]; then
-    echo "FAIL: the 'gitleaks detect' step in $WORKFLOW passes no '--config'. Without"
-    echo "      a committed config its path-based allowlists never load, so false"
-    echo "      positives are suppressed only by per-commit .gitleaksignore"
-    echo "      fingerprints and reappear under a fresh SHA on every commit — a"
-    echo "      whack-a-mole that fails CI deterministically (#474). Add"
-    echo "      '--config .gitleaks.toml'."
-    PASS=false
-  elif [[ ! -f "$config_path" ]]; then
-    echo "FAIL: the 'gitleaks detect' step in $WORKFLOW references '--config"
-    echo "      $config_path', but that file does not exist in the repo. The"
-    echo "      config carries the path-based false-positive allowlists; a dangling"
-    echo "      reference silently falls back to the default config (#474)."
-    PASS=false
-  else
-    echo "PASS: 'gitleaks detect' loads a committed --config ($config_path) in $WORKFLOW"
-  fi
+  # Validate every gitleaks detect step — not just the first one.
+  while IFS= read -r cmd; do
+    [[ -z "$cmd" ]] && continue
+    # Accept both `--config <path>` and `--config=<path>`; strip surrounding quotes.
+    config_path=""
+    config_path=$(grep -Eo -- '--config[= ][^[:space:]]+' <<< "$cmd" | head -1 | sed -E "s/^--config[= ]//; s/^['\"]//; s/['\"]$//") || true
+    if [[ -z "$config_path" ]]; then
+      echo "FAIL: the 'gitleaks detect' step in $WORKFLOW passes no '--config'. Without"
+      echo "      a committed config its path-based allowlists never load, so false"
+      echo "      positives are suppressed only by per-commit .gitleaksignore"
+      echo "      fingerprints and reappear under a fresh SHA on every commit — a"
+      echo "      whack-a-mole that fails CI deterministically (#474). Add"
+      echo "      '--config .gitleaks.toml'."
+      PASS=false
+    elif [[ "$config_path" == /* || "$config_path" == *..* ]]; then
+      echo "FAIL: the 'gitleaks detect' step in $WORKFLOW references '--config"
+      echo "      $config_path', which must be a relative repo path (no absolute"
+      echo "      paths or '..' traversal). The config must be committed to the repo."
+      PASS=false
+    elif [[ ! -f "$config_path" ]]; then
+      echo "FAIL: the 'gitleaks detect' step in $WORKFLOW references '--config"
+      echo "      $config_path', but that file does not exist in the repo. The"
+      echo "      config carries the path-based false-positive allowlists; a dangling"
+      echo "      reference silently falls back to the default config (#474)."
+      PASS=false
+    else
+      echo "PASS: 'gitleaks detect' loads a committed --config ($config_path) in $WORKFLOW"
+    fi
+  done <<< "$folded_gitleaks"
 fi
 
 echo ""

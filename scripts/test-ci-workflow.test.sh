@@ -323,6 +323,69 @@ append_gitleaks_config_ok() {
 YAML
 }
 
+# Two gitleaks steps: second one omits --config. Both must be validated.
+append_gitleaks_two_steps_second_no_config() {
+  local file="$1"
+  cat >> "$file" <<'YAML'
+  gitleaks-scan:
+    name: Gitleaks CLI
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Run gitleaks (CLI) with config
+        run: |
+          /tmp/gitleaks detect --source . --config .gitleaks.toml --redact --exit-code 1
+      - name: Run gitleaks (CLI) without config
+        run: |
+          /tmp/gitleaks detect --source . --redact --exit-code 1
+YAML
+}
+
+# A gitleaks step whose --config is a quoted path, e.g. --config ".gitleaks.toml".
+append_gitleaks_config_quoted() {
+  local file="$1"
+  cat >> "$file" <<'YAML'
+  gitleaks-scan:
+    name: Gitleaks CLI
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Run gitleaks (CLI)
+        run: |
+          /tmp/gitleaks detect --source . --config ".gitleaks.toml" --redact --exit-code 1
+YAML
+}
+
+# A gitleaks step whose --config is an absolute path (must be rejected).
+append_gitleaks_config_absolute() {
+  local file="$1"
+  cat >> "$file" <<'YAML'
+  gitleaks-scan:
+    name: Gitleaks CLI
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Run gitleaks (CLI)
+        run: |
+          /tmp/gitleaks detect --source . --config /etc/gitleaks.toml --redact --exit-code 1
+YAML
+}
+
+# A gitleaks step whose --config uses path traversal (must be rejected).
+append_gitleaks_config_traversal() {
+  local file="$1"
+  cat >> "$file" <<'YAML'
+  gitleaks-scan:
+    name: Gitleaks CLI
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Run gitleaks (CLI)
+        run: |
+          /tmp/gitleaks detect --source . --config ../../etc/gitleaks.toml --redact --exit-code 1
+YAML
+}
+
 run_guard() {
   local file="$1"
   bash "$GUARD" "$file" >/dev/null 2>&1
@@ -521,6 +584,52 @@ if run_guard "$gl_none"; then
   pass "workflow without a gitleaks step passes (Check 8 skipped)"
 else
   fail "workflow without a gitleaks step should pass"
+fi
+
+# ── Case 18: two gitleaks steps — second without --config is rejected ─────────
+gl_two="${TMP}/ci-gl-two.yml"
+gl_two_dir="${TMP}/gl-two"
+mkdir -p "$gl_two_dir"
+: > "${gl_two_dir}/.gitleaks.toml"
+cp /dev/null "${gl_two_dir}/ci-gl-two.yml"
+write_header "${gl_two_dir}/ci-gl-two.yml"
+append_gitleaks_two_steps_second_no_config "${gl_two_dir}/ci-gl-two.yml"
+if run_guard_in "$gl_two_dir" "ci-gl-two.yml"; then
+  fail "second gitleaks step without --config should be REJECTED"
+else
+  pass "second gitleaks step without --config is rejected"
+fi
+
+# ── Case 19: gitleaks --config with quoted path is accepted ──────────────────
+gl_quoted_dir="${TMP}/gl-quoted"
+mkdir -p "$gl_quoted_dir"
+: > "${gl_quoted_dir}/.gitleaks.toml"
+write_header "${gl_quoted_dir}/ci-gl-quoted.yml"
+append_gitleaks_config_quoted "${gl_quoted_dir}/ci-gl-quoted.yml"
+if run_guard_in "$gl_quoted_dir" "ci-gl-quoted.yml"; then
+  pass "gitleaks --config with quoted path is accepted"
+else
+  fail "gitleaks --config with quoted path should be ACCEPTED"
+fi
+
+# ── Case 20: gitleaks --config with absolute path is rejected ────────────────
+gl_abs="${TMP}/ci-gl-abs.yml"
+write_header "$gl_abs"
+append_gitleaks_config_absolute "$gl_abs"
+if run_guard "$gl_abs"; then
+  fail "gitleaks --config with absolute path should be REJECTED"
+else
+  pass "gitleaks --config with absolute path is rejected"
+fi
+
+# ── Case 21: gitleaks --config with path traversal is rejected ───────────────
+gl_trav="${TMP}/ci-gl-traversal.yml"
+write_header "$gl_trav"
+append_gitleaks_config_traversal "$gl_trav"
+if run_guard "$gl_trav"; then
+  fail "gitleaks --config with path traversal should be REJECTED"
+else
+  pass "gitleaks --config with path traversal is rejected"
 fi
 
 echo ""
