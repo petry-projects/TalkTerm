@@ -386,6 +386,21 @@ append_gitleaks_config_traversal() {
 YAML
 }
 
+# A single run line with two gitleaks detect calls chained with &&:
+# the first has --config, the second does not. Both shapes must be validated.
+append_gitleaks_chained_second_no_config() {
+  local file="$1"
+  cat >> "$file" <<'YAML'
+  gitleaks-scan:
+    name: Gitleaks CLI
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Run gitleaks (CLI) chained
+        run: /tmp/gitleaks detect --source . --config .gitleaks.toml --exit-code 1 && /tmp/gitleaks detect --source . --exit-code 1
+YAML
+}
+
 run_guard() {
   local file="$1"
   bash "$GUARD" "$file" >/dev/null 2>&1
@@ -560,20 +575,22 @@ else
   pass "gitleaks --config pointing at a missing file is rejected"
 fi
 
-# ── Case 16: gitleaks --config to an existing committed config is accepted ──
+# ── Case 16: gitleaks --config to an existing git-tracked config is accepted ──
 # The guard resolves the repo-root-relative --config path against its working
-# directory (as CI does against the checked-out repo). Exercise it from a
-# scratch dir that contains a .gitleaks.toml so the accept path is hermetic.
+# directory (as CI does against the checked-out repo). Exercise it from a scratch
+# dir that is a git repo with .gitleaks.toml staged, mirroring a real CI checkout.
 gl_ok_dir="${TMP}/gl-ok"
 mkdir -p "$gl_ok_dir"
 : > "${gl_ok_dir}/.gitleaks.toml"
+git -C "$gl_ok_dir" init -q
+git -C "$gl_ok_dir" add .gitleaks.toml
 gl_ok="${gl_ok_dir}/ci-gl-ok.yml"
 write_header "$gl_ok"
 append_gitleaks_config_ok "$gl_ok"
 if run_guard_in "$gl_ok_dir" "ci-gl-ok.yml"; then
-  pass "gitleaks --config to an existing committed config is accepted"
+  pass "gitleaks --config to an existing git-tracked config is accepted"
 else
-  fail "gitleaks --config to an existing committed config should be ACCEPTED"
+  fail "gitleaks --config to an existing git-tracked config should be ACCEPTED"
 fi
 
 # ── Case 17: no gitleaks step present — Check 8 is a no-op, guard still passes
@@ -587,10 +604,11 @@ else
 fi
 
 # ── Case 18: two gitleaks steps — second without --config is rejected ─────────
-gl_two="${TMP}/ci-gl-two.yml"
 gl_two_dir="${TMP}/gl-two"
 mkdir -p "$gl_two_dir"
 : > "${gl_two_dir}/.gitleaks.toml"
+git -C "$gl_two_dir" init -q
+git -C "$gl_two_dir" add .gitleaks.toml
 cp /dev/null "${gl_two_dir}/ci-gl-two.yml"
 write_header "${gl_two_dir}/ci-gl-two.yml"
 append_gitleaks_two_steps_second_no_config "${gl_two_dir}/ci-gl-two.yml"
@@ -604,6 +622,8 @@ fi
 gl_quoted_dir="${TMP}/gl-quoted"
 mkdir -p "$gl_quoted_dir"
 : > "${gl_quoted_dir}/.gitleaks.toml"
+git -C "$gl_quoted_dir" init -q
+git -C "$gl_quoted_dir" add .gitleaks.toml
 write_header "${gl_quoted_dir}/ci-gl-quoted.yml"
 append_gitleaks_config_quoted "${gl_quoted_dir}/ci-gl-quoted.yml"
 if run_guard_in "$gl_quoted_dir" "ci-gl-quoted.yml"; then
@@ -630,6 +650,37 @@ if run_guard "$gl_trav"; then
   fail "gitleaks --config with path traversal should be REJECTED"
 else
   pass "gitleaks --config with path traversal is rejected"
+fi
+
+# ── Case 22: two gitleaks detect calls chained with &&, second lacks --config ─
+# Validates that every gitleaks detect subcommand on a single line is checked,
+# not just the first one (head -1 bug: configured first + unconfigured second).
+gl_chained_dir="${TMP}/gl-chained"
+mkdir -p "$gl_chained_dir"
+: > "${gl_chained_dir}/.gitleaks.toml"
+git -C "$gl_chained_dir" init -q
+git -C "$gl_chained_dir" add .gitleaks.toml
+write_header "${gl_chained_dir}/ci-gl-chained.yml"
+append_gitleaks_chained_second_no_config "${gl_chained_dir}/ci-gl-chained.yml"
+if run_guard_in "$gl_chained_dir" "ci-gl-chained.yml"; then
+  fail "chained gitleaks detect with second call lacking --config should be REJECTED"
+else
+  pass "chained gitleaks detect with second call lacking --config is rejected"
+fi
+
+# ── Case 23: gitleaks --config pointing at an untracked file is rejected ──────
+# Even if the file exists, using an untracked config is a security risk: an
+# unreviewed file could be placed before the scan to bypass allowlist controls.
+gl_untracked_dir="${TMP}/gl-untracked"
+mkdir -p "$gl_untracked_dir"
+git -C "$gl_untracked_dir" init -q
+: > "${gl_untracked_dir}/.gitleaks.toml"  # exists but NOT staged/committed
+write_header "${gl_untracked_dir}/ci-gl-untracked.yml"
+append_gitleaks_config_ok "${gl_untracked_dir}/ci-gl-untracked.yml"
+if run_guard_in "$gl_untracked_dir" "ci-gl-untracked.yml"; then
+  fail "gitleaks --config pointing at an untracked file should be REJECTED"
+else
+  pass "gitleaks --config pointing at an untracked file is rejected"
 fi
 
 echo ""

@@ -260,12 +260,30 @@ else
     echo "FAIL: failed to fold multi-line gitleaks command."
     exit 1
   fi
-  # Validate every gitleaks detect step — not just the first one.
+  # Validate every gitleaks detect call — including those chained with && on one
+  # line. Split each output line from yq on ' && ' and ' ; ' so each gitleaks
+  # detect subcommand is examined independently; non-gitleaks segments are skipped.
   while IFS= read -r cmd; do
     [[ -z "$cmd" ]] && continue
-    # Accept both `--config <path>` and `--config=<path>`; strip surrounding quotes.
+    any_detect=false
     config_path=""
-    config_path=$(grep -Eo -- '--config[= ][^[:space:]]+' <<< "$cmd" | head -1 | sed -E "s/^--config[= ]//; s/^['\"]//; s/['\"]$//") || true
+    seg_bad=false
+    while IFS= read -r seg; do
+      [[ "$seg" != *"gitleaks detect"* ]] && continue
+      any_detect=true
+      # Accept both `--config <path>` and `--config=<path>`; strip surrounding quotes.
+      seg_path=""
+      seg_path=$(grep -Eo -- '--config[= ][^[:space:]]+' <<< "$seg" | head -1 | \
+        sed -E "s/^--config[= ]//; s/^['\"]//; s/['\"]$//") || true
+      if [[ -z "$seg_path" ]]; then
+        seg_bad=true
+        break
+      fi
+      config_path="$seg_path"
+    done < <(printf '%s\n' "$cmd" | sed 's/ && /\n/g; s/ ; /\n/g')
+    [[ "$any_detect" == "false" ]] && continue
+    [[ "$seg_bad" == "true" ]] && config_path=""
+
     if [[ -z "$config_path" ]]; then
       echo "FAIL: the 'gitleaks detect' step in $WORKFLOW passes no '--config'. Without"
       echo "      a committed config its path-based allowlists never load, so false"
@@ -284,6 +302,13 @@ else
       echo "      $config_path', but that file does not exist in the repo. The"
       echo "      config carries the path-based false-positive allowlists; a dangling"
       echo "      reference silently falls back to the default config (#474)."
+      PASS=false
+    elif git rev-parse --git-dir >/dev/null 2>&1 && \
+         ! git ls-files --error-unmatch "$config_path" >/dev/null 2>&1; then
+      echo "FAIL: the 'gitleaks detect' step in $WORKFLOW references '--config"
+      echo "      $config_path', which exists but is not tracked by git. The config"
+      echo "      must be committed to prevent bypass via an untracked substitute"
+      echo "      placed before the scan."
       PASS=false
     else
       echo "PASS: 'gitleaks detect' loads a committed --config ($config_path) in $WORKFLOW"
