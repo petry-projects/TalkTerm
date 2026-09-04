@@ -553,6 +553,31 @@ describe('ConversationView', () => {
     expect(screen.queryByText('Approve')).not.toBeInTheDocument();
   });
 
+  it('dismisses ConfirmPlan and sends approved when Approve clicked', async () => {
+    const user = userEvent.setup();
+    render(<ConversationView userName="DJ" avatarName="Mary" sessionId="s1" />);
+    simulateAgentEvent({
+      type: 'confirm-request',
+      action: 'create-file',
+      description: 'Create new-file.ts',
+    });
+    await user.click(screen.getByText('Approve'));
+    expect(mockSendAgentMessage).toHaveBeenCalledWith('s1', 'approved');
+    expect(screen.queryByText('Approve')).not.toBeInTheDocument();
+  });
+
+  it('dismisses ConfirmPlan and prompts modification when Modify clicked', async () => {
+    const user = userEvent.setup();
+    render(<ConversationView userName="DJ" avatarName="Mary" sessionId="s1" />);
+    simulateAgentEvent({
+      type: 'confirm-request',
+      action: 'rename-file',
+      description: 'Rename old.ts to new.ts',
+    });
+    await user.click(screen.getByText('Modify'));
+    expect(screen.queryByText('Rename old.ts to new.ts')).not.toBeInTheDocument();
+  });
+
   // Story 3.1 — TaskProgress wired to agent events
   it('shows TaskProgress in OutputPanel when tool-call event arrives', () => {
     render(<ConversationView userName="DJ" avatarName="Mary" sessionId="s1" />);

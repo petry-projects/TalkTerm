@@ -228,6 +228,22 @@ describe('QuestionCardStack', () => {
     expect(onDismiss).toHaveBeenCalledOnce();
   });
 
+  // --- Empty question set guard ---
+
+  it('renders empty shell when questionSet has no questions', () => {
+    const emptySet: QuestionSet = { preamble: '', questions: [] };
+    const { container } = render(
+      <QuestionCardStack
+        questionSet={emptySet}
+        avatarName="Mary"
+        onSubmit={vi.fn()}
+        onDismiss={vi.fn()}
+      />,
+    );
+    expect(container.querySelector('[data-testid="question-card-stack"]')).toBeInTheDocument();
+    expect(container.querySelector('[data-testid="question-progress"]')).not.toBeInTheDocument();
+  });
+
   // --- Accessibility ---
 
   it('has accessible labels on navigation controls', () => {

@@ -14,9 +14,11 @@ export function getDefaultWritebackType(origin: SessionOrigin): WritebackTarget[
       return 'pull-request';
     case 'local-files':
       return 'local-file';
-    /* c8 ignore next 3 */
-    default:
+    /* c8 ignore start */
+    default: {
       const _unreachable: never = origin;
       throw new Error('Unknown session origin');
+    }
+    /* c8 ignore stop */
   }
 }
