@@ -2,6 +2,7 @@ import { IPC_CHANNELS } from '../../shared/types/domain/ipc-channels';
 import type { KeyManager } from '../security/safe-storage-key-manager';
 import type { ConfigStore } from '../storage/electron-config-store';
 import type { IPCMain, IPCRegistrar } from './ipc-registrar';
+import { validateString } from './validate-string';
 
 export class SettingsIPCHandler implements IPCRegistrar {
   constructor(
@@ -16,10 +17,8 @@ export class SettingsIPCHandler implements IPCRegistrar {
     });
 
     ipcMain.handle(IPC_CHANNELS.SETTINGS_STORE_KEY, (_event: unknown, key: unknown) => {
-      if (typeof key !== 'string' || key.length === 0) {
-        throw new Error('API key must be a non-empty string');
-      }
-      this.keyManager.storeKey(key);
+      const validKey = validateString(key, 'API key');
+      this.keyManager.storeKey(validKey);
     });
 
     ipcMain.handle(IPC_CHANNELS.SETTINGS_SET_AUTH_MODE, (_event: unknown, mode: unknown) => {
@@ -34,17 +33,13 @@ export class SettingsIPCHandler implements IPCRegistrar {
     });
 
     ipcMain.handle(IPC_CHANNELS.SETTINGS_GET, (_event: unknown, key: unknown) => {
-      if (typeof key !== 'string' || key.length === 0) {
-        throw new Error('Settings key must be a non-empty string');
-      }
-      return this.configStore.get(key);
+      const validKey = validateString(key, 'Settings key');
+      return this.configStore.get(validKey);
     });
 
     ipcMain.handle(IPC_CHANNELS.SETTINGS_SET, (_event: unknown, key: unknown, value: unknown) => {
-      if (typeof key !== 'string' || key.length === 0) {
-        throw new Error('Settings key must be a non-empty string');
-      }
-      this.configStore.set(key, value);
+      const validKey = validateString(key, 'Settings key');
+      this.configStore.set(validKey, value);
     });
 
     ipcMain.handle(IPC_CHANNELS.PROFILE_GET, () => {
@@ -52,12 +47,10 @@ export class SettingsIPCHandler implements IPCRegistrar {
     });
 
     ipcMain.handle(IPC_CHANNELS.PROFILE_SET, (_event: unknown, name: unknown) => {
-      if (typeof name !== 'string' || name.length === 0) {
-        throw new Error('Profile name must be a non-empty string');
-      }
+      const validName = validateString(name, 'Profile name');
       const now = new Date().toISOString();
       this.configStore.set('userProfile', {
-        name,
+        name: validName,
         avatarPersonaId: null,
         createdAt: now,
         updatedAt: now,
@@ -65,9 +58,7 @@ export class SettingsIPCHandler implements IPCRegistrar {
     });
 
     ipcMain.handle(IPC_CHANNELS.AVATAR_SELECT, (_event: unknown, personaId: unknown) => {
-      if (typeof personaId !== 'string' || personaId.length === 0) {
-        throw new Error('Avatar persona ID must be a non-empty string');
-      }
+      const validPersonaId = validateString(personaId, 'Avatar persona ID');
       const profile = this.configStore.get('userProfile') as
         | { name: string; avatarPersonaId: string | null; createdAt: string; updatedAt: string }
         | undefined;
@@ -76,7 +67,7 @@ export class SettingsIPCHandler implements IPCRegistrar {
       }
       this.configStore.set('userProfile', {
         ...profile,
-        avatarPersonaId: personaId,
+        avatarPersonaId: validPersonaId,
         updatedAt: new Date().toISOString(),
       });
     });

@@ -3,6 +3,7 @@ import { createSession } from '../../shared/types/domain/session';
 import type { SessionRepository } from '../../shared/types/ports/session-repository';
 import type { ConfigStore } from '../storage/electron-config-store';
 import type { IPCMain, IPCRegistrar } from './ipc-registrar';
+import { validateString } from './validate-string';
 
 export class SessionIPCHandler implements IPCRegistrar {
   constructor(
@@ -12,9 +13,7 @@ export class SessionIPCHandler implements IPCRegistrar {
 
   register(ipcMain: IPCMain): void {
     ipcMain.handle(IPC_CHANNELS.SESSION_START, (_event: unknown, workspacePath: unknown) => {
-      if (typeof workspacePath !== 'string' || workspacePath.length === 0) {
-        throw new Error('workspacePath must be a non-empty string');
-      }
+      const validPath = validateString(workspacePath, 'workspacePath');
       const profile = this.configStore.get('userProfile') as
         | { avatarPersonaId: string | null }
         | undefined;
@@ -24,18 +23,16 @@ export class SessionIPCHandler implements IPCRegistrar {
         profile.avatarPersonaId.length > 0
           ? profile.avatarPersonaId
           : 'mary';
-      const session = createSession(workspacePath, avatarId);
+      const session = createSession(validPath, avatarId);
       this.sessionRepo.save(session);
       return session.id;
     });
 
     ipcMain.handle(IPC_CHANNELS.SESSION_RESUME, (_event: unknown, sessionId: unknown) => {
-      if (typeof sessionId !== 'string' || sessionId.length === 0) {
-        throw new Error('sessionId must be a non-empty string');
-      }
-      const session = this.sessionRepo.findById(sessionId);
+      const validSessionId = validateString(sessionId, 'sessionId');
+      const session = this.sessionRepo.findById(validSessionId);
       if (session === null) {
-        throw new Error(`Session not found: ${sessionId}`);
+        throw new Error(`Session not found: ${validSessionId}`);
       }
       this.sessionRepo.updateStatus(session.id, 'active');
       return session;

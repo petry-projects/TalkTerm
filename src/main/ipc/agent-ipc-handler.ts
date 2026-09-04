@@ -7,6 +7,7 @@ import { IPC_CHANNELS } from '../../shared/types/domain/ipc-channels';
 import type { SessionRepository } from '../../shared/types/ports/session-repository';
 import type { AgentMessageRouter } from '../agent/agent-message-router';
 import type { IPCMain, IPCRegistrar } from './ipc-registrar';
+import { validateString } from './validate-string';
 
 export interface WebContents {
   send(channel: string, ...args: unknown[]): void;
@@ -36,17 +37,13 @@ export class AgentIPCHandler implements IPCRegistrar {
           throw new Error('No active window');
         }
 
-        if (typeof sessionId !== 'string' || sessionId.length === 0) {
-          throw new Error('sessionId must be a non-empty string');
-        }
-        if (typeof message !== 'string' || message.length === 0) {
-          throw new Error('message must be a non-empty string');
-        }
+        const validSessionId = validateString(sessionId, 'sessionId');
+        const validMessage = validateString(message, 'message');
 
         try {
-          const session = this.sessionRepo?.findById(sessionId);
+          const session = this.sessionRepo?.findById(validSessionId);
           const workspacePath = session?.workspacePath;
-          await this.router.sendMessage(sessionId, message, workspacePath);
+          await this.router.sendMessage(validSessionId, validMessage, workspacePath);
         } catch (err: unknown) {
           console.error('[AgentIPC] Error handling agent action:', err);
           const category = classifyError(err);
