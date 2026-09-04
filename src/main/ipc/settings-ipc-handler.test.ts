@@ -72,4 +72,97 @@ describe('SettingsIPCHandler', () => {
     const profile = getProfile?.({}) as { name: string } | undefined;
     expect(profile?.name).toBe('Root');
   });
+
+  it('throws error when storing empty API key', () => {
+    const handler = new SettingsIPCHandler(createMockKeyManager(), new InMemoryConfigStore());
+    handler.register(ipcMain);
+    const storeKey = handlers.get(IPC_CHANNELS.SETTINGS_STORE_KEY);
+    expect(() => storeKey?.({}, '')).toThrow('API key must be a non-empty string');
+    expect(() => storeKey?.({}, 123)).toThrow('API key must be a non-empty string');
+  });
+
+  it('sets and gets auth mode', () => {
+    const store = new InMemoryConfigStore();
+    const handler = new SettingsIPCHandler(createMockKeyManager(), store);
+    handler.register(ipcMain);
+    const setMode = handlers.get(IPC_CHANNELS.SETTINGS_SET_AUTH_MODE);
+    setMode?.({}, 'claude-subscription');
+    const getMode = handlers.get(IPC_CHANNELS.SETTINGS_GET_AUTH_MODE);
+    expect(getMode?.({})).toBe('claude-subscription');
+  });
+
+  it('defaults to api-key when auth mode not set', () => {
+    const handler = new SettingsIPCHandler(createMockKeyManager(), new InMemoryConfigStore());
+    handler.register(ipcMain);
+    const getMode = handlers.get(IPC_CHANNELS.SETTINGS_GET_AUTH_MODE);
+    expect(getMode?.({})).toBe('api-key');
+  });
+
+  it('throws error on invalid auth mode', () => {
+    const handler = new SettingsIPCHandler(createMockKeyManager(), new InMemoryConfigStore());
+    handler.register(ipcMain);
+    const setMode = handlers.get(IPC_CHANNELS.SETTINGS_SET_AUTH_MODE);
+    expect(() => setMode?.({}, 'invalid')).toThrow(
+      'Auth mode must be either "api-key" or "claude-subscription"',
+    );
+  });
+
+  it('gets and sets generic settings', () => {
+    const store = new InMemoryConfigStore();
+    const handler = new SettingsIPCHandler(createMockKeyManager(), store);
+    handler.register(ipcMain);
+    const setSetting = handlers.get(IPC_CHANNELS.SETTINGS_SET);
+    setSetting?.({}, 'customKey', 'customValue');
+    const getSetting = handlers.get(IPC_CHANNELS.SETTINGS_GET);
+    expect(getSetting?.({}, 'customKey')).toBe('customValue');
+  });
+
+  it('throws error when getting/setting empty setting key', () => {
+    const handler = new SettingsIPCHandler(createMockKeyManager(), new InMemoryConfigStore());
+    handler.register(ipcMain);
+    const getSetting = handlers.get(IPC_CHANNELS.SETTINGS_GET);
+    const setSetting = handlers.get(IPC_CHANNELS.SETTINGS_SET);
+    expect(() => getSetting?.({}, '')).toThrow('Settings key must be a non-empty string');
+    expect(() => setSetting?.({}, '', 'value')).toThrow('Settings key must be a non-empty string');
+    expect(() => getSetting?.({}, 123)).toThrow('Settings key must be a non-empty string');
+  });
+
+  it('throws error when setting profile with empty name', () => {
+    const handler = new SettingsIPCHandler(createMockKeyManager(), new InMemoryConfigStore());
+    handler.register(ipcMain);
+    const setProfile = handlers.get(IPC_CHANNELS.PROFILE_SET);
+    expect(() => setProfile?.({}, '')).toThrow('Profile name must be a non-empty string');
+    expect(() => setProfile?.({}, 123)).toThrow('Profile name must be a non-empty string');
+  });
+
+  it('selects avatar persona and updates profile', () => {
+    const store = new InMemoryConfigStore();
+    const handler = new SettingsIPCHandler(createMockKeyManager(), store);
+    handler.register(ipcMain);
+    const setProfile = handlers.get(IPC_CHANNELS.PROFILE_SET);
+    setProfile?.({}, 'Alice');
+    const selectAvatar = handlers.get(IPC_CHANNELS.AVATAR_SELECT);
+    selectAvatar?.({}, 'persona-123');
+    const getProfile = handlers.get(IPC_CHANNELS.PROFILE_GET);
+    const profile = getProfile?.({}) as { avatarPersonaId: string } | undefined;
+    expect(profile?.avatarPersonaId).toBe('persona-123');
+  });
+
+  it('throws error when selecting avatar with empty persona ID', () => {
+    const store = new InMemoryConfigStore();
+    const handler = new SettingsIPCHandler(createMockKeyManager(), store);
+    handler.register(ipcMain);
+    const setProfile = handlers.get(IPC_CHANNELS.PROFILE_SET);
+    setProfile?.({}, 'Alice');
+    const selectAvatar = handlers.get(IPC_CHANNELS.AVATAR_SELECT);
+    expect(() => selectAvatar?.({}, '')).toThrow('Avatar persona ID must be a non-empty string');
+    expect(() => selectAvatar?.({}, 123)).toThrow('Avatar persona ID must be a non-empty string');
+  });
+
+  it('throws error when selecting avatar without profile', () => {
+    const handler = new SettingsIPCHandler(createMockKeyManager(), new InMemoryConfigStore());
+    handler.register(ipcMain);
+    const selectAvatar = handlers.get(IPC_CHANNELS.AVATAR_SELECT);
+    expect(() => selectAvatar?.({}, 'persona-123')).toThrow('User profile not found');
+  });
 });
