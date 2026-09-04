@@ -1,0 +1,66 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# gitleaks config for petry-projects/TalkTerm
+#
+# Loaded explicitly by the `Run gitleaks (CLI — full-history enforcement)` step
+# in .github/workflows/ci.yml (`--config .gitleaks.toml`). Its purpose is to
+# suppress a small set of REVIEWED false positives with PATH-based (commit-SHA
+# INDEPENDENT) allowlists, so a documented false positive does not have to be
+# re-suppressed under a fresh fingerprint on every commit that touches the file.
+#
+# Why this file exists (Fleet Monitor #474):
+#   The gitleaks CLI runs a full-history scan. The root `.gitleaksignore` only
+#   suppresses findings by `<commit-sha>:<file>:<rule>:<line>` fingerprint, so a
+#   recurring false positive reappears under a NEW commit SHA on every PR that
+#   touches (or rebases) the offending file — deterministically failing CI until
+#   someone hand-adds the new SHA. That whack-a-mole inflated the ci.yml failure
+#   rate. Path-based allowlists here are stable across commits and end it.
+#
+# Safety: every allowlist below uses `condition = "AND"` and `targetRules` so it
+# suppresses ONLY the specific false-positive value at the specific path. A real
+# secret introduced at these paths in a future commit would NOT match the value
+# regex and would still be reported. `.gitleaksignore` is retained as a
+# belt-and-suspenders fallback for anything not covered here.
+# ─────────────────────────────────────────────────────────────────────────────
+
+title = "gitleaks config for petry-projects/TalkTerm"
+
+[extend]
+# Keep every default gitleaks rule; these allowlists only carve out reviewed
+# false positives. Without this the config would replace (not extend) the
+# defaults and disable all secret detection.
+useDefault = true
+
+# _bmad/_config/files-manifest.csv — rows of the form
+#   "<type>","<slug>","<module>","<path>.md","<sha256>"
+# where the last column is a SHA-256 content checksum of a BMAD skill file.
+# gitleaks' generic-api-key rule flags the high-entropy 64-char hex digest when
+# the slug/path contains the keyword "api" (api-request, api-testing-patterns,
+# subagent-api, ...). These are content-integrity checksums, not credentials.
+# The value regex `^[0-9a-f]{64}$` binds the suppression to a lowercase-hex
+# digest, so any non-checksum secret in this CSV would still be reported.
+[[allowlists]]
+description = "BMAD files-manifest CSV — SHA-256 content checksums, not credentials"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''^_bmad/_config/files-manifest\.csv$''']
+# regexTarget = "line" matches the entire CSV row rather than just the hex value,
+# so the allowlist is bound to lines that are unambiguously 5-field quoted CSV rows
+# with the checksum as the last field. A real 64-char hex credential elsewhere in
+# this file would not match the full row format and would still be reported.
+regexTarget = "line"
+regexes = ['''^"[^"]*","[^"]*","[^"]*","[^"]*","[0-9a-f]{64}"$''']
+
+# _bmad/tea/testarch/knowledge/api-testing-patterns.md L681 —
+#   const expiredToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'; // Expired token
+# A truncated, explicitly-expired example JWT in a BMAD test-design knowledge
+# article. The variable name and comment mark it as documentation, not a real
+# credential. regexTarget = "line" binds the suppression to the specific variable
+# declaration context (const expiredToken = ...) so a real HS256-signed credential
+# stored in a differently-named variable would not be suppressed.
+[[allowlists]]
+description = "BMAD api-testing-patterns.md — documented expired example JWT, not a credential"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''^_bmad/tea/testarch/knowledge/api-testing-patterns\.md$''']
+regexTarget = "line"
+regexes = ['''const expiredToken = .*eyJhbGciOiJIUzI1NiIs''']

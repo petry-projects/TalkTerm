@@ -18,6 +18,12 @@
 #   4. (#470) every job declares a positive-integer `timeout-minutes`, so a
 #      stalled step fails fast instead of inheriting GitHub's 6-hour default and
 #      landing as a timeout failure. See Check 7.
+#   5. (#474) any `gitleaks detect` enforcement step loads a committed `--config`
+#      whose file exists. Path-based allowlists in that config suppress reviewed
+#      false positives independently of the commit SHA; without it, suppression
+#      falls back to `.gitleaksignore` commit-SHA fingerprints, so a reviewed
+#      false positive reappears under a fresh SHA on every commit touching the
+#      file and fails CI deterministically until hand-suppressed. See Check 8.
 #
 # Accepts an optional workflow path (default: .github/workflows/ci.yml) so the
 # checks can be exercised against fixtures — see test-ci-workflow.test.sh.
@@ -224,6 +230,91 @@ while IFS= read -r job; do
     fi
   fi
 done <<< "$job_names"
+
+# ── Check 8: the gitleaks CLI enforcement step loads a committed --config ──
+# Root cause of Fleet Monitor #474: ci.yml's full-history gitleaks scan
+# (`gitleaks detect --source .`) suppressed known false positives only through
+# the root `.gitleaksignore`, whose entries are per-commit-SHA fingerprints
+# (`<commit-sha>:<file>:<rule>:<line>`). Recurring false positives — SHA-256
+# content checksums in _bmad/_config/files-manifest.csv, an example expired JWT
+# in a BMAD knowledge article — reappear under a NEW commit SHA on every PR that
+# touches or rebases those files. The new fingerprint is absent from
+# `.gitleaksignore`, so the scan fails deterministically until a human hand-adds
+# the SHA — an unwinnable whack-a-mole that inflates the Fleet Monitor failure
+# rate. A committed `--config` file with PATH-based (commit-SHA-independent)
+# allowlists ends it. Lock the invariant: any `gitleaks detect` step must pass
+# `--config <file>` and that file must exist in the repo. No-op when the
+# workflow has no gitleaks step.
+gitleaks_run=""
+if ! gitleaks_run=$(yq '.jobs[].steps[] | select(.run // "" | test("gitleaks detect")) | .run' "$WORKFLOW" 2>/dev/null); then
+  echo "FAIL: yq failed to parse $WORKFLOW. Please check if it is valid YAML."
+  exit 1
+fi
+
+if [[ -z "$gitleaks_run" || "$gitleaks_run" == "null" ]]; then
+  echo "PASS: no 'gitleaks detect' step in $WORKFLOW — gitleaks --config check not applicable"
+else
+  # Fold "\<newline>" continuations so a --config whose flags span lines is whole.
+  folded_gitleaks=""
+  if ! folded_gitleaks=$(printf '%s\n' "$gitleaks_run" | sed -e ':a' -e '/\\$/{N;s/\\\n/ /;ba}'); then
+    echo "FAIL: failed to fold multi-line gitleaks command."
+    exit 1
+  fi
+  # Validate every gitleaks detect call — including those chained with && on one
+  # line. Split each output line from yq on ' && ' and ' ; ' so each gitleaks
+  # detect subcommand is examined independently; non-gitleaks segments are skipped.
+  while IFS= read -r cmd; do
+    [[ -z "$cmd" ]] && continue
+    any_detect=false
+    config_path=""
+    seg_bad=false
+    while IFS= read -r seg; do
+      [[ "$seg" != *"gitleaks detect"* ]] && continue
+      any_detect=true
+      # Accept both `--config <path>` and `--config=<path>`; strip surrounding quotes.
+      seg_path=""
+      seg_path=$(grep -Eo -- '--config[= ][^[:space:]]+' <<< "$seg" | head -1 | \
+        sed -E "s/^--config[= ]//; s/^['\"]//; s/['\"]$//") || true
+      if [[ -z "$seg_path" ]]; then
+        seg_bad=true
+        break
+      fi
+      config_path="$seg_path"
+    done < <(printf '%s\n' "$cmd" | sed 's/ && /\n/g; s/ ; /\n/g')
+    [[ "$any_detect" == "false" ]] && continue
+    [[ "$seg_bad" == "true" ]] && config_path=""
+
+    if [[ -z "$config_path" ]]; then
+      echo "FAIL: the 'gitleaks detect' step in $WORKFLOW passes no '--config'. Without"
+      echo "      a committed config its path-based allowlists never load, so false"
+      echo "      positives are suppressed only by per-commit .gitleaksignore"
+      echo "      fingerprints and reappear under a fresh SHA on every commit — a"
+      echo "      whack-a-mole that fails CI deterministically (#474). Add"
+      echo "      '--config .gitleaks.toml'."
+      PASS=false
+    elif [[ "$config_path" == /* || "$config_path" == *..* ]]; then
+      echo "FAIL: the 'gitleaks detect' step in $WORKFLOW references '--config"
+      echo "      $config_path', which must be a relative repo path (no absolute"
+      echo "      paths or '..' traversal). The config must be committed to the repo."
+      PASS=false
+    elif [[ ! -f "$config_path" ]]; then
+      echo "FAIL: the 'gitleaks detect' step in $WORKFLOW references '--config"
+      echo "      $config_path', but that file does not exist in the repo. The"
+      echo "      config carries the path-based false-positive allowlists; a dangling"
+      echo "      reference silently falls back to the default config (#474)."
+      PASS=false
+    elif git rev-parse --git-dir >/dev/null 2>&1 && \
+         ! git ls-files --error-unmatch "$config_path" >/dev/null 2>&1; then
+      echo "FAIL: the 'gitleaks detect' step in $WORKFLOW references '--config"
+      echo "      $config_path', which exists but is not tracked by git. The config"
+      echo "      must be committed to prevent bypass via an untracked substitute"
+      echo "      placed before the scan."
+      PASS=false
+    else
+      echo "PASS: 'gitleaks detect' loads a committed --config ($config_path) in $WORKFLOW"
+    fi
+  done <<< "$folded_gitleaks"
+fi
 
 echo ""
 if [[ "$PASS" == "true" ]]; then
