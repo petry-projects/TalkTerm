@@ -232,6 +232,37 @@ describe('parseQuestions', () => {
     expect(result).toBeNull();
   });
 
+  // --- extractTitle edge cases (em-dash, period, and plain fallback) ---
+
+  it('extracts title up to em-dash when line has no bold text and no question mark', () => {
+    // Two questions needed to pass threshold; only the first exercises the em-dash path
+    const text =
+      '1. Consider this approach — a detailed rationale\n2. **Platform** — Which platform?';
+    const result = parseQuestions(text);
+    expect(result).not.toBeNull();
+    // First question has no bold, no '?', has '—' → em-dash branch
+    expect(result?.questions[0]?.title).toBe('Consider this approach');
+  });
+
+  it('extracts title up to first period when line has no bold, question mark, or em-dash', () => {
+    // "Review the architecture. It covers the key decisions." — no bold, no ?, no —
+    const text =
+      '1. Review the architecture. It covers the key decisions\n2. **Platform** — Which platform?';
+    const result = parseQuestions(text);
+    expect(result).not.toBeNull();
+    // First question: period mid-sentence → period branch
+    expect(result?.questions[0]?.title).toBe('Review the architecture.');
+  });
+
+  it('returns full trimmed line as title when no bold, question mark, em-dash, or period', () => {
+    // No markers at all — hits the fallback return
+    const text = '1. Plain title without markers\n2. **Platform** — Which platform?';
+    const result = parseQuestions(text);
+    expect(result).not.toBeNull();
+    // First question: no markers → fallback
+    expect(result?.questions[0]?.title).toBe('Plain title without markers');
+  });
+
   it('parses real-world bold-header + dash-list agent response', () => {
     const text = [
       "That's a cool niche idea! Baton twirling has a dedicated community. I have some questions to help shape the direction:",
