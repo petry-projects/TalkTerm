@@ -272,17 +272,6 @@ b9ad0c5f78bf39d721924e8925c269d85b338735:_bmad/_config/files-manifest.csv:generi
 b9ad0c5f78bf39d721924e8925c269d85b338735:_bmad/_config/files-manifest.csv:generic-api-key:409
 b9ad0c5f78bf39d721924e8925c269d85b338735:_bmad/_config/files-manifest.csv:generic-api-key:433
 
-# Commit 63094bda: same _bmad/_config/files-manifest.csv CSV rows as above
-# (SHA256 content checksums of BMAD skill files). Same false-positive rationale;
-# file content checksums in CSV, not API keys. This commit was discovered during
-# full-history scan in PR #472 but was not previously suppressed.
-63094bdaa8533a4ba27533b6ff5a276aaf5f6377:_bmad/_config/files-manifest.csv:generic-api-key:281
-63094bdaa8533a4ba27533b6ff5a276aaf5f6377:_bmad/_config/files-manifest.csv:generic-api-key:282
-63094bdaa8533a4ba27533b6ff5a276aaf5f6377:_bmad/_config/files-manifest.csv:generic-api-key:284
-63094bdaa8533a4ba27533b6ff5a276aaf5f6377:_bmad/_config/files-manifest.csv:generic-api-key:300
-63094bdaa8533a4ba27533b6ff5a276aaf5f6377:_bmad/_config/files-manifest.csv:generic-api-key:409
-63094bdaa8533a4ba27533b6ff5a276aaf5f6377:_bmad/_config/files-manifest.csv:generic-api-key:433
-
 # Commit fdbb5983 (PR #472 test-merge commit): same _bmad/_config/files-manifest.csv CSV rows
 # (SHA256 content checksums of BMAD skill files) and _bmad/tea/testarch/knowledge/api-testing-patterns.md
 # L681 (expired/example token in a test-design knowledge article). Same false-positive rationale as
@@ -294,3 +283,13 @@ fdbb5983697cf867bf3a08d1483322f2a9476c28:_bmad/_config/files-manifest.csv:generi
 fdbb5983697cf867bf3a08d1483322f2a9476c28:_bmad/_config/files-manifest.csv:generic-api-key:409
 fdbb5983697cf867bf3a08d1483322f2a9476c28:_bmad/_config/files-manifest.csv:generic-api-key:433
 fdbb5983697cf867bf3a08d1483322f2a9476c28:_bmad/tea/testarch/knowledge/api-testing-patterns.md:generic-api-key:681
+
+# Commit a7a24535: same _bmad/_config/files-manifest.csv CSV rows as above
+# (SHA256 content checksums of BMAD skill files). Same false-positive rationale;
+# file content checksums in CSV, not API keys.
+a7a24535a6a70b141ef3f23de6648869d86c5a25:_bmad/_config/files-manifest.csv:generic-api-key:281
+a7a24535a6a70b141ef3f23de6648869d86c5a25:_bmad/_config/files-manifest.csv:generic-api-key:282
+a7a24535a6a70b141ef3f23de6648869d86c5a25:_bmad/_config/files-manifest.csv:generic-api-key:284
+a7a24535a6a70b141ef3f23de6648869d86c5a25:_bmad/_config/files-manifest.csv:generic-api-key:300
+a7a24535a6a70b141ef3f23de6648869d86c5a25:_bmad/_config/files-manifest.csv:generic-api-key:409
+a7a24535a6a70b141ef3f23de6648869d86c5a25:_bmad/_config/files-manifest.csv:generic-api-key:433
