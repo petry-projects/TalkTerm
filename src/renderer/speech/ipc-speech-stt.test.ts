@@ -3,6 +3,15 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { SpeechToTextResult } from '../../shared/types/ports/speech-to-text';
 import { IpcSpeechStt } from './ipc-speech-stt';
 
+interface MockElectronAPI {
+  onAudioResult: ReturnType<typeof vi.fn>;
+  onAudioError: ReturnType<typeof vi.fn>;
+  onAudioEnd: ReturnType<typeof vi.fn>;
+  startAudioCapture: ReturnType<typeof vi.fn>;
+  stopAudioCapture: ReturnType<typeof vi.fn>;
+  sendAudioData: ReturnType<typeof vi.fn>;
+}
+
 describe('IpcSpeechStt', () => {
   let stt: IpcSpeechStt;
   let mockOnResult: ((result: SpeechToTextResult) => void) | null;
@@ -18,22 +27,22 @@ describe('IpcSpeechStt', () => {
     // Mock electronAPI
     Object.defineProperty(window, 'electronAPI', {
       value: {
-        onAudioResult: vi.fn((callback) => {
+        onAudioResult: vi.fn((callback: (result: SpeechToTextResult) => void) => {
           mockOnResult = callback;
           return vi.fn();
         }),
-        onAudioError: vi.fn((callback) => {
+        onAudioError: vi.fn((callback: (error: Error) => void) => {
           mockOnError = callback;
           return vi.fn();
         }),
-        onAudioEnd: vi.fn((callback) => {
+        onAudioEnd: vi.fn((callback: () => void) => {
           mockOnEnd = callback;
           return vi.fn();
         }),
         startAudioCapture: vi.fn().mockResolvedValue(undefined),
         stopAudioCapture: vi.fn(),
         sendAudioData: vi.fn(),
-      },
+      } as MockElectronAPI,
       writable: true,
       configurable: true,
     });
@@ -42,9 +51,7 @@ describe('IpcSpeechStt', () => {
     Object.defineProperty(navigator, 'mediaDevices', {
       value: {
         getUserMedia: vi.fn().mockResolvedValue({
-          getTracks: vi.fn().mockReturnValue([
-            { stop: vi.fn() },
-          ]),
+          getTracks: vi.fn().mockReturnValue([{ stop: vi.fn() }]),
         }),
       },
       writable: true,
@@ -52,7 +59,7 @@ describe('IpcSpeechStt', () => {
     });
 
     // Mock AudioContext
-    (global.AudioContext as unknown) = vi.fn(() => ({
+    const mockAudioContext = vi.fn(() => ({
       sampleRate: 16000,
       createMediaStreamSource: vi.fn().mockReturnValue({
         connect: vi.fn(),
@@ -64,36 +71,46 @@ describe('IpcSpeechStt', () => {
       destination: {},
       close: vi.fn().mockResolvedValue(undefined),
     }));
+    global.AudioContext = mockAudioContext as unknown as typeof AudioContext;
   });
 
   it('initializes with isListening = false', () => {
     expect(stt.isListening).toBe(false);
   });
 
-  it('starts listening and subscribes to IPC callbacks', async () => {
+  it('starts listening and subscribes to IPC callbacks', () => {
     stt.start();
-    expect(window.electronAPI.onAudioResult).toHaveBeenCalled();
-    expect(window.electronAPI.onAudioError).toHaveBeenCalled();
-    expect(window.electronAPI.onAudioEnd).toHaveBeenCalled();
+    const mockElectronAPI = window.electronAPI as unknown as MockElectronAPI;
+    expect(mockElectronAPI.onAudioResult).toHaveBeenCalled();
+    expect(mockElectronAPI.onAudioError).toHaveBeenCalled();
+    expect(mockElectronAPI.onAudioEnd).toHaveBeenCalled();
   });
 
   it('does not start twice', () => {
     stt.start();
-    const callCount = (window.electronAPI.onAudioResult as any).mock.calls.length;
+    const mockElectronAPI = window.electronAPI as unknown as MockElectronAPI;
+    const callCount = vi.isMockFunction(mockElectronAPI.onAudioResult)
+      ? mockElectronAPI.onAudioResult.mock.calls.length
+      : 0;
     stt.start();
-    // Should not call IPC handlers again
-    expect((window.electronAPI.onAudioResult as any).mock.calls.length).toBe(callCount);
+    const newCallCount = vi.isMockFunction(mockElectronAPI.onAudioResult)
+      ? mockElectronAPI.onAudioResult.mock.calls.length
+      : 0;
+    expect(newCallCount).toBe(callCount);
   });
 
   it('stops listening and unsubscribes from IPC', () => {
     stt.start();
     stt.stop();
-    expect(window.electronAPI.stopAudioCapture).toHaveBeenCalled();
+    const mockElectronAPI = window.electronAPI as unknown as MockElectronAPI;
+    expect(mockElectronAPI.stopAudioCapture).toHaveBeenCalled();
     expect(stt.isListening).toBe(false);
   });
 
   it('does not error on stop if not listening', () => {
-    expect(() => stt.stop()).not.toThrow();
+    expect(() => {
+      stt.stop();
+    }).not.toThrow();
   });
 
   it('calls onResult when receiving audio result', () => {
@@ -128,7 +145,6 @@ describe('IpcSpeechStt', () => {
 
   it('handles missing callbacks gracefully', () => {
     stt.start();
-    // Don't set any callbacks
     expect(() => {
       mockOnResult?.({ transcript: 'test', isFinal: true, confidence: 0.9 });
     }).not.toThrow();

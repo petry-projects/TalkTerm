@@ -1,23 +1,21 @@
+import type { IpcMain, IpcMainInvokeEvent, IpcMainEvent, WebContents } from 'electron';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { IpcMain, WebContents } from 'electron';
 import { IPC_CHANNELS } from '../../shared/types/domain/ipc-channels';
+import type { SherpaOnnxStt } from '../speech/sherpa-onnx-stt';
 import { SpeechIPCHandler } from './speech-ipc-handler';
+
+interface IpcHandlers {
+  [key: string]:
+    | ((event: IpcMainEvent | IpcMainInvokeEvent, ...args: unknown[]) => Promise<void> | void)
+    | undefined;
+}
 
 describe('SpeechIPCHandler', () => {
   let handler: SpeechIPCHandler;
-  let mockStt: {
-    initialize: ReturnType<typeof vi.fn>;
-    start: ReturnType<typeof vi.fn>;
-    stop: ReturnType<typeof vi.fn>;
-    acceptAudio: ReturnType<typeof vi.fn>;
-    onResult: ((result: unknown) => void) | null;
-    onError: ((error: string) => void) | null;
-    onEnd: (() => void) | null;
-    isListening: boolean;
-  };
+  let mockStt: Partial<SherpaOnnxStt>;
   let mockWebContents: Partial<WebContents>;
   let mockIpcMain: Partial<IpcMain>;
-  let ipcHandlers: Record<string, any>;
+  let ipcHandlers: IpcHandlers;
 
   beforeEach(() => {
     ipcHandlers = {};
@@ -37,20 +35,28 @@ describe('SpeechIPCHandler', () => {
       send: vi.fn(),
     };
 
+    const handleFn = vi.fn(
+      (channel: string, fn: (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<void>) => {
+        ipcHandlers[channel] = fn;
+      },
+    );
+    const onFn = vi.fn((channel: string, fn: (event: unknown, ...args: unknown[]) => void) => {
+      ipcHandlers[channel] = fn;
+    });
     mockIpcMain = {
-      handle: vi.fn((channel: string, fn: Function) => {
-        ipcHandlers[channel] = fn;
-      }),
-      on: vi.fn((channel: string, fn: Function) => {
-        ipcHandlers[channel] = fn;
-      }) as unknown as IpcMain['on'],
+      handle: handleFn,
+      // @ts-expect-error Vitest Mock assignment type mismatch with Electron IpcMain
+      on: onFn,
     };
 
-    handler = new SpeechIPCHandler(mockStt as any, () => mockWebContents as any);
+    handler = new SpeechIPCHandler(
+      mockStt as SherpaOnnxStt,
+      () => mockWebContents as WebContents | null,
+    );
   });
 
   it('registers IPC handlers when register is called', () => {
-    handler.register(mockIpcMain as any);
+    handler.register(mockIpcMain as IpcMain);
 
     expect(mockIpcMain.handle).toHaveBeenCalledWith(IPC_CHANNELS.AUDIO_START, expect.any(Function));
     expect(mockIpcMain.handle).toHaveBeenCalledWith(IPC_CHANNELS.AUDIO_STOP, expect.any(Function));
@@ -58,10 +64,12 @@ describe('SpeechIPCHandler', () => {
   });
 
   it('initializes STT and sets up callbacks on AUDIO_START', async () => {
-    handler.register(mockIpcMain as any);
+    handler.register(mockIpcMain as IpcMain);
 
     const startHandler = ipcHandlers[IPC_CHANNELS.AUDIO_START];
-    await startHandler();
+    if (startHandler !== undefined) {
+      await startHandler({} as IpcMainInvokeEvent);
+    }
 
     expect(mockStt.initialize).toHaveBeenCalled();
     expect(mockStt.start).toHaveBeenCalled();
@@ -71,10 +79,12 @@ describe('SpeechIPCHandler', () => {
   });
 
   it('sends result via IPC when onResult is called', async () => {
-    handler.register(mockIpcMain as any);
+    handler.register(mockIpcMain as IpcMain);
 
     const startHandler = ipcHandlers[IPC_CHANNELS.AUDIO_START];
-    await startHandler();
+    if (startHandler !== undefined) {
+      await startHandler({} as IpcMainInvokeEvent);
+    }
 
     const result = { transcript: 'hello', isFinal: true, confidence: 0.95 };
     mockStt.onResult?.(result);
@@ -83,21 +93,28 @@ describe('SpeechIPCHandler', () => {
   });
 
   it('sends error via IPC when onError is called', async () => {
-    handler.register(mockIpcMain as any);
+    handler.register(mockIpcMain as IpcMain);
 
     const startHandler = ipcHandlers[IPC_CHANNELS.AUDIO_START];
-    await startHandler();
+    if (startHandler !== undefined) {
+      await startHandler({} as IpcMainInvokeEvent);
+    }
 
     mockStt.onError?.('Mic access denied');
 
-    expect(mockWebContents.send).toHaveBeenCalledWith(IPC_CHANNELS.AUDIO_ERROR, 'Mic access denied');
+    expect(mockWebContents.send).toHaveBeenCalledWith(
+      IPC_CHANNELS.AUDIO_ERROR,
+      'Mic access denied',
+    );
   });
 
   it('sends end event via IPC when onEnd is called', async () => {
-    handler.register(mockIpcMain as any);
+    handler.register(mockIpcMain as IpcMain);
 
     const startHandler = ipcHandlers[IPC_CHANNELS.AUDIO_START];
-    await startHandler();
+    if (startHandler !== undefined) {
+      await startHandler({} as IpcMainInvokeEvent);
+    }
 
     mockStt.onEnd?.();
 
@@ -105,11 +122,14 @@ describe('SpeechIPCHandler', () => {
   });
 
   it('handles initialization errors gracefully', async () => {
-    mockStt.initialize.mockRejectedValue(new Error('Init failed'));
-    handler.register(mockIpcMain as any);
+    const initMock = mockStt.initialize as ReturnType<typeof vi.fn>;
+    initMock.mockRejectedValue(new Error('Init failed'));
+    handler.register(mockIpcMain as IpcMain);
 
     const startHandler = ipcHandlers[IPC_CHANNELS.AUDIO_START];
-    await startHandler();
+    if (startHandler !== undefined) {
+      await startHandler({} as IpcMainInvokeEvent);
+    }
 
     expect(mockWebContents.send).toHaveBeenCalledWith(
       IPC_CHANNELS.AUDIO_ERROR,
@@ -117,53 +137,63 @@ describe('SpeechIPCHandler', () => {
     );
   });
 
-  it('stops STT on AUDIO_STOP', async () => {
-    handler.register(mockIpcMain as any);
+  it('stops STT on AUDIO_STOP', () => {
+    handler.register(mockIpcMain as IpcMain);
 
     const stopHandler = ipcHandlers[IPC_CHANNELS.AUDIO_STOP];
-    stopHandler();
+    if (stopHandler !== undefined) {
+      void stopHandler({} as IpcMainEvent);
+    }
 
     expect(mockStt.stop).toHaveBeenCalled();
   });
 
-  it('processes audio data and calls acceptAudio', async () => {
-    handler.register(mockIpcMain as any);
-    mockStt.isListening = true;
+  it('processes audio data and calls acceptAudio', () => {
+    handler.register(mockIpcMain as IpcMain);
+    Object.defineProperty(mockStt, 'isListening', { value: true, configurable: true });
 
     const buffer = new ArrayBuffer(4);
     const dataHandler = ipcHandlers[IPC_CHANNELS.AUDIO_DATA];
-    dataHandler({}, buffer);
+    if (dataHandler !== undefined) {
+      void dataHandler({} as IpcMainEvent, buffer);
+    }
 
     expect(mockStt.acceptAudio).toHaveBeenCalledWith(expect.any(Float32Array));
   });
 
-  it('ignores audio data when not listening', async () => {
-    handler.register(mockIpcMain as any);
-    mockStt.isListening = false;
+  it('ignores audio data when not listening', () => {
+    handler.register(mockIpcMain as IpcMain);
+    Object.defineProperty(mockStt, 'isListening', { value: false, configurable: true });
 
     const buffer = new ArrayBuffer(4);
     const dataHandler = ipcHandlers[IPC_CHANNELS.AUDIO_DATA];
-    dataHandler({}, buffer);
+    if (dataHandler !== undefined) {
+      void dataHandler({} as IpcMainEvent, buffer);
+    }
 
     expect(mockStt.acceptAudio).not.toHaveBeenCalled();
   });
 
-  it('ignores non-ArrayBuffer audio data', async () => {
-    handler.register(mockIpcMain as any);
-    mockStt.isListening = true;
+  it('ignores non-ArrayBuffer audio data', () => {
+    handler.register(mockIpcMain as IpcMain);
+    Object.defineProperty(mockStt, 'isListening', { value: true, configurable: true });
 
     const dataHandler = ipcHandlers[IPC_CHANNELS.AUDIO_DATA];
-    dataHandler({}, 'not a buffer');
+    if (dataHandler !== undefined) {
+      void dataHandler({} as IpcMainEvent, 'not a buffer');
+    }
 
     expect(mockStt.acceptAudio).not.toHaveBeenCalled();
   });
 
   it('sends error when WebContents is unavailable', async () => {
-    handler = new SpeechIPCHandler(mockStt as any, () => null);
-    handler.register(mockIpcMain as any);
+    handler = new SpeechIPCHandler(mockStt as SherpaOnnxStt, () => null);
+    handler.register(mockIpcMain as IpcMain);
 
     const startHandler = ipcHandlers[IPC_CHANNELS.AUDIO_START];
-    await expect(startHandler()).resolves.toBeUndefined();
+    if (startHandler !== undefined) {
+      await expect(startHandler({} as IpcMainInvokeEvent)).resolves.toBeUndefined();
+    }
 
     expect(mockStt.initialize).toHaveBeenCalled();
   });
