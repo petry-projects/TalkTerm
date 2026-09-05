@@ -9,6 +9,7 @@
 # Run: bash scripts/test-gitleaks-config.test.sh
 set -euo pipefail
 
+SCRIPT_DIR=""
 if ! SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"; then
   echo "FAIL: Failed to determine script directory" >&2
   exit 1
@@ -31,6 +32,7 @@ if ! command -v base64 >/dev/null 2>&1; then
   exit 0
 fi
 
+TMP=""
 if ! TMP="$(mktemp -d)"; then
   echo "FAIL: Failed to create temporary directory" >&2
   exit 1
@@ -148,6 +150,20 @@ regexTarget = "line"
 regexes = ['''(?i)^inline-flag-then-anchor''']
 TOML
 assert_fail "leading ^ after an inline-flag group is flagged" "$flag_anchor"
+
+# 6b. A leading ^ after an inline-flag group with flag-removal ((?i-m)^...) is
+#     still an anchor — flagged. The guard's pattern must cover the `-flags` form.
+flag_minus_anchor="$TMP/flag-minus-anchor.toml"
+cat > "$flag_minus_anchor" <<'TOML'
+title = "flag-minus-anchor"
+[extend]
+useDefault = true
+[[allowlists]]
+targetRules = ["generic-api-key"]
+regexTarget = "line"
+regexes = ['''(?i-m)^inline-flag-removal-then-anchor''']
+TOML
+assert_fail "leading ^ after an inline-flag group with flag removal (?i-m) is flagged" "$flag_minus_anchor"
 
 # 7. Multiple regexes in one line allowlist: a bad one anywhere in the list fails.
 mixed="$TMP/mixed.toml"

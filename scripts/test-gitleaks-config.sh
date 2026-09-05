@@ -66,6 +66,7 @@ fi
 # object, so the guard covers either gitleaks config shape. Each regex is
 # base64-encoded so an arbitrary pattern (quotes, newlines, YAML-special leading
 # characters) survives the round trip through yq and the shell intact.
+encoded_regexes=""
 if ! encoded_regexes=$(yq -p toml -o json '
     ((.allowlists // []) + ([.allowlist] | map(select(. != null))))
     | .[]
@@ -81,20 +82,22 @@ if [[ -z "$encoded_regexes" || "$encoded_regexes" == "null" ]]; then
   echo "PASS: no 'regexTarget = \"line\"' allowlist regexes in $CONFIG"
 else
   bad_anchor=false
+  anchor_pattern='^(\(\?[a-zA-Z]*(-[a-zA-Z]+)?\))?\^'
   while IFS= read -r encoded; do
     [[ -z "$encoded" ]] && continue
     # yq emits each value as a JSON string ("..."); strip the wrapping quotes
     # before decoding.
     encoded="${encoded%\"}"
     encoded="${encoded#\"}"
+    rx=""
     if ! rx=$(printf '%s' "$encoded" | base64 -d 2>/dev/null); then
       echo "FAIL: could not decode an allowlist regex from $CONFIG."
       exit 1
     fi
     # Flag a leading `^` start-of-text anchor, allowing an optional inline-flag
-    # group (e.g. `(?i)^...`) before it. An escaped `\^` (first char `\`) is a
-    # literal caret, not an anchor, and is correctly left alone.
-    if [[ "$rx" =~ ^(\(\?[a-zA-Z]*\))?\^ ]]; then
+    # group (e.g. `(?i)^...`, `(?i-m)^...`) before it. An escaped `\^` (first
+    # char `\`) is a literal caret, not an anchor, and is correctly left alone.
+    if [[ "$rx" =~ $anchor_pattern ]]; then
       echo "FAIL: an allowlist in $CONFIG uses regexTarget = \"line\" with a regex"
       echo "      anchored at the start (^): ${rx}"
       echo "      gitleaks passes a multi-line fragment (finding line + leading"
