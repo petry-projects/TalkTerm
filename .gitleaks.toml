@@ -48,7 +48,19 @@ paths = ['''^_bmad/_config/files-manifest\.csv$''']
 # with the checksum as the last field. A real 64-char hex credential elsewhere in
 # this file would not match the full row format and would still be reported.
 regexTarget = "line"
-regexes = ['''^"[^"]*","[^"]*","[^"]*","[^"]*","[0-9a-f]{64}"$''']
+# NB: no bare `^` anchor (Fleet Monitor #483). gitleaks feeds a
+# `regexTarget = "line"` allowlist a MULTI-LINE fragment — the finding line plus
+# leading context lines, beginning with a newline — not the bare row. A bare `^`
+# matches start-of-string (the leading newline), never the row's opening quote,
+# and silently disables the whole allowlist, so the checksum false positives fail
+# CI on every run. Instead, the regex is prefixed with `\n` which anchors the
+# match to a line start within the fragment (the row is always preceded by a
+# newline in the fragment). The trailing `$` binds the match to the finding's own
+# row (the finding always sits on the last line of its fragment). Together, `\n`
+# and `$` ensure the suppression covers exactly one 5-field quoted CSV row and
+# prevents a 6-or-more-field row from matching via its trailing 5 fields.
+# Guarded by scripts/test-gitleaks-config.sh.
+regexes = ['''\n"[^"]*","[^"]*","[^"]*","[^"]*","[0-9a-f]{64}"$''']
 
 # _bmad/tea/testarch/knowledge/api-testing-patterns.md L681 —
 #   const expiredToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'; // Expired token
