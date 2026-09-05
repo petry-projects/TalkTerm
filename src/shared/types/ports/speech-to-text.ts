@@ -1,6 +1,7 @@
 export interface SpeechToTextResult {
   transcript: string;
   isFinal: boolean;
+  confidence?: number;
 }
 
 export interface SpeechToText {

@@ -43,7 +43,7 @@ describe('SpeechIPCHandler', () => {
       }),
       on: vi.fn((channel: string, fn: Function) => {
         ipcHandlers[channel] = fn;
-      }),
+      }) as unknown as IpcMain['on'],
     };
 
     handler = new SpeechIPCHandler(mockStt as any, () => mockWebContents as any);
