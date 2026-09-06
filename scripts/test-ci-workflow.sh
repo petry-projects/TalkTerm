@@ -24,6 +24,11 @@
 #      falls back to `.gitleaksignore` commit-SHA fingerprints, so a reviewed
 #      false positive reappears under a fresh SHA on every commit touching the
 #      file and fails CI deterministically until hand-suppressed. See Check 8.
+#   6. (#486) every job declaring a `strategy.matrix` sets `strategy.fail-fast:
+#      false`. With fail-fast enabled (GitHub's default when it is absent) the
+#      first failing matrix leg cancels its siblings, which land as cancelled
+#      runs and discard the other OSes' results — inflating the Fleet Monitor
+#      cancelled/failure metrics and hiding per-OS signal. See Check 9.
 #
 # Accepts an optional workflow path (default: .github/workflows/ci.yml) so the
 # checks can be exercised against fixtures — see test-ci-workflow.test.sh.
@@ -314,6 +319,67 @@ else
       echo "PASS: 'gitleaks detect' loads a committed --config ($config_path) in $WORKFLOW"
     fi
   done <<< "$folded_gitleaks"
+fi
+
+# ── Check 9: every matrix job sets `strategy.fail-fast: false` ─────────────
+# Fleet Monitor #486: the app-build `quality` job runs a
+# `strategy.matrix.os: [ubuntu, macos, windows]` fan-out. GitHub defaults an
+# absent (or explicit-true) `fail-fast` to true, so the first failing leg
+# CANCELS the still-running siblings. Those cancelled legs land as cancelled
+# runs (a metric Fleet Monitor tracks) and, worse, discard the other OSes'
+# results — so a failure that is really Linux-only looks like a whole-workflow
+# failure and the true cross-OS signal is lost. `fail-fast: false` lets every
+# leg run to completion and report independently, keeping the failure/cancelled
+# metrics an honest reflection of genuine per-OS results. Lock the invariant:
+# any job declaring a `strategy.matrix` must set `strategy.fail-fast: false`.
+# No-op when the workflow declares no matrix (as on main today) — mirrors the
+# not-applicable handling of Checks 5 and 8.
+matrix_job_names=""
+if ! matrix_job_names=$(yq '.jobs | keys | .[]' "$WORKFLOW" 2>/dev/null); then
+  echo "FAIL: yq failed to parse $WORKFLOW. Please check if it is valid YAML."
+  exit 1
+fi
+
+any_matrix=false
+while IFS= read -r job; do
+  [[ -z "$job" ]] && continue
+  matrix=""
+  if ! matrix=$(J="$job" yq '.jobs[env(J)].strategy.matrix' "$WORKFLOW" 2>/dev/null); then
+    echo "FAIL: yq failed to read strategy.matrix for job '$job' in $WORKFLOW."
+    exit 1
+  fi
+  # Only jobs that actually declare a matrix are subject to this invariant.
+  [[ "$matrix" == "null" || -z "$matrix" ]] && continue
+  any_matrix=true
+
+  fail_fast=""
+  if ! fail_fast=$(J="$job" yq '.jobs[env(J)].strategy["fail-fast"]' "$WORKFLOW" 2>/dev/null); then
+    echo "FAIL: yq failed to read strategy.fail-fast for job '$job' in $WORKFLOW."
+    exit 1
+  fi
+  if [[ "$fail_fast" == "null" || -z "$fail_fast" ]]; then
+    echo "FAIL: matrix job '$job' in $WORKFLOW does not set 'strategy.fail-fast'."
+    echo "      GitHub defaults an absent fail-fast to true, so the first failing"
+    echo "      matrix leg cancels its siblings — inflating the Fleet Monitor"
+    echo "      cancelled/failure metrics and hiding per-OS signal (#486). Add"
+    echo "      'fail-fast: false' under the job's 'strategy'."
+    PASS=false
+  elif [[ "$fail_fast" =~ ^\$\{\{.*\}\}$ ]]; then
+    echo "INFO: matrix job '$job' in $WORKFLOW sets strategy.fail-fast to a GitHub"
+    echo "      Actions expression ('$fail_fast') — cannot verify statically; skipping."
+  elif [[ "$fail_fast" != "false" ]]; then
+    echo "FAIL: matrix job '$job' in $WORKFLOW sets 'strategy.fail-fast: $fail_fast'."
+    echo "      With fail-fast enabled the first failing leg cancels its siblings,"
+    echo "      so a single-OS failure registers as a whole-workflow failure and"
+    echo "      the other OSes' results are lost (#486). Set 'fail-fast: false'."
+    PASS=false
+  else
+    echo "PASS: matrix job '$job' sets strategy.fail-fast: false in $WORKFLOW"
+  fi
+done <<< "$matrix_job_names"
+
+if [[ "$any_matrix" == "false" ]]; then
+  echo "PASS: no matrix strategy in $WORKFLOW — fail-fast check not applicable"
 fi
 
 echo ""
