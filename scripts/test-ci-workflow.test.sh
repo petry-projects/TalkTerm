@@ -401,6 +401,61 @@ append_gitleaks_chained_second_no_config() {
 YAML
 }
 
+# A matrix job that sets `strategy.fail-fast: false`. This is the fixed shape
+# (Check 9 accepts it): every OS leg runs to completion and reports
+# independently, so one leg's failure never cancels its siblings. Only the
+# fail-fast setting differentiates the three matrix fixtures below.
+append_matrix_failfast_false() {
+  local file="$1"
+  cat >> "$file" <<'YAML'
+  quality:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - run: echo build
+YAML
+}
+
+# A matrix job that sets `strategy.fail-fast: true`. The default GitHub
+# behaviour: the first failing leg cancels the still-running siblings, which
+# land as cancelled runs and hide per-OS signal — inflating the Fleet Monitor
+# cancelled/failure metrics. Check 9 must reject it.
+append_matrix_failfast_true() {
+  local file="$1"
+  cat >> "$file" <<'YAML'
+  quality:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - run: echo build
+YAML
+}
+
+# A matrix job that omits `strategy.fail-fast` entirely. GitHub defaults an
+# absent fail-fast to true, so the cascade-cancellation risk is identical to
+# an explicit `fail-fast: true`. Check 9 must reject the omission too.
+append_matrix_no_failfast() {
+  local file="$1"
+  cat >> "$file" <<'YAML'
+  quality:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - run: echo build
+YAML
+}
+
 run_guard() {
   local file="$1"
   bash "$GUARD" "$file" >/dev/null 2>&1
@@ -681,6 +736,46 @@ if run_guard_in "$gl_untracked_dir" "ci-gl-untracked.yml"; then
   fail "gitleaks --config pointing at an untracked file should be REJECTED"
 else
   pass "gitleaks --config pointing at an untracked file is rejected"
+fi
+
+# ── Case 24: matrix job with fail-fast: false is accepted (Check 9) ──────────
+ff_false="${TMP}/ci-ff-false.yml"
+write_header "$ff_false"
+append_matrix_failfast_false "$ff_false"
+if run_guard "$ff_false"; then
+  pass "matrix job with strategy.fail-fast: false is accepted"
+else
+  fail "matrix job with strategy.fail-fast: false should be ACCEPTED"
+fi
+
+# ── Case 25: matrix job with fail-fast: true is rejected (Check 9) ───────────
+ff_true="${TMP}/ci-ff-true.yml"
+write_header "$ff_true"
+append_matrix_failfast_true "$ff_true"
+if run_guard "$ff_true"; then
+  fail "matrix job with strategy.fail-fast: true should be REJECTED"
+else
+  pass "matrix job with strategy.fail-fast: true is rejected"
+fi
+
+# ── Case 26: matrix job omitting fail-fast is rejected (Check 9) ─────────────
+ff_missing="${TMP}/ci-ff-missing.yml"
+write_header "$ff_missing"
+append_matrix_no_failfast "$ff_missing"
+if run_guard "$ff_missing"; then
+  fail "matrix job omitting strategy.fail-fast should be REJECTED"
+else
+  pass "matrix job omitting strategy.fail-fast is rejected"
+fi
+
+# ── Case 27: no matrix present — Check 9 is a no-op, guard still passes ───────
+ff_none="${TMP}/ci-ff-none.yml"
+write_header "$ff_none"
+append_job_with_timeout "$ff_none"
+if run_guard "$ff_none"; then
+  pass "workflow without a matrix strategy passes (Check 9 skipped)"
+else
+  fail "workflow without a matrix strategy should pass"
 fi
 
 echo ""
