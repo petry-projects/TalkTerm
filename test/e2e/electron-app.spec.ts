@@ -223,5 +223,8 @@ test.describe('Full App Flow: Setup → Conversation → SDK', () => {
       { timeout: 30000 },
     );
     await page.screenshot({ path: 'test-results/05-response.png' });
+
+    const captionText = await page.locator('p.text-\\[14px\\]').first().textContent();
+    expect(captionText).toBeTruthy();
   });
 });
