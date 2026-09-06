@@ -456,6 +456,25 @@ append_matrix_no_failfast() {
 YAML
 }
 
+# A matrix job that sets `strategy.fail-fast` to a GitHub Actions expression.
+# yq emits the expression literal (e.g. `${{ false }}`), not the boolean it
+# resolves to at runtime. Check 9 cannot statically evaluate GHA expressions
+# and must accept them rather than blocking valid dynamic configurations.
+append_matrix_failfast_expression() {
+  local file="$1"
+  cat >> "$file" <<'YAML'
+  quality:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: ${{ false }}
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - run: echo build
+YAML
+}
+
 run_guard() {
   local file="$1"
   bash "$GUARD" "$file" >/dev/null 2>&1
@@ -768,7 +787,17 @@ else
   pass "matrix job omitting strategy.fail-fast is rejected"
 fi
 
-# ── Case 27: no matrix present — Check 9 is a no-op, guard still passes ───────
+# ── Case 27: matrix job with GHA expression for fail-fast is accepted (Check 9) ─
+ff_expr="${TMP}/ci-ff-expr.yml"
+write_header "$ff_expr"
+append_matrix_failfast_expression "$ff_expr"
+if run_guard "$ff_expr"; then
+  pass "matrix job with strategy.fail-fast as GHA expression is accepted"
+else
+  fail "matrix job with strategy.fail-fast as GHA expression should be ACCEPTED"
+fi
+
+# ── Case 28: no matrix present — Check 9 is a no-op, guard still passes ───────
 ff_none="${TMP}/ci-ff-none.yml"
 write_header "$ff_none"
 append_job_with_timeout "$ff_none"

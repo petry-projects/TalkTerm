@@ -364,6 +364,9 @@ while IFS= read -r job; do
     echo "      cancelled/failure metrics and hiding per-OS signal (#486). Add"
     echo "      'fail-fast: false' under the job's 'strategy'."
     PASS=false
+  elif [[ "$fail_fast" =~ ^\$\{\{.*\}\}$ ]]; then
+    echo "INFO: matrix job '$job' in $WORKFLOW sets strategy.fail-fast to a GitHub"
+    echo "      Actions expression ('$fail_fast') — cannot verify statically; skipping."
   elif [[ "$fail_fast" != "false" ]]; then
     echo "FAIL: matrix job '$job' in $WORKFLOW sets 'strategy.fail-fast: $fail_fast'."
     echo "      With fail-fast enabled the first failing leg cancels its siblings,"
