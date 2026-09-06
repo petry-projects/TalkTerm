@@ -94,13 +94,14 @@ describe('QuestionReview', () => {
 
   // --- Aggregated message format ---
 
-  it('generates correct aggregated message format', () => {
+  it('generates correct aggregated message format', async () => {
     const onConfirm = vi.fn();
+    const user = userEvent.setup();
     render(<QuestionReview {...defaultProps} onConfirm={onConfirm} />);
-
-    // The component should format the aggregated message correctly
-    // This tests the internal formatting — the onConfirm callback receives the formatted string
-    // We'll verify via the submit flow
+    await user.click(screen.getByRole('button', { name: /send to mary/i }));
+    expect(onConfirm).toHaveBeenCalledWith(
+      expect.stringContaining('Here are my answers to your questions:'),
+    );
   });
 
   // --- Avatar name in submit button ---

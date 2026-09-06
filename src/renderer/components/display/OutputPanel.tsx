@@ -12,25 +12,22 @@ interface OutputPanelProps {
   onClose: () => void;
 }
 
+function getPanelTitle(mode: DisplayMode): string {
+  if (mode === 'task-progress') return 'Progress';
+  if (mode === 'document') return 'Document';
+  if (mode === 'comparison-table') return 'Comparison';
+  if (mode === 'clustered-cards') return 'Ideas';
+  if (mode === 'activity-feed') return 'Activity';
+  return 'Preview';
+}
+
 export function OutputPanel({ mode, data, onClose }: OutputPanelProps): ReactElement | null {
   if (mode === 'none') return null;
 
   return (
     <div className="flex h-full w-[380px] flex-col bg-surface-muted">
       <div className="flex items-center justify-between border-b border-stage-bg p-3">
-        <h2 className="text-subtitle text-text-on-dark">
-          {mode === 'task-progress'
-            ? 'Progress'
-            : mode === 'document'
-              ? 'Document'
-              : mode === 'comparison-table'
-                ? 'Comparison'
-                : mode === 'clustered-cards'
-                  ? 'Ideas'
-                  : mode === 'activity-feed'
-                    ? 'Activity'
-                    : 'Preview'}
-        </h2>
+        <h2 className="text-subtitle text-text-on-dark">{getPanelTitle(mode)}</h2>
         <button
           type="button"
           onClick={onClose}

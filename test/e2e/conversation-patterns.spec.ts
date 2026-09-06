@@ -570,6 +570,9 @@ test.describe('Conversation Patterns', () => {
 
       // Wait for the response to complete regardless
       await waitForResponse(page);
+
+      // Verify the text input remains accessible after the interaction
+      await expect(page.locator(SEL.textInput).first()).toBeVisible();
     });
   });
 

@@ -566,223 +566,202 @@ export class ClaudeSdkBackend implements AgentBackend {
    * SDK types stay on this side of the boundary — only AgentEvents cross out.
    */
   private mapSdkMessage(msg: SdkMessage, sessionId: string): AgentEvent[] {
-    const events: AgentEvent[] = [];
-
     switch (msg.type) {
-      case 'assistant': {
-        const assistantMsg = msg as SdkAssistantMessage;
-
-        if (assistantMsg.error !== undefined) {
-          events.push({
-            type: 'error',
-            userMessage: 'Something unexpected happened. Let me try a different approach.',
-            recoveryOptions: [
-              { label: 'Try again', action: 'retry', description: 'Retry the last action' },
-            ],
-          });
-          break;
-        }
-
-        for (const block of assistantMsg.message.content) {
-          if (block.type === 'text') {
-            const textBlock = block as { type: 'text'; text: string };
-            if (textBlock.text.trim() !== '') {
-              events.push({ type: 'text', content: textBlock.text });
-
-              // Track assistant response in history
-              const history = this.getOrCreateHistory(sessionId);
-              history.push({ role: 'assistant', content: textBlock.text });
-
-              // Audit assistant response
-              try {
-                this.auditRepo.append(
-                  createAuditEntry(sessionId, 'agent:response', 'success', textBlock.text),
-                );
-              } catch {
-                // Audit failure is non-fatal
-              }
-            }
-          } else if (block.type === 'tool_use') {
-            const toolBlock = block as {
-              type: 'tool_use';
-              name: string;
-              input: Record<string, unknown>;
-            };
-            events.push({
-              type: 'tool-call',
-              toolName: toolBlock.name,
-              toolInput: toolBlock.input,
-            });
-          } else if (block.type === 'thinking') {
-            const thinkBlock = block as { type: 'thinking'; thinking: string };
-            const truncated =
-              thinkBlock.thinking.length > 100
-                ? `${thinkBlock.thinking.slice(0, 100)}...`
-                : thinkBlock.thinking;
-            events.push({ type: 'thinking', summary: truncated });
-          } else if (block.type === 'tool_result') {
-            const resultBlock = block as {
-              type: 'tool_result';
-              tool_use_id: string;
-              content: string;
-              is_error?: boolean;
-            };
-            const preview =
-              resultBlock.content.length > 80
-                ? `${resultBlock.content.slice(0, 80)}...`
-                : resultBlock.content;
-            if (preview.trim() !== '') {
-              events.push({
-                type: 'progress',
-                step: resultBlock.is_error === true ? `Tool error: ${preview}` : preview,
-                status: resultBlock.is_error === true ? 'failed' : 'completed',
-              });
-            }
-          }
-        }
-        break;
-      }
-
-      case 'result': {
-        const resultMsg = msg as SdkResultSuccess | SdkResultError;
-        if (resultMsg.subtype === 'success') {
-          const success = resultMsg as SdkResultSuccess;
-          events.push({
-            type: 'complete',
-            summary: success.result !== '' ? success.result : 'Task completed',
-          });
-        } else {
-          const error = resultMsg as SdkResultError;
-          if (resultMsg.subtype === 'error_max_turns') {
-            events.push({
-              type: 'error',
-              userMessage:
-                "I've reached the maximum number of steps for this request. Try breaking it into smaller parts.",
-              recoveryOptions: [
-                {
-                  label: 'Try again',
-                  action: 'retry',
-                  description: 'Retry with a simpler request',
-                },
-              ],
-            });
-          } else if (resultMsg.subtype === 'error_max_budget_usd') {
-            events.push({
-              type: 'error',
-              userMessage: "This request exceeded the cost budget. Let's try a simpler approach.",
-              recoveryOptions: [
-                {
-                  label: 'Try again',
-                  action: 'retry',
-                  description: 'Retry with a simpler request',
-                },
-              ],
-            });
-          } else {
-            const rawDetail = error.errors?.join('; ') ?? '';
-            const category = classifyError(new Error(rawDetail));
-            const friendlyMessage = createUserFriendlyMessage(category);
-            events.push({
-              type: 'error',
-              userMessage: friendlyMessage,
-              recoveryOptions: recoveryOptionsForCategory(category),
-            });
-          }
-        }
-        break;
-      }
-
+      case 'assistant':
+        return this.mapAssistantMessage(msg as SdkAssistantMessage, sessionId);
+      case 'result':
+        return this.mapResultMessage(msg as SdkResultSuccess | SdkResultError);
       case 'tool_use_summary': {
         const summary = msg as SdkToolUseSummaryMessage;
-        events.push({
-          type: 'progress',
-          step: summary.summary,
-          status: 'completed',
-        });
-        break;
+        return [{ type: 'progress', step: summary.summary, status: 'completed' }];
       }
-
       case 'tool_progress': {
         const progress = msg as SdkToolProgressMessage;
-        events.push({
-          type: 'progress',
-          step: `Running ${progress.tool_name}...`,
-          status: 'in-progress',
-        });
-        break;
+        return [
+          { type: 'progress', step: `Running ${progress.tool_name}...`, status: 'in-progress' },
+        ];
       }
-
       case 'auth_status': {
         const authMsg = msg as SdkAuthStatusMessage;
         const authText = authMsg.error ?? authMsg.output.join(' ');
         if (authText.trim() !== '') {
-          events.push({ type: 'auth-status', message: authText });
+          return [{ type: 'auth-status', message: authText }];
         }
-        break;
+        return [];
       }
-
       case 'prompt_suggestion': {
         const sugMsg = msg as SdkPromptSuggestionMessage;
-        events.push({ type: 'suggestion', suggestions: [sugMsg.suggestion] });
-        break;
+        return [{ type: 'suggestion', suggestions: [sugMsg.suggestion] }];
       }
-
       default:
-        // Surface rate limits and task notifications so the user isn't staring at a frozen screen.
-        // Note: `user` type messages are SDK-internal (turn confirmations) — intentionally not mapped.
-        if (msg.type === 'rate_limit_event') {
-          console.warn('[ClaudeSdkBackend] Rate limited — SDK is waiting');
-          events.push({
-            type: 'progress',
-            step: 'Waiting for API availability...',
-            status: 'in-progress',
-          });
-        } else if (msg.type === 'system') {
-          const sysMsg = msg as {
-            type: 'system';
-            subtype?: string;
-            description?: string;
-            status?: string;
-            summary?: string;
-            last_tool_name?: string;
-          };
-          if (sysMsg.subtype === 'task_started') {
-            events.push({
-              type: 'progress',
-              step: sysMsg.description ?? 'Processing...',
-              status: 'in-progress',
-            });
-          } else if (sysMsg.subtype === 'task_notification') {
-            const taskStatus = sysMsg.status ?? 'completed';
-            if (taskStatus === 'completed') {
-              events.push({ type: 'complete', summary: sysMsg.summary ?? 'Task completed' });
-            } else {
-              events.push({
-                type: 'error',
-                userMessage: sysMsg.summary ?? 'A background task did not complete successfully.',
-                recoveryOptions: [
-                  { label: 'Try again', action: 'retry', description: 'Retry the last action' },
-                ],
-              });
-            }
-          } else if (sysMsg.subtype === 'task_progress') {
-            // Feed last_tool_name into TaskProgress panel when available
-            if (sysMsg.last_tool_name !== undefined) {
-              events.push({
-                type: 'tool-call',
-                toolName: sysMsg.last_tool_name,
-                toolInput: {},
-              });
-            }
-          } else if (sysMsg.subtype === 'api_retry') {
-            // Silent — SDK handles retries internally. Log only.
-            console.log('[ClaudeSdkBackend] SDK API retry:', JSON.stringify(msg));
-          }
-          // session_state_changed, compact_boundary, files_persisted, hooks — log only
-        }
-        break;
+        return this.mapDefaultMessage(msg);
     }
+  }
 
-    return events;
+  private mapAssistantMessage(msg: SdkAssistantMessage, sessionId: string): AgentEvent[] {
+    if (msg.error !== undefined) {
+      return [
+        {
+          type: 'error',
+          userMessage: 'Something unexpected happened. Let me try a different approach.',
+          recoveryOptions: [
+            { label: 'Try again', action: 'retry', description: 'Retry the last action' },
+          ],
+        },
+      ];
+    }
+    return msg.message.content.flatMap((block) => this.mapAssistantContentBlock(block, sessionId));
+  }
+
+  private mapAssistantContentBlock(block: SdkContentBlock, sessionId: string): AgentEvent[] {
+    if (block.type === 'text') {
+      const textBlock = block as { type: 'text'; text: string };
+      if (textBlock.text.trim() === '') return [];
+      const history = this.getOrCreateHistory(sessionId);
+      history.push({ role: 'assistant', content: textBlock.text });
+      try {
+        this.auditRepo.append(
+          createAuditEntry(sessionId, 'agent:response', 'success', textBlock.text),
+        );
+      } catch {
+        // Audit failure is non-fatal
+      }
+      return [{ type: 'text', content: textBlock.text }];
+    }
+    if (block.type === 'tool_use') {
+      const toolBlock = block as { type: 'tool_use'; name: string; input: Record<string, unknown> };
+      return [{ type: 'tool-call', toolName: toolBlock.name, toolInput: toolBlock.input }];
+    }
+    if (block.type === 'thinking') {
+      const thinkBlock = block as { type: 'thinking'; thinking: string };
+      const truncated =
+        thinkBlock.thinking.length > 100
+          ? `${thinkBlock.thinking.slice(0, 100)}...`
+          : thinkBlock.thinking;
+      return [{ type: 'thinking', summary: truncated }];
+    }
+    if (block.type === 'tool_result') {
+      const resultBlock = block as {
+        type: 'tool_result';
+        tool_use_id: string;
+        content: string;
+        is_error?: boolean;
+      };
+      const preview =
+        resultBlock.content.length > 80
+          ? `${resultBlock.content.slice(0, 80)}...`
+          : resultBlock.content;
+      if (preview.trim() === '') return [];
+      return [
+        {
+          type: 'progress',
+          step: resultBlock.is_error === true ? `Tool error: ${preview}` : preview,
+          status: resultBlock.is_error === true ? 'failed' : 'completed',
+        },
+      ];
+    }
+    return [];
+  }
+
+  private mapResultMessage(msg: SdkResultSuccess | SdkResultError): AgentEvent[] {
+    if (msg.subtype === 'success') {
+      const success = msg as SdkResultSuccess;
+      return [
+        { type: 'complete', summary: success.result !== '' ? success.result : 'Task completed' },
+      ];
+    }
+    if (msg.subtype === 'error_max_turns') {
+      return [
+        {
+          type: 'error',
+          userMessage:
+            "I've reached the maximum number of steps for this request. Try breaking it into smaller parts.",
+          recoveryOptions: [
+            { label: 'Try again', action: 'retry', description: 'Retry with a simpler request' },
+          ],
+        },
+      ];
+    }
+    if (msg.subtype === 'error_max_budget_usd') {
+      return [
+        {
+          type: 'error',
+          userMessage: "This request exceeded the cost budget. Let's try a simpler approach.",
+          recoveryOptions: [
+            { label: 'Try again', action: 'retry', description: 'Retry with a simpler request' },
+          ],
+        },
+      ];
+    }
+    const error = msg as SdkResultError;
+    const rawDetail = error.errors?.join('; ') ?? '';
+    const category = classifyError(new Error(rawDetail));
+    return [
+      {
+        type: 'error',
+        userMessage: createUserFriendlyMessage(category),
+        recoveryOptions: recoveryOptionsForCategory(category),
+      },
+    ];
+  }
+
+  // Note: `user` type messages are SDK-internal (turn confirmations) — intentionally not mapped.
+  private mapDefaultMessage(msg: SdkMessage): AgentEvent[] {
+    if (msg.type === 'rate_limit_event') {
+      console.warn('[ClaudeSdkBackend] Rate limited — SDK is waiting');
+      return [{ type: 'progress', step: 'Waiting for API availability...', status: 'in-progress' }];
+    }
+    if (msg.type === 'system') {
+      return this.mapSystemMessage(
+        msg as {
+          type: 'system';
+          subtype?: string;
+          description?: string;
+          status?: string;
+          summary?: string;
+          last_tool_name?: string;
+        },
+      );
+    }
+    return [];
+  }
+
+  private mapSystemMessage(sysMsg: {
+    type: 'system';
+    subtype?: string;
+    description?: string;
+    status?: string;
+    summary?: string;
+    last_tool_name?: string;
+  }): AgentEvent[] {
+    if (sysMsg.subtype === 'task_started') {
+      return [
+        { type: 'progress', step: sysMsg.description ?? 'Processing...', status: 'in-progress' },
+      ];
+    }
+    if (sysMsg.subtype === 'task_notification') {
+      const taskStatus = sysMsg.status ?? 'completed';
+      if (taskStatus === 'completed') {
+        return [{ type: 'complete', summary: sysMsg.summary ?? 'Task completed' }];
+      }
+      return [
+        {
+          type: 'error',
+          userMessage: sysMsg.summary ?? 'A background task did not complete successfully.',
+          recoveryOptions: [
+            { label: 'Try again', action: 'retry', description: 'Retry the last action' },
+          ],
+        },
+      ];
+    }
+    if (sysMsg.subtype === 'task_progress' && sysMsg.last_tool_name !== undefined) {
+      return [{ type: 'tool-call', toolName: sysMsg.last_tool_name, toolInput: {} }];
+    }
+    if (sysMsg.subtype === 'api_retry') {
+      // Silent — SDK handles retries internally. Log only.
+      console.log('[ClaudeSdkBackend] SDK API retry:', JSON.stringify(sysMsg));
+    }
+    // session_state_changed, compact_boundary, files_persisted, hooks — log only
+    return [];
   }
 }
