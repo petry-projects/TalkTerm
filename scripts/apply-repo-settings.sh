@@ -233,10 +233,11 @@ pr_quality_needs_reconcile() {
   if [[ "$merge_status" != "$PR_QUALITY_MERGE_METHOD" ||
     "$rlpa_status" != "$PR_QUALITY_REQUIRE_LAST_PUSH_APPROVAL" ||
     "$dismiss_status" != "$PR_QUALITY_DISMISS_STALE_REVIEWS" ]]; then
-    printf 'true'
+    printf '%s\n' 'true'
   else
-    printf 'false'
+    printf '%s\n' 'false'
   fi
+  return
 }
 
 # apply_pr_quality_ruleset <owner/repo>
