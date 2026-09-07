@@ -50,4 +50,14 @@ describe('SafeStorageKeyManager', () => {
     mgr.storeKey('sk-ant-test');
     expect(safeStorage.encryptString).toHaveBeenCalledWith('sk-ant-test');
   });
+
+  it('returns null and logs error when decryption fails', () => {
+    const safeStorage = createMockSafeStorage();
+    safeStorage.decryptString = vi.fn().mockImplementation(() => {
+      throw new Error('Decryption failed');
+    });
+    const mgr = new SafeStorageKeyManager(safeStorage);
+    mgr.storeKey('sk-ant-test');
+    expect(mgr.retrieveKey()).toBeNull();
+  });
 });
