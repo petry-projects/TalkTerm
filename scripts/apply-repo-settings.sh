@@ -268,7 +268,7 @@ apply_pr_quality_ruleset() {
     return 0
   fi
 
-  local merge_status rlpa_status ds_status needs_update
+  local merge_status rlpa_status ds_status needs_update=""
   if ! merge_status=$(pr_quality_merge_methods_status "$ruleset"); then
     echo "  failed to parse ruleset merge methods status"
     return 1
@@ -305,7 +305,10 @@ apply_pr_quality_ruleset() {
     echo "  dismiss_stale_reviews_on_push '${ds_status}' drifted — reconciling to ${PR_QUALITY_DISMISS_STALE_REVIEWS}"
   fi
 
-  needs_update=$(pr_quality_needs_reconcile "$merge_status" "$rlpa_status" "$ds_status")
+  if ! needs_update=$(pr_quality_needs_reconcile "$merge_status" "$rlpa_status" "$ds_status"); then
+    echo "  failed to determine if reconciliation is needed"
+    return 1
+  fi
   if [[ "$needs_update" == "false" ]]; then
     return 0
   fi
