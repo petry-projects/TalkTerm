@@ -148,6 +148,21 @@ else
   pass "pr_quality_reconcile_payload: empty input -> non-zero exit"
 fi
 
+# ── pr_quality_needs_reconcile ────────────────────────────────────────────────
+# The reconcile decision: given the three parsed parameter statuses, does the
+# pr-quality ruleset need a PUT? Guards the require_last_push_approval drift this
+# finding tracks (compliance: ruleset-drift-pr-quality-require_last_push_approval)
+# so an inverted/broken comparison in apply_pr_quality_ruleset can't silently
+# stop correcting drift while the parser tests still pass.
+assert_eq "pr_quality_needs_reconcile: all compliant -> false" \
+  "false" "$(pr_quality_needs_reconcile "$PR_QUALITY_MERGE_METHOD" "$PR_QUALITY_REQUIRE_LAST_PUSH_APPROVAL" "$PR_QUALITY_DISMISS_STALE_REVIEWS")"
+assert_eq "pr_quality_needs_reconcile: require_last_push_approval drifted (false) -> true" \
+  "true" "$(pr_quality_needs_reconcile "$PR_QUALITY_MERGE_METHOD" "false" "$PR_QUALITY_DISMISS_STALE_REVIEWS")"
+assert_eq "pr_quality_needs_reconcile: merge methods drifted -> true" \
+  "true" "$(pr_quality_needs_reconcile "merge,rebase,squash" "$PR_QUALITY_REQUIRE_LAST_PUSH_APPROVAL" "$PR_QUALITY_DISMISS_STALE_REVIEWS")"
+assert_eq "pr_quality_needs_reconcile: dismiss_stale_reviews drifted (false) -> true" \
+  "true" "$(pr_quality_needs_reconcile "$PR_QUALITY_MERGE_METHOD" "$PR_QUALITY_REQUIRE_LAST_PUSH_APPROVAL" "false")"
+
 # ── resolve_repo ──────────────────────────────────────────────────────────────
 assert_eq "resolve_repo: bare name -> org/name" \
   "petry-projects/TalkTerm" "$(ORG=petry-projects resolve_repo "TalkTerm")"

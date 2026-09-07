@@ -219,6 +219,25 @@ pr_quality_reconcile_payload() {
   return
 }
 
+# pr_quality_needs_reconcile <merge_status> <rlpa_status> <dismiss_status>
+# Echoes "true" when any of the three pull_request-rule parameters has drifted
+# from its codified standard value (allowed_merge_methods=squash-only,
+# require_last_push_approval=true, dismiss_stale_reviews_on_push=true), else
+# "false". Pure and side-effect-free so the reconcile decision — including the
+# require_last_push_approval drift this reconciler corrects — is unit-testable
+# without hitting the API.
+pr_quality_needs_reconcile() {
+  local merge_status="${1:-}" rlpa_status="${2:-}" dismiss_status="${3:-}"
+  if [[ "$merge_status" != "$PR_QUALITY_MERGE_METHOD" ||
+    "$rlpa_status" != "$PR_QUALITY_REQUIRE_LAST_PUSH_APPROVAL" ||
+    "$dismiss_status" != "$PR_QUALITY_DISMISS_STALE_REVIEWS" ]]; then
+    printf '%s\n' 'true'
+  else
+    printf '%s\n' 'false'
+  fi
+  return
+}
+
 # apply_pr_quality_ruleset <owner/repo>
 # Reconciles the allowed_merge_methods, require_last_push_approval, and
 # dismiss_stale_reviews_on_push settings in the pr-quality ruleset in a single
@@ -247,7 +266,7 @@ apply_pr_quality_ruleset() {
     return 0
   fi
 
-  local merge_status rlpa_status ds_status needs_update=false
+  local merge_status rlpa_status ds_status needs_update=""
   if ! merge_status=$(pr_quality_merge_methods_status "$ruleset"); then
     echo "  failed to parse ruleset merge methods status"
     return 1
@@ -270,23 +289,24 @@ apply_pr_quality_ruleset() {
     echo "  already ${PR_QUALITY_MERGE_METHOD}-only — nothing to do for merge methods"
   else
     echo "  merge methods '${merge_status}' drifted — reconciling to ${PR_QUALITY_MERGE_METHOD}-only"
-    needs_update=true
   fi
 
   if [[ "$rlpa_status" == "$PR_QUALITY_REQUIRE_LAST_PUSH_APPROVAL" ]]; then
     echo "  already require_last_push_approval=${PR_QUALITY_REQUIRE_LAST_PUSH_APPROVAL} — nothing to do"
   else
     echo "  require_last_push_approval '${rlpa_status}' drifted — reconciling to ${PR_QUALITY_REQUIRE_LAST_PUSH_APPROVAL}"
-    needs_update=true
   fi
 
   if [[ "$ds_status" == "$PR_QUALITY_DISMISS_STALE_REVIEWS" ]]; then
     echo "  already dismiss_stale_reviews_on_push=${PR_QUALITY_DISMISS_STALE_REVIEWS} — nothing to do"
   else
     echo "  dismiss_stale_reviews_on_push '${ds_status}' drifted — reconciling to ${PR_QUALITY_DISMISS_STALE_REVIEWS}"
-    needs_update=true
   fi
 
+  if ! needs_update=$(pr_quality_needs_reconcile "$merge_status" "$rlpa_status" "$ds_status"); then
+    echo "  failed to determine if reconciliation is needed"
+    return 1
+  fi
   if [[ "$needs_update" == "false" ]]; then
     return 0
   fi
