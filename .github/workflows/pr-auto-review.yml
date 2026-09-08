@@ -46,6 +46,16 @@ permissions: {}
 
 jobs:
   pr-auto-review:
+    # Dependabot-triggered `pull_request` events run against the Dependabot secret
+    # store, where GH_PAT_WORKFLOWS is unavailable. The secret then arrives empty
+    # and the reusable's authenticated checkout / gh calls fail at startup with
+    # "Input required and not supplied: token" — that event can never succeed
+    # (Fleet Monitor #466). Skip it here (the caller is the only place that can:
+    # a reusable cannot rescue a run it was handed no secret for). Readiness for
+    # Dependabot PRs is still evaluated via workflow_run (CI green) and
+    # check_suite, which run in the base-repo context with the PAT available.
+    # Guarded by scripts/test-pr-auto-review-workflow.sh.
+    if: "!(github.event_name == 'pull_request' && github.actor == 'dependabot[bot]')" # NOSONAR(githubactions:S6549)
     permissions:
       pull-requests: read
       checks: read

@@ -94,8 +94,6 @@ apply_security_and_analysis() {
   }
 }
 JSON
-  return
-}
 
 # apply_check_suite_prefs <owner/repo>
 # Disables auto-trigger for any configured app that currently has it enabled.
