@@ -25,6 +25,28 @@ JOB="dependency-audit"
 REUSABLE_PREFIX="petry-projects/.github/.github/workflows/dependency-audit-reusable.yml@"
 PASS=true
 
+# branch_included <branch> — read an ordered branch-pattern list on stdin (one
+# pattern per line) and return success only if <branch> is INCLUDED after the
+# patterns are applied in order, matching GitHub's semantics: a positive glob
+# includes a ref, a later negative glob (`!`) excludes it again, and a still
+# later positive glob re-includes it. A raw `main` entry is therefore not enough
+# — `[main, '!main']` contains "main" but excludes it, so this must FAIL.
+branch_included() {
+  local branch="$1" pat stripped included=false
+  while IFS= read -r pat; do
+    [[ -z "$pat" ]] && continue
+    if [[ "$pat" == '!'* ]]; then
+      stripped="${pat#!}"
+      # shellcheck disable=SC2053  # intentional glob match, RHS unquoted
+      [[ "$branch" == $stripped ]] && included=false
+    else
+      # shellcheck disable=SC2053  # intentional glob match, RHS unquoted
+      [[ "$branch" == $pat ]] && included=true
+    fi
+  done
+  [[ "$included" == "true" ]]
+}
+
 echo "=== test-dependency-audit-workflow ($WORKFLOW) ==="
 
 # ── Check 0: yq is available ───────────────────────────────────────────────
@@ -166,30 +188,31 @@ for trig in pull_request push; do
   fi
 done
 
-# pull_request must target main.
-pr_main=""
-if ! pr_main=$(yq '.on.pull_request.branches | any_c(. == "main")' "$WORKFLOW" 2>/dev/null); then
+# pull_request must resolve to main being INCLUDED after ordered patterns apply
+# (a raw 'main' entry that a later '!main' negates must not pass).
+pr_branches=""
+if ! pr_branches=$(yq -r '.on.pull_request.branches[]' "$WORKFLOW" 2>/dev/null); then
   echo "FAIL: yq failed to parse pull_request branches in $WORKFLOW"
   PASS=false
 fi
-if [[ "$pr_main" != "true" ]]; then
-  echo "FAIL: 'pull_request' trigger must include the 'main' branch in $WORKFLOW"
-  PASS=false
-else
+if branch_included main <<< "$pr_branches"; then
   echo "PASS: 'pull_request' trigger includes 'main'"
+else
+  echo "FAIL: 'pull_request' trigger must include the 'main' branch after ordered patterns apply in $WORKFLOW"
+  PASS=false
 fi
 
-# push must target main.
-push_main=""
-if ! push_main=$(yq '.on.push.branches | any_c(. == "main")' "$WORKFLOW" 2>/dev/null); then
+# push must resolve to main being INCLUDED after ordered patterns apply.
+push_branches=""
+if ! push_branches=$(yq -r '.on.push.branches[]' "$WORKFLOW" 2>/dev/null); then
   echo "FAIL: yq failed to parse push branches in $WORKFLOW"
   PASS=false
 fi
-if [[ "$push_main" != "true" ]]; then
-  echo "FAIL: 'push' trigger must include the 'main' branch in $WORKFLOW"
-  PASS=false
-else
+if branch_included main <<< "$push_branches"; then
   echo "PASS: 'push' trigger includes 'main'"
+else
+  echo "FAIL: 'push' trigger must include the 'main' branch after ordered patterns apply in $WORKFLOW"
+  PASS=false
 fi
 
 echo ""
