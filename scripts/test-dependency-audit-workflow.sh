@@ -25,28 +25,6 @@ JOB="dependency-audit"
 REUSABLE_PREFIX="petry-projects/.github/.github/workflows/dependency-audit-reusable.yml@"
 PASS=true
 
-# branch_included <branch> — read an ordered branch-pattern list on stdin (one
-# pattern per line) and return success only if <branch> is INCLUDED after the
-# patterns are applied in order, matching GitHub's semantics: a positive glob
-# includes a ref, a later negative glob (`!`) excludes it again, and a still
-# later positive glob re-includes it. A raw `main` entry is therefore not enough
-# — `[main, '!main']` contains "main" but excludes it, so this must FAIL.
-branch_included() {
-  local branch="$1" pat stripped included=false
-  while IFS= read -r pat; do
-    [[ -z "$pat" ]] && continue
-    if [[ "$pat" == '!'* ]]; then
-      stripped="${pat#!}"
-      # shellcheck disable=SC2053  # intentional glob match, RHS unquoted
-      [[ "$branch" == $stripped ]] && included=false
-    else
-      # shellcheck disable=SC2053  # intentional glob match, RHS unquoted
-      [[ "$branch" == $pat ]] && included=true
-    fi
-  done
-  [[ "$included" == "true" ]]
-}
-
 echo "=== test-dependency-audit-workflow ($WORKFLOW) ==="
 
 # ── Check 0: yq is available ───────────────────────────────────────────────
@@ -95,6 +73,26 @@ else
   else
     echo "PASS: job 'uses' rides the dependency-audit channel"
   fi
+fi
+
+# ── Check 3b: the caller job is EXACTLY the canonical `{ uses: … }` mapping ──
+# The stub's job carries a single key, `uses`. Any other key is drift: an
+# execution-control key (`if:`, `strategy:`) can disable or throttle the caller
+# job while the approved `uses:`, triggers, and permissions all still validate —
+# so `if: false` would silently skip the required dependency audit yet this guard
+# would still report success. A `with:`/`secrets:` forward, or a job-level
+# `permissions:` widening the reusable's authority, is likewise centrally owned
+# and not repo-adjustable. Assert the complete job mapping is just `{ uses }`.
+job_keys=""
+if ! job_keys=$(yq -o=json -I=0 ".jobs[\"${JOB}\"] | keys" "$WORKFLOW" 2>/dev/null); then
+  echo "FAIL: yq failed to parse job keys in $WORKFLOW"
+  PASS=false
+fi
+if [[ "$job_keys" != '["uses"]' ]]; then
+  echo "FAIL: job '$JOB' must contain exactly the 'uses' key — no if/with/secrets/permissions/strategy (found keys: $job_keys) in $WORKFLOW"
+  PASS=false
+else
+  echo "PASS: job '$JOB' is exactly the canonical '{ uses }' mapping"
 fi
 
 # ── Check 4: top-level permissions grant exactly the reusable's read scope ──
@@ -172,6 +170,23 @@ else
   echo "PASS: 'on:' trigger surface is exactly pull_request, push, merge_group"
 fi
 
+# merge_group must be the canonical EMPTY mapping (`merge_group:` with no body).
+# Key presence alone is not enough: `merge_group: { types: [] }` cannot select
+# the default `checks_requested` activity, so the required audit never runs for
+# merge-queue events even though the key exists. GitHub defaults an empty
+# merge_group to `checks_requested`; any explicit body is drift.
+merge_group_val=""
+if ! merge_group_val=$(yq -o=json -I=0 '.on.merge_group' "$WORKFLOW" 2>/dev/null); then
+  echo "FAIL: yq failed to parse 'merge_group' mapping in $WORKFLOW"
+  PASS=false
+fi
+if [[ "$merge_group_val" != "null" ]]; then
+  echo "FAIL: 'merge_group' must be the canonical empty mapping (no body) so it selects the default 'checks_requested' activity (found: '$merge_group_val') in $WORKFLOW"
+  PASS=false
+else
+  echo "PASS: 'merge_group' is the canonical empty mapping"
+fi
+
 # pull_request and push must carry ONLY a `branches` filter — extra filters such
 # as `paths:` or `types:` narrow when the required check reports and are drift.
 for trig in pull_request push; do
@@ -188,32 +203,24 @@ for trig in pull_request push; do
   fi
 done
 
-# pull_request must resolve to main being INCLUDED after ordered patterns apply
-# (a raw 'main' entry that a later '!main' negates must not pass).
-pr_branches=""
-if ! pr_branches=$(yq -r '.on.pull_request.branches[]' "$WORKFLOW" 2>/dev/null); then
-  echo "FAIL: yq failed to parse pull_request branches in $WORKFLOW"
-  PASS=false
-fi
-if branch_included main <<< "$pr_branches"; then
-  echo "PASS: 'pull_request' trigger includes 'main'"
-else
-  echo "FAIL: 'pull_request' trigger must include the 'main' branch after ordered patterns apply in $WORKFLOW"
-  PASS=false
-fi
-
-# push must resolve to main being INCLUDED after ordered patterns apply.
-push_branches=""
-if ! push_branches=$(yq -r '.on.push.branches[]' "$WORKFLOW" 2>/dev/null); then
-  echo "FAIL: yq failed to parse push branches in $WORKFLOW"
-  PASS=false
-fi
-if branch_included main <<< "$push_branches"; then
-  echo "PASS: 'push' trigger includes 'main'"
-else
-  echo "FAIL: 'push' trigger must include the 'main' branch after ordered patterns apply in $WORKFLOW"
-  PASS=false
-fi
+# The branches filter is centrally owned and must be the canonical array exactly
+# `[main]` — not merely a pattern set whose final evaluation happens to include
+# main. `branches: ['*']`, `[main, develop]`, or `[main, '!main']` all differ
+# from the canonical surface (they widen or invert when the required check
+# reports) and are drift, so compare each array directly against `["main"]`.
+for trig in pull_request push; do
+  branches_json=""
+  if ! branches_json=$(yq -o=json -I=0 ".on.${trig}.branches" "$WORKFLOW" 2>/dev/null); then
+    echo "FAIL: yq failed to parse $trig branches in $WORKFLOW"
+    PASS=false
+  fi
+  if [[ "$branches_json" != '["main"]' ]]; then
+    echo "FAIL: '$trig' trigger 'branches' must be exactly [main] (found: $branches_json) in $WORKFLOW"
+    PASS=false
+  else
+    echo "PASS: '$trig' trigger 'branches' is exactly [main]"
+  fi
+done
 
 echo ""
 if [[ "$PASS" == "true" ]]; then
