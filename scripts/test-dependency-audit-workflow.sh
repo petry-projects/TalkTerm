@@ -48,6 +48,28 @@ if ! yq '.' "$WORKFLOW" > /dev/null 2>&1; then
 fi
 echo "PASS: $WORKFLOW is valid YAML"
 
+# ── Check 2b: the top-level mapping is EXACTLY the canonical key set ─────────
+# The canonical stub has only `name`, `on`, `permissions`, and `jobs` at the top
+# level. Any additional top-level key is drift — in particular a workflow-level
+# execution-control key such as `concurrency:` (e.g.
+# `concurrency: { group: dependency-audit, cancel-in-progress: true }`) would let
+# a newer PR/push/merge-queue run cancel unrelated in-progress audits sharing that
+# constant group, leaving their required checks cancelled instead of successful.
+# Job-level exactness (Check 3b) and the per-mapping assertions on `permissions:`
+# and `on:` do not see top-level keys, so assert the whole top-level surface here.
+# Also rejects `defaults:`, `env:`, `run-name:`, and any other grafted-on key.
+top_keys=""
+if ! top_keys=$(yq -o=json -I=0 'keys | sort' "$WORKFLOW" 2>/dev/null); then
+  echo "FAIL: yq failed to parse top-level keys in $WORKFLOW"
+  PASS=false
+fi
+if [[ "$top_keys" != '["jobs","name","on","permissions"]' ]]; then
+  echo "FAIL: top-level mapping must be exactly name/on/permissions/jobs — no concurrency/defaults/env/run-name or other workflow-level keys (found keys: $top_keys) in $WORKFLOW"
+  PASS=false
+else
+  echo "PASS: top-level mapping is exactly the canonical name/on/permissions/jobs"
+fi
+
 # ── Check 3: job `uses` is the org reusable pinned to an approved channel tag ─
 # The ref must ride an approved moving channel (stable, next, or vN-ringN) —
 # never @main, a bare SHA, a frozen @vN, or an arbitrary/unknown channel tag.

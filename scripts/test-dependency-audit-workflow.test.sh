@@ -215,6 +215,30 @@ else
   pass "a pull_request paths: filter is rejected"
 fi
 
+# ── Case 15a: a top-level concurrency block is rejected ────────────────────
+# A workflow-level `concurrency: { group: dependency-audit, cancel-in-progress:
+# true }` passes every job- and trigger-level check yet lets a newer run cancel
+# unrelated in-progress audits sharing that constant group — the exact top-level
+# key-set assertion (Check 2b) must reject it.
+concurrency="${TMP}/concurrency.yml"
+write_canonical "$concurrency"
+yq -i '.concurrency.group = "dependency-audit" | .concurrency.cancel-in-progress = true' "$concurrency"
+if run_guard "$concurrency"; then
+  fail "a top-level concurrency block should be REJECTED (workflow-level execution control)"
+else
+  pass "a top-level concurrency block is rejected"
+fi
+
+# ── Case 15b: any other extra top-level key (env) is rejected ──────────────
+extratop="${TMP}/extra-top.yml"
+write_canonical "$extratop"
+yq -i '.env.FOO = "bar"' "$extratop"
+if run_guard "$extratop"; then
+  fail "an extra top-level 'env:' key should be REJECTED (exact top-level surface)"
+else
+  pass "an extra top-level key is rejected"
+fi
+
 # ── Case 15: a missing workflow file fails cleanly ─────────────────────────
 if run_guard "${TMP}/does-not-exist.yml"; then
   fail "a missing workflow file should be REJECTED"
