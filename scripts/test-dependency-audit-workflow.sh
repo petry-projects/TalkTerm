@@ -65,7 +65,8 @@ elif [[ "$uses" != "${REUSABLE_PREFIX}"* ]]; then
   PASS=false
 else
   channel_ref="${uses#"${REUSABLE_PREFIX}"}"
-  if [[ ! "$channel_ref" =~ ^dependency-audit/(stable|next|v[0-9]+-ring[0-9]+)$ ]]; then
+  approved_pattern='^dependency-audit/(stable|next|v[0-9]+-ring[0-9]+)$'
+  if [[ ! "$channel_ref" =~ $approved_pattern ]]; then
     echo "FAIL: job 'uses' channel '$channel_ref' is not a recognized approved channel in $WORKFLOW"
     echo "      Approved: dependency-audit/(stable|next|v<N>-ring<N>) — not @main, a SHA, or an arbitrary tag."
     PASS=false
@@ -74,19 +75,45 @@ else
   fi
 fi
 
-# ── Check 4: top-level permissions grant only the reusable's read scope ─────
-# The centrally-owned grant is `contents: read`; a reusable can be granted no
-# more permission than the caller holds, and widening it here is drift.
+# ── Check 4: top-level permissions grant exactly the reusable's read scope ──
+# The centrally-owned grant is `contents: read` and nothing else; a reusable can
+# be granted no more permission than the caller holds, so any additional
+# top-level permission (e.g. `actions: write`, `pull-requests: write`) is drift
+# and must fail — not just an incorrect `contents` value.
+perm_keys=""
+if ! perm_keys=$(yq -o=json -I=0 '.permissions | keys' "$WORKFLOW" 2>/dev/null); then
+  echo "FAIL: yq failed to parse permissions in $WORKFLOW"
+  PASS=false
+fi
 contents=""
 if ! contents=$(yq '.permissions.contents' "$WORKFLOW" 2>/dev/null); then
   echo "FAIL: yq failed to parse permissions.contents in $WORKFLOW"
   PASS=false
 fi
-if [[ "$contents" != "read" ]]; then
+if [[ "$perm_keys" != '["contents"]' ]]; then
+  echo "FAIL: top-level 'permissions' must contain exactly 'contents' (found keys: $perm_keys) in $WORKFLOW"
+  PASS=false
+elif [[ "$contents" != "read" ]]; then
   echo "FAIL: top-level permission 'contents' must be 'read' (found: '$contents') in $WORKFLOW"
   PASS=false
 else
-  echo "PASS: top-level permission 'contents: read' present"
+  echo "PASS: top-level permissions grant exactly 'contents: read'"
+fi
+
+# The caller job must not carry its own `permissions:` block: a job-level grant
+# overrides the top-level one and would widen the reusable's authority past the
+# read-only scope while Check 4's top-level assertion still passed. The canonical
+# stub sets no job-level permissions.
+job_perms=""
+if ! job_perms=$(yq ".jobs[\"${JOB}\"].permissions" "$WORKFLOW" 2>/dev/null); then
+  echo "FAIL: yq failed to parse job permissions in $WORKFLOW"
+  PASS=false
+fi
+if [[ "$job_perms" != "null" ]]; then
+  echo "FAIL: job '$JOB' must not set its own 'permissions:' (found: '$job_perms') in $WORKFLOW"
+  PASS=false
+else
+  echo "PASS: job '$JOB' sets no overriding job-level permissions"
 fi
 
 # ── Check 5: the centrally-owned `on:` trigger surface is intact ────────────
@@ -104,6 +131,38 @@ for trig in pull_request push merge_group; do
     PASS=false
   else
     echo "PASS: trigger '$trig' present"
+  fi
+done
+
+# The trigger surface must be EXACTLY these three events — no additional events
+# (e.g. workflow_dispatch, schedule) may be grafted on, since the `on:` surface
+# is centrally owned. Adding an event is drift even though each required key
+# above still exists.
+on_keys=""
+if ! on_keys=$(yq -o=json -I=0 '.on | keys | sort' "$WORKFLOW" 2>/dev/null); then
+  echo "FAIL: yq failed to parse triggers in $WORKFLOW"
+  PASS=false
+fi
+if [[ "$on_keys" != '["merge_group","pull_request","push"]' ]]; then
+  echo "FAIL: 'on:' must contain exactly pull_request, push, merge_group (found keys: $on_keys) in $WORKFLOW"
+  PASS=false
+else
+  echo "PASS: 'on:' trigger surface is exactly pull_request, push, merge_group"
+fi
+
+# pull_request and push must carry ONLY a `branches` filter — extra filters such
+# as `paths:` or `types:` narrow when the required check reports and are drift.
+for trig in pull_request push; do
+  trig_keys=""
+  if ! trig_keys=$(yq -o=json -I=0 ".on.${trig} | keys" "$WORKFLOW" 2>/dev/null); then
+    echo "FAIL: yq failed to parse '$trig' filters in $WORKFLOW"
+    PASS=false
+  fi
+  if [[ "$trig_keys" != '["branches"]' ]]; then
+    echo "FAIL: '$trig' trigger must carry only a 'branches' filter (found keys: $trig_keys) in $WORKFLOW"
+    PASS=false
+  else
+    echo "PASS: '$trig' trigger carries only a 'branches' filter"
   fi
 done
 
