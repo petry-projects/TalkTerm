@@ -51,20 +51,30 @@ permissions: {}
 # split by context:
 #   • check_suite / workflow_run — head_branch=main, the check does NOT attach to
 #     the PR head, so superseding an in-flight run is SAFE. Both events collapse
-#     onto one group per PR (`…-pr-<number>`) with cancel-in-progress: true.
+#     onto one group per PR *and commit* (`…-pr-<number>-<head_sha>`) with
+#     cancel-in-progress: true. The head_sha is REQUIRED before cancellation:
+#     without it one PR-wide group covers every commit, so a completed check for
+#     an older commit could cancel the readiness evaluation still in flight for a
+#     newer one (and vice-versa). Keying the group on the event's head_sha gives
+#     each commit its own cancelable slot — same-commit events dedupe, distinct
+#     commits stay isolated (commit-scoped concurrency, matching ci.yml #380).
 #   • pull_request / pull_request_review — run on the PR head; a cancelled run
 #     would leave a cancelled `pr-auto-review / check-and-dispatch` check on the
 #     head. They get a unique-per-run group and never cancel, so they behave
 #     exactly as before.
-# A default-branch trigger with no associated PR (fork / no PR) also falls back to
-# the unique-per-run group so unrelated PRs never collapse into one group.
+# Fallbacks to the unique-per-run group (so unrelated work never collapses into
+# one cancelable group):
+#   • a default-branch trigger with no associated PR (fork / no PR); and
+#   • an event that lists MORE THAN ONE PR — selecting only pull_requests[0]
+#     would make distinct PRs share the first PR's cancelable group, so we detect
+#     a second entry (pull_requests[1]) and fall back to the run-unique group.
 concurrency:
   group: >-
     ${{
-    (github.event_name == 'check_suite' && github.event.check_suite.pull_requests[0].number)
-    && format('pr-auto-review-ready-check-pr-{0}', github.event.check_suite.pull_requests[0].number)
-    || (github.event_name == 'workflow_run' && github.event.workflow_run.pull_requests[0].number)
-    && format('pr-auto-review-ready-check-pr-{0}', github.event.workflow_run.pull_requests[0].number)
+    (github.event_name == 'check_suite' && github.event.check_suite.pull_requests[0].number && !github.event.check_suite.pull_requests[1] && github.event.check_suite.head_sha)
+    && format('pr-auto-review-ready-check-pr-{0}-{1}', github.event.check_suite.pull_requests[0].number, github.event.check_suite.head_sha)
+    || (github.event_name == 'workflow_run' && github.event.workflow_run.pull_requests[0].number && !github.event.workflow_run.pull_requests[1] && github.event.workflow_run.head_sha)
+    && format('pr-auto-review-ready-check-pr-{0}-{1}', github.event.workflow_run.pull_requests[0].number, github.event.workflow_run.head_sha)
     || format('pr-auto-review-ready-check-unique-{0}', github.run_id)
     }}
   cancel-in-progress: ${{ github.event_name == 'check_suite' || github.event_name == 'workflow_run' }}
