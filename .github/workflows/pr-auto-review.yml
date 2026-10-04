@@ -44,22 +44,17 @@ on:
 
 permissions: {}
 
-# Deduplicate ONLY the default-branch-context triggers (issue #1126). On GitHub
-# Free (20 concurrent jobs, org-wide) this stub fanned out per trigger. Its runs
-# split by context:
-#   • check_suite / workflow_run — head_branch=main, the check does NOT attach to
-#     the PR head, so superseding an in-flight run is SAFE. Both events collapse
-#     onto one group per PR (`…-pr-<number>`) with cancel-in-progress: true.
-#   • pull_request / pull_request_review — run on the PR head; a cancelled run
-#     would leave a cancelled `pr-auto-review / check-and-dispatch` check on the
-#     head. They get a unique-per-run group and never cancel, so they behave
-#     exactly as before.
-# A default-branch trigger with no associated PR (fork / no PR) also falls back to
-# the unique-per-run group so unrelated PRs never collapse into one group.
-# NOTE: check_suite and workflow_run events may have multiple associated PRs (pull_requests[]),
-# so we do NOT use array indexing for these events. Instead, only pull_request* events
-# (which naturally have single PR context) use PR-based grouping; all others use unique-per-run
-# to avoid cross-PR interference (petry-projects/.github#1342).
+# The concurrency group depends on the event context (issue #1126):
+#   • pull_request / pull_request_review — share one group per PR number and never
+#     cancel an in-progress run, because these run on the PR head and a cancelled
+#     run would leave a cancelled `pr-auto-review / check-and-dispatch` check there.
+#   • check_suite / workflow_run — use a unique group per github.run_id, so separate
+#     runs never collide. `cancel-in-progress` is enabled for them, but it only
+#     affects another attempt of the same run (reruns keep the same run ID).
+# check_suite and workflow_run events may have multiple associated PRs
+# (pull_requests[]), so no array indexing is used; events without a single PR
+# context fall back to the unique-per-run group to avoid cross-PR interference
+# (petry-projects/.github#1342).
 concurrency:
   group: >-
     ${{
