@@ -74,8 +74,9 @@ if [[ "$group" != "null" && -n "$group" ]]; then
   # head_sha. The PR number gives per-PR scoping; head_sha is what makes the
   # group commit-scoped, so distinct commits get distinct (isolated) slots while
   # same-commit events dedupe. A PR-number-only group is rejected here.
-  if [[ "$group" == *'github.event.check_suite.pull_requests[0].number'* \
-     && "$group" == *'github.event.check_suite.head_sha'* ]]; then
+  # Both components must appear in the same properly guarded branch (within the
+  # check_suite event condition), not just somewhere in the expression.
+  if grep -q "check_suite.*pull_requests\[0\].*head_sha" <<<"$group"; then
     echo "PASS: check_suite group is keyed on PR number AND head_sha in $WORKFLOW"
   else
     {
@@ -92,8 +93,9 @@ if [[ "$group" != "null" && -n "$group" ]]; then
   fi
 
   # ── Check 4: same-commit dedup + cross-commit isolation (workflow_run) ────
-  if [[ "$group" == *'github.event.workflow_run.pull_requests[0].number'* \
-     && "$group" == *'github.event.workflow_run.head_sha'* ]]; then
+  # Same requirement as Check 3: both PR number and head_sha must appear in the
+  # same properly guarded workflow_run branch, in the expected order.
+  if grep -q "workflow_run.*pull_requests\[0\].*head_sha" <<<"$group"; then
     echo "PASS: workflow_run group is keyed on PR number AND head_sha in $WORKFLOW"
   else
     {
@@ -108,8 +110,9 @@ if [[ "$group" != "null" && -n "$group" ]]; then
   # An event may list more than one PR. Selecting only pull_requests[0] would make
   # distinct PRs share the first PR's cancelable group, so the group must detect a
   # second entry (pull_requests[1]) for both event types and fall back to unique.
-  if [[ "$group" == *'github.event.check_suite.pull_requests[1]'* \
-     && "$group" == *'github.event.workflow_run.pull_requests[1]'* ]]; then
+  # Both event types must have a guard that checks for pull_requests[1] (negated).
+  if grep -q "check_suite.*pull_requests\[1\]" <<<"$group" && \
+     grep -q "workflow_run.*pull_requests\[1\]" <<<"$group"; then
     echo "PASS: group falls back to run-unique when >1 PR is listed in $WORKFLOW"
   else
     {

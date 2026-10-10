@@ -22,12 +22,14 @@ fails=0
 # Report a passing test case with description.
 pass() {
   local desc="$1"
+  # Output test result in TAP-compatible format.
   echo "ok   - $desc"
 }
 
 # Report a failing test case, increment failure counter, and log to stderr.
 fail() {
   local desc="$1"
+  # Output test result and increment failure counter.
   echo "FAIL - $desc"
   fails=$((fails + 1))
 }
@@ -53,6 +55,7 @@ trap 'rm -rf "$TMP"' EXIT
 # Write the common workflow header (name, triggers, permissions) to a fixture file.
 write_header() {
   local file="$1"
+  # Generate fixture header with standard triggers and permissions block.
   cat > "$file" <<'YAML'
 name: PR Auto-Review — Ready Check
 on:
@@ -72,6 +75,7 @@ YAML
 # Append the common workflow footer (job definition) to a fixture file.
 write_footer() {
   local file="$1"
+  # Append fixture footer with standard job definition.
   cat >> "$file" <<'YAML'
 jobs:
   pr-auto-review:
@@ -89,6 +93,7 @@ YAML
 # Append a valid concurrency block (commit-scoped, multi-PR-guarded, with fallback).
 append_good_concurrency() {
   local file="$1"
+  # Append a correct concurrency config with PR+commit keying and proper fallbacks.
   cat >> "$file" <<'YAML'
 concurrency:
   group: >-
@@ -110,6 +115,7 @@ YAML
 # Append a regression concurrency block (PR-number-only, missing head_sha).
 append_concurrency_no_head_sha() {
   local file="$1"
+  # Append regression fixture: lacks commit-scoped keying, so old commits can cancel new ones.
   cat >> "$file" <<'YAML'
 concurrency:
   group: >-
@@ -131,6 +137,7 @@ YAML
 # Append a regression concurrency block (missing multi-PR guard).
 append_concurrency_no_multipr_guard() {
   local file="$1"
+  # Append regression fixture: lacks multi-PR guard, so distinct PRs can collide.
   cat >> "$file" <<'YAML'
 concurrency:
   group: >-
@@ -151,6 +158,7 @@ YAML
 # Append a regression concurrency block (missing run-unique fallback).
 append_concurrency_no_run_id_fallback() {
   local file="$1"
+  # Append regression fixture: lacks fallback, so multi-PR events have no safety slot.
   cat >> "$file" <<'YAML'
 concurrency:
   group: >-
@@ -172,6 +180,7 @@ YAML
 # Append a regression concurrency block (unconditional cancel-in-progress).
 append_concurrency_unconditional_cancel() {
   local file="$1"
+  # Append regression fixture: cancels unconditionally, so PR-head runs get cancelled.
   cat >> "$file" <<'YAML'
 concurrency:
   group: >-
@@ -188,12 +197,14 @@ YAML
 
 # Append nothing to the fixture (no concurrency block at all).
 append_no_concurrency() {
+  # No-op: the fixture contains only the header and footer.
   : # nothing — the fixture has only header + footer
 }
 
 # Invoke the regression guard script against a fixture file.
 run_guard() {
   local file="$1"
+  # Execute the guard script, suppressing output to check exit status.
   bash "$GUARD" "$file" >/dev/null 2>&1
 }
 
