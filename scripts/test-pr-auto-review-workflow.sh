@@ -154,13 +154,19 @@ fi
 cancel_norm="${cancel//[[:space:]]/}"
 cancel_norm="${cancel_norm#\$\{\{}"
 cancel_norm="${cancel_norm%\}\}}"
-while [[ "$cancel_norm" == \(*\) ]]; do
-  cancel_norm="${cancel_norm#\(}"
-  cancel_norm="${cancel_norm%\)}"
-done
 cs_eq="github.event_name=='check_suite'"
 wr_eq="github.event_name=='workflow_run'"
-if [[ "$cancel_norm" == "${cs_eq}||${wr_eq}" || "$cancel_norm" == "${wr_eq}||${cs_eq}" ]]; then
+# Single-PR form: each event is additionally restricted to exactly one listed PR,
+# so a multi-PR (run-unique group) run is never cancelled.
+cs_one="(${cs_eq}&&github.event.check_suite.pull_requests[0]&&(github.event.check_suite.pull_requests[1]==null))"
+wr_one="(${wr_eq}&&github.event.workflow_run.pull_requests[0]&&(github.event.workflow_run.pull_requests[1]==null))"
+cancel_plain="$cancel_norm"
+while [[ "$cancel_plain" == \(*\) ]]; do
+  cancel_plain="${cancel_plain#\(}"
+  cancel_plain="${cancel_plain%\)}"
+done
+if [[ "$cancel_plain" == "${cs_eq}||${wr_eq}" || "$cancel_plain" == "${wr_eq}||${cs_eq}" \
+  || "$cancel_norm" == "${cs_one}||${wr_one}" || "$cancel_norm" == "${wr_one}||${cs_one}" ]]; then
   echo "PASS: cancel-in-progress is gated on check_suite / workflow_run in $WORKFLOW"
 else
   {
