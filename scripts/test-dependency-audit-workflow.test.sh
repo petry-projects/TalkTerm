@@ -239,6 +239,26 @@ else
   pass "an extra top-level key is rejected"
 fi
 
+# ── Case 15c: a dropped canonical top-level key (name) is rejected ─────────
+droptop="${TMP}/drop-top.yml"
+write_canonical "$droptop"
+yq -i 'del(.name)' "$droptop"
+if run_guard "$droptop"; then
+  fail "a removed top-level 'name:' key should be REJECTED (exact top-level surface)"
+else
+  pass "a removed canonical top-level key is rejected"
+fi
+
+# ── Case 15d: an additional job alongside the caller job is rejected ───────
+extrajob="${TMP}/extra-job.yml"
+write_canonical "$extrajob"
+yq -i '.jobs.extra.runs-on = "ubuntu-latest"' "$extrajob"
+if run_guard "$extrajob"; then
+  fail "an additional job should be REJECTED (exact jobs surface)"
+else
+  pass "an additional job is rejected"
+fi
+
 # ── Case 15: a missing workflow file fails cleanly ─────────────────────────
 if run_guard "${TMP}/does-not-exist.yml"; then
   fail "a missing workflow file should be REJECTED"

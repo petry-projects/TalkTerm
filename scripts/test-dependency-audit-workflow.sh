@@ -70,6 +70,22 @@ else
   echo "PASS: top-level mapping is exactly the canonical name/on/permissions/jobs"
 fi
 
+# ── Check 2c: the `jobs:` mapping contains EXACTLY the one caller job ────────
+# Check 3b only inspects the named job, so an additional job grafted alongside it
+# (with its own steps and permissions) would run on every PR/push/merge-queue
+# event and still pass. Assert the complete jobs mapping is just `{ JOB }`.
+jobs_keys=""
+if ! jobs_keys=$(yq -o=json -I=0 '.jobs | keys' "$WORKFLOW" 2>/dev/null); then
+  echo "FAIL: yq failed to parse jobs keys in $WORKFLOW"
+  PASS=false
+fi
+if [[ "$jobs_keys" != "[\"${JOB}\"]" ]]; then
+  echo "FAIL: 'jobs' must contain exactly the '$JOB' job — no additional jobs (found keys: $jobs_keys) in $WORKFLOW"
+  PASS=false
+else
+  echo "PASS: 'jobs' contains exactly the '$JOB' job"
+fi
+
 # ── Check 3: job `uses` is the org reusable pinned to an approved channel tag ─
 # The ref must ride an approved moving channel (stable, next, or vN-ringN) —
 # never @main, a bare SHA, a frozen @vN, or an arbitrary/unknown channel tag.
