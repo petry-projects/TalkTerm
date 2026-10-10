@@ -18,10 +18,14 @@ fi
 GUARD="${SCRIPT_DIR}/test-pr-auto-review-workflow.sh"
 
 fails=0
+
+# Report a passing test case with description.
 pass() {
   local desc="$1"
   echo "ok   - $desc"
 }
+
+# Report a failing test case, increment failure counter, and log to stderr.
 fail() {
   local desc="$1"
   echo "FAIL - $desc"
@@ -45,6 +49,8 @@ trap 'rm -rf "$TMP"' EXIT
 # The invariant part shared by every fixture: name, triggers, permissions, and a
 # minimal job. Each fixture supplies its own `concurrency:` block, which is what
 # the guard inspects.
+
+# Write the common workflow header (name, triggers, permissions) to a fixture file.
 write_header() {
   local file="$1"
   cat > "$file" <<'YAML'
@@ -63,6 +69,7 @@ permissions: {}
 YAML
 }
 
+# Append the common workflow footer (job definition) to a fixture file.
 write_footer() {
   local file="$1"
   cat >> "$file" <<'YAML'
@@ -78,6 +85,8 @@ YAML
 # keyed on PR number AND head_sha, a multi-PR guard (pull_requests[1]) and a
 # run-unique (github.run_id) fallback, with cancel-in-progress gated on the two
 # default-branch-context events.
+
+# Append a valid concurrency block (commit-scoped, multi-PR-guarded, with fallback).
 append_good_concurrency() {
   local file="$1"
   cat >> "$file" <<'YAML'
@@ -97,6 +106,8 @@ YAML
 # The pre-fix regression: groups keyed on PR number ONLY (no head_sha), so one
 # PR-wide group covers every commit — a completed check for an older commit can
 # cancel a newer commit's readiness evaluation (no cross-commit isolation).
+
+# Append a regression concurrency block (PR-number-only, missing head_sha).
 append_concurrency_no_head_sha() {
   local file="$1"
   cat >> "$file" <<'YAML'
@@ -116,6 +127,8 @@ YAML
 # Commit-scoped but with NO multi-PR guard: selecting pull_requests[0] with no
 # pull_requests[1] check means distinct PRs listed on one event share the first
 # PR's cancelable group.
+
+# Append a regression concurrency block (missing multi-PR guard).
 append_concurrency_no_multipr_guard() {
   local file="$1"
   cat >> "$file" <<'YAML'
@@ -134,6 +147,8 @@ YAML
 
 # Commit-scoped and multi-PR-guarded but with NO run-unique fallback: a no-PR
 # event (fork / no PR) or a multi-PR event has no distinct slot to fall back to.
+
+# Append a regression concurrency block (missing run-unique fallback).
 append_concurrency_no_run_id_fallback() {
   local file="$1"
   cat >> "$file" <<'YAML'
@@ -153,6 +168,8 @@ YAML
 # A commit-scoped group but cancel-in-progress: true unconditionally, so a
 # pull_request run on the PR head could be cancelled, leaving a cancelled
 # `pr-auto-review / check-and-dispatch` check on the head.
+
+# Append a regression concurrency block (unconditional cancel-in-progress).
 append_concurrency_unconditional_cancel() {
   local file="$1"
   cat >> "$file" <<'YAML'
@@ -169,11 +186,12 @@ concurrency:
 YAML
 }
 
-# No concurrency block at all.
+# Append nothing to the fixture (no concurrency block at all).
 append_no_concurrency() {
   : # nothing — the fixture has only header + footer
 }
 
+# Invoke the regression guard script against a fixture file.
 run_guard() {
   local file="$1"
   bash "$GUARD" "$file" >/dev/null 2>&1
