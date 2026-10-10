@@ -147,7 +147,20 @@ if ! cancel=$(yq '.concurrency.cancel-in-progress' "$WORKFLOW" 2>/dev/null); the
   echo "FAIL: yq failed to parse $WORKFLOW. Please check if it is valid YAML."
   exit 1
 fi
-if [[ "$cancel" == *'check_suite'* && "$cancel" == *'workflow_run'* && "$cancel" == *'github.event_name'* ]]; then
+# Validate the whole expression, not just its identifiers: after stripping the
+# ${{ }} wrapper, whitespace and redundant outer parens it must be exactly the
+# OR of the two event-name equalities (either order). A contradictory '&&' is
+# false for every event and would silently disable cancellation.
+cancel_norm="${cancel//[[:space:]]/}"
+cancel_norm="${cancel_norm#\$\{\{}"
+cancel_norm="${cancel_norm%\}\}}"
+while [[ "$cancel_norm" == \(*\) ]]; do
+  cancel_norm="${cancel_norm#\(}"
+  cancel_norm="${cancel_norm%\)}"
+done
+cs_eq="github.event_name=='check_suite'"
+wr_eq="github.event_name=='workflow_run'"
+if [[ "$cancel_norm" == "${cs_eq}||${wr_eq}" || "$cancel_norm" == "${wr_eq}||${cs_eq}" ]]; then
   echo "PASS: cancel-in-progress is gated on check_suite / workflow_run in $WORKFLOW"
 else
   {

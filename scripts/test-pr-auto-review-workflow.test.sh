@@ -195,6 +195,27 @@ concurrency:
 YAML
 }
 
+# A commit-scoped group whose cancel-in-progress ANDs the two event names, so it
+# is false for every event and cancellation is silently disabled.
+
+# Append a regression concurrency block (contradictory '&&' cancel condition).
+append_concurrency_contradictory_cancel() {
+  local file="$1"
+  # Append regression fixture: cancel condition can never be true.
+  cat >> "$file" <<'YAML'
+concurrency:
+  group: >-
+    ${{
+    (github.event_name == 'check_suite' && github.event.check_suite.pull_requests[0].number && !github.event.check_suite.pull_requests[1] && github.event.check_suite.head_sha)
+    && format('pr-auto-review-ready-check-pr-{0}-{1}', github.event.check_suite.pull_requests[0].number, github.event.check_suite.head_sha)
+    || (github.event_name == 'workflow_run' && github.event.workflow_run.pull_requests[0].number && !github.event.workflow_run.pull_requests[1] && github.event.workflow_run.head_sha)
+    && format('pr-auto-review-ready-check-pr-{0}-{1}', github.event.workflow_run.pull_requests[0].number, github.event.workflow_run.head_sha)
+    || format('pr-auto-review-ready-check-unique-{0}', github.run_id)
+    }}
+  cancel-in-progress: ${{ github.event_name == 'check_suite' && github.event_name == 'workflow_run' }}
+YAML
+}
+
 # Append nothing to the fixture (no concurrency block at all).
 append_no_concurrency() {
   # No-op: the fixture contains only the header and footer.
@@ -269,6 +290,17 @@ if run_guard "$uncond"; then
   fail "unconditional cancel-in-progress: true should be REJECTED"
 else
   pass "unconditional cancel-in-progress: true is rejected"
+fi
+
+# ── Case 6b: contradictory '&&' cancel-in-progress is rejected ─────────────
+contra="${TMP}/par-contradictory-cancel.yml"
+write_header "$contra"
+append_concurrency_contradictory_cancel "$contra"
+write_footer "$contra"
+if run_guard "$contra"; then
+  fail "contradictory cancel-in-progress (check_suite && workflow_run) should be REJECTED"
+else
+  pass "contradictory cancel-in-progress (check_suite && workflow_run) is rejected"
 fi
 
 # ── Case 7: no concurrency block at all is rejected ────────────────────────
