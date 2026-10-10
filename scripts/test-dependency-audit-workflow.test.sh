@@ -89,6 +89,16 @@ else
   fail "a canonical synthesized stub should be ACCEPTED"
 fi
 
+# ── Case 2b: the canonical v2-stable channel is accepted ───────────────────
+v2stable="${TMP}/v2-stable.yml"
+write_canonical "$v2stable"
+yq -i '.jobs.dependency-audit.uses = "petry-projects/.github/.github/workflows/dependency-audit-reusable.yml@dependency-audit/v2-stable"' "$v2stable"
+if run_guard "$v2stable"; then
+  pass "a uses: on the canonical dependency-audit/v2-stable channel is accepted"
+else
+  fail "a uses: on dependency-audit/v2-stable should be ACCEPTED"
+fi
+
 # ── Case 3: `uses:` repointed off the approved channel is rejected ─────────
 offchannel="${TMP}/off-channel.yml"
 write_canonical "$offchannel"

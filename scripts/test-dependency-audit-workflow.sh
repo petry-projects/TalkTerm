@@ -87,7 +87,7 @@ else
 fi
 
 # ── Check 3: job `uses` is the org reusable pinned to an approved channel tag ─
-# The ref must ride an approved moving channel (stable, next, or vN-ringN) —
+# The ref must ride an approved moving channel (stable, next, vN-stable, or vN-ringN) —
 # never @main, a bare SHA, a frozen @vN, or an arbitrary/unknown channel tag.
 # The tier channel pin is the one part of this stub that may differ per repo.
 uses=""
@@ -103,10 +103,10 @@ elif [[ "$uses" != "${REUSABLE_PREFIX}"* ]]; then
   PASS=false
 else
   channel_ref="${uses#"${REUSABLE_PREFIX}"}"
-  approved_pattern='^dependency-audit/(stable|next|v[0-9]+-ring[0-9]+)$'
+  approved_pattern='^dependency-audit/(stable|next|v[0-9]+-stable|v[0-9]+-ring[0-9]+)$'
   if [[ ! "$channel_ref" =~ $approved_pattern ]]; then
     echo "FAIL: job 'uses' channel '$channel_ref' is not a recognized approved channel in $WORKFLOW"
-    echo "      Approved: dependency-audit/(stable|next|v<N>-ring<N>) — not @main, a SHA, or an arbitrary tag."
+    echo "      Approved: dependency-audit/(stable|next|v<N>-stable|v<N>-ring<N>) — not @main, a SHA, or an arbitrary tag."
     PASS=false
   else
     echo "PASS: job 'uses' rides the dependency-audit channel"
