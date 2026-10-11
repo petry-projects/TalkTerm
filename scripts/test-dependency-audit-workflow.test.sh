@@ -22,10 +22,14 @@ fi
 GUARD="${SCRIPT_DIR}/test-dependency-audit-workflow.sh"
 
 fails=0
+
+# Print a passed test line; increments the fail counter if output formatting changes.
 pass() {
   local desc="$1"
   echo "ok   - $desc"
 }
+
+# Print a failed test line and increment the failure counter.
 fail() {
   local desc="$1"
   echo "FAIL - $desc"
@@ -46,9 +50,7 @@ fi
 trap 'rm -rf "$TMP"' EXIT
 
 # ── Fixture builder ─────────────────────────────────────────────────────────
-# Emits the canonical dependency-audit caller stub. Each drift case rebuilds
-# from this and mutates exactly one invariant with yq, isolating the check under
-# test.
+# Write the canonical dependency-audit caller stub to a file for testing.
 write_canonical() {
   local file="$1"
   cat > "$file" <<'YAML'
@@ -67,6 +69,7 @@ jobs:
 YAML
 }
 
+# Run the regression guard against a workflow file and return its exit code.
 run_guard() {
   local file="$1"
   bash "$GUARD" "$file" >/dev/null 2>&1
