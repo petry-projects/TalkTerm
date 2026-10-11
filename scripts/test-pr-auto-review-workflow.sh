@@ -70,8 +70,21 @@ if [[ "$group" != "null" && -n "$group" ]]; then
   # event is checked against its own branch only; an unbounded match could be
   # satisfied by the other event's branch.
   wr_marker="github.event_name == 'workflow_run'"
-  cs_part="${group%%"$wr_marker"*}"
-  wr_part="${group#*"$wr_marker"}"
+  # Drop the terminal fallback (which legitimately uses github.run_id) so the
+  # per-PR branches can be checked for run-unique values: a run-unique argument
+  # (run_id / run_number / run_attempt) gives every run its own group and
+  # silently disables deduplication.
+  per_pr="${group%||*}"
+  cs_part="${per_pr%%"$wr_marker"*}"
+  wr_part="${per_pr#*"$wr_marker"}"
+  run_unique_re="github\\.run_(id|number|attempt)"
+  if [[ "$cs_part" =~ $run_unique_re || "$wr_part" =~ $run_unique_re ]]; then
+    {
+      echo "FAIL: a per-PR concurrency branch contains a run-unique value (github.run_*) in $WORKFLOW"
+      echo "      Per-PR groups must be stable across runs so repeated events dedupe."
+    } >&2
+    PASS=false
+  fi
 
   # The PR number must be the FIRST argument of the branch's format(...) call and
   # the format string must reference it via {0}, so it actually contributes to the

@@ -345,6 +345,28 @@ else
   pass "a group whose {0} placeholder is not the PR number is rejected"
 fi
 
+# ── Case 5d: run-unique suffix in a per-PR branch is rejected ──────────────
+runsuffix="${TMP}/par-run-suffix.yml"
+write_header "$runsuffix"
+cat >> "$runsuffix" <<'YAML'
+concurrency:
+  group: >-
+    ${{
+    (github.event_name == 'check_suite' && github.event.check_suite.pull_requests[0].number)
+    && format('pr-auto-review-ready-check-pr-{0}-{1}', github.event.check_suite.pull_requests[0].number, github.run_id)
+    || (github.event_name == 'workflow_run' && github.event.workflow_run.pull_requests[0].number)
+    && format('pr-auto-review-ready-check-pr-{0}', github.event.workflow_run.pull_requests[0].number)
+    || format('pr-auto-review-ready-check-unique-{0}', github.run_id)
+    }}
+  cancel-in-progress: ${{ github.event_name == 'check_suite' || github.event_name == 'workflow_run' }}
+YAML
+write_footer "$runsuffix"
+if run_guard "$runsuffix"; then
+  fail "a per-PR group with a run-unique suffix should be REJECTED"
+else
+  pass "a per-PR group with a run-unique suffix is rejected"
+fi
+
 # ── Case 6: unconditional cancel-in-progress is rejected ───────────────────
 uncond="${TMP}/par-unconditional-cancel.yml"
 write_header "$uncond"
