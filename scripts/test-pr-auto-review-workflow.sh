@@ -73,7 +73,12 @@ if [[ "$group" != "null" && -n "$group" ]]; then
   cs_part="${group%%"$wr_marker"*}"
   wr_part="${group#*"$wr_marker"}"
 
-  if [[ "$group" == *"$wr_marker"* && "$cs_part" =~ check_suite\.pull_requests\[0\]\.number ]]; then
+  # The PR number must be an argument of the branch's format(...) call, so it
+  # actually contributes to the resulting group string (not merely appear in the
+  # branch's condition).
+  cs_re="format\\('[^']*\\{[0-9]+\\}[^']*',[^)]*check_suite\\.pull_requests\\[0\\]\\.number"
+  wr_re="format\\('[^']*\\{[0-9]+\\}[^']*',[^)]*workflow_run\\.pull_requests\\[0\\]\\.number"
+  if [[ "$group" == *"$wr_marker"* && "$cs_part" =~ $cs_re ]]; then
     echo "PASS: check_suite group is keyed on the PR number in $WORKFLOW"
   else
     {
@@ -83,7 +88,7 @@ if [[ "$group" != "null" && -n "$group" ]]; then
     PASS=false
   fi
 
-  if [[ "$group" == *"$wr_marker"* && "$wr_part" =~ workflow_run\.pull_requests\[0\]\.number ]]; then
+  if [[ "$group" == *"$wr_marker"* && "$wr_part" =~ $wr_re ]]; then
     echo "PASS: workflow_run group is keyed on the PR number in $WORKFLOW"
   else
     {

@@ -215,6 +215,27 @@ concurrency:
 YAML
 }
 
+# Both branches reference the PR number only in their condition; the resulting
+# group is a constant, so every PR would share one cancelable group.
+
+# Append a regression concurrency block (PR number not part of the group value).
+append_concurrency_pr_number_not_in_group() {
+  local file="$1"
+  # Append regression fixture: PR number gates the branch but never reaches the key.
+  cat >> "$file" <<'YAML'
+concurrency:
+  group: >-
+    ${{
+    (github.event_name == 'check_suite' && github.event.check_suite.pull_requests[0].number)
+    && 'pr-auto-review-ready-check-shared'
+    || (github.event_name == 'workflow_run' && github.event.workflow_run.pull_requests[0].number)
+    && 'pr-auto-review-ready-check-shared'
+    || format('pr-auto-review-ready-check-unique-{0}', github.run_id)
+    }}
+  cancel-in-progress: ${{ github.event_name == 'check_suite' || github.event_name == 'workflow_run' }}
+YAML
+}
+
 # Append nothing to the fixture (no concurrency block at all).
 append_no_concurrency() {
   # No-op: the fixture contains only the header and footer.
@@ -300,6 +321,17 @@ if run_guard "$contra"; then
   fail "contradictory cancel-in-progress (check_suite && workflow_run) should be REJECTED"
 else
   pass "contradictory cancel-in-progress (check_suite && workflow_run) is rejected"
+fi
+
+# ── Case 6c: PR number only in the condition, not in the group value ───────
+notinkey="${TMP}/par-pr-number-not-in-group.yml"
+write_header "$notinkey"
+append_concurrency_pr_number_not_in_group "$notinkey"
+write_footer "$notinkey"
+if run_guard "$notinkey"; then
+  fail "a group whose value does not include the PR number should be REJECTED"
+else
+  pass "a group whose value does not include the PR number is rejected"
 fi
 
 # ── Case 7: no concurrency block at all is rejected ────────────────────────
