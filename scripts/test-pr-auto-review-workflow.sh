@@ -73,11 +73,12 @@ if [[ "$group" != "null" && -n "$group" ]]; then
   cs_part="${group%%"$wr_marker"*}"
   wr_part="${group#*"$wr_marker"}"
 
-  # The PR number must be an argument of the branch's format(...) call, so it
-  # actually contributes to the resulting group string (not merely appear in the
+  # The PR number must be the FIRST argument of the branch's format(...) call and
+  # the format string must reference it via {0}, so it actually contributes to the
+  # resulting group string (not merely appear as an unused argument or in the
   # branch's condition).
-  cs_re="format\\('[^']*\\{[0-9]+\\}[^']*',[^)]*check_suite\\.pull_requests\\[0\\]\\.number"
-  wr_re="format\\('[^']*\\{[0-9]+\\}[^']*',[^)]*workflow_run\\.pull_requests\\[0\\]\\.number"
+  cs_re="format\\('[^']*\\{0\\}[^']*',[[:space:]]*github\\.event\\.check_suite\\.pull_requests\\[0\\]\\.number[,)]"
+  wr_re="format\\('[^']*\\{0\\}[^']*',[[:space:]]*github\\.event\\.workflow_run\\.pull_requests\\[0\\]\\.number[,)]"
   if [[ "$group" == *"$wr_marker"* && "$cs_part" =~ $cs_re ]]; then
     echo "PASS: check_suite group is keyed on the PR number in $WORKFLOW"
   else
@@ -99,7 +100,11 @@ if [[ "$group" != "null" && -n "$group" ]]; then
   fi
 
   # ── Check 5: no-PR unique fallback keyed on github.run_id ──────
-  if [[ "$group" == *'github.run_id'* ]]; then
+  # The terminal (last `||`) expression must itself be format('...{0}...', github.run_id),
+  # so the run ID actually forms the group rather than appearing as an unused argument.
+  fallback="${group##*||}"
+  fallback_re="^[[:space:]]*format\\('[^']*\\{0\\}[^']*',[[:space:]]*github\\.run_id[[:space:]]*\\)[[:space:]]*(\\}\\})?[[:space:]]*$"
+  if [[ "$fallback" =~ $fallback_re ]]; then
     echo "PASS: group has a run-unique (github.run_id) fallback in $WORKFLOW"
   else
     {

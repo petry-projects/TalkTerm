@@ -301,6 +301,50 @@ else
   pass "a group with no run-unique (github.run_id) fallback is rejected"
 fi
 
+# ── Case 5b: run ID as an unused arg with a constant fallback is rejected ──
+unusedrunid="${TMP}/par-unused-run-id.yml"
+write_header "$unusedrunid"
+cat >> "$unusedrunid" <<'YAML'
+concurrency:
+  group: >-
+    ${{
+    (github.event_name == 'check_suite' && github.event.check_suite.pull_requests[0].number)
+    && format('pr-auto-review-ready-check-pr-{0}', github.event.check_suite.pull_requests[0].number)
+    || (github.event_name == 'workflow_run' && github.event.workflow_run.pull_requests[0].number)
+    && format('pr-auto-review-ready-check-pr-{0}', github.event.workflow_run.pull_requests[0].number)
+    || format('pr-auto-review-ready-check-shared-{1}', 'x', github.run_id)
+    }}
+  cancel-in-progress: ${{ github.event_name == 'check_suite' || github.event_name == 'workflow_run' }}
+YAML
+write_footer "$unusedrunid"
+if run_guard "$unusedrunid"; then
+  fail "a fallback that does not use github.run_id as {0} should be REJECTED"
+else
+  pass "a fallback that does not use github.run_id as {0} is rejected"
+fi
+
+# ── Case 5c: PR number not selected by the placeholder is rejected ─────────
+unusedpr="${TMP}/par-unused-pr.yml"
+write_header "$unusedpr"
+cat >> "$unusedpr" <<'YAML'
+concurrency:
+  group: >-
+    ${{
+    (github.event_name == 'check_suite' && github.event.check_suite.pull_requests[0].number)
+    && format('pr-auto-review-ready-check-{0}', github.run_id, github.event.check_suite.pull_requests[0].number)
+    || (github.event_name == 'workflow_run' && github.event.workflow_run.pull_requests[0].number)
+    && format('pr-auto-review-ready-check-pr-{0}', github.event.workflow_run.pull_requests[0].number)
+    || format('pr-auto-review-ready-check-unique-{0}', github.run_id)
+    }}
+  cancel-in-progress: ${{ github.event_name == 'check_suite' || github.event_name == 'workflow_run' }}
+YAML
+write_footer "$unusedpr"
+if run_guard "$unusedpr"; then
+  fail "a group whose {0} placeholder is not the PR number should be REJECTED"
+else
+  pass "a group whose {0} placeholder is not the PR number is rejected"
+fi
+
 # ── Case 6: unconditional cancel-in-progress is rejected ───────────────────
 uncond="${TMP}/par-unconditional-cancel.yml"
 write_header "$uncond"
