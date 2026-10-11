@@ -272,6 +272,43 @@ else
   pass "an additional job is rejected"
 fi
 
+# ── Case 15e: a renamed workflow is rejected ───────────────────────────────
+renamed="${TMP}/renamed.yml"
+write_canonical "$renamed"
+yq -i '.name = "Renamed audit"' "$renamed"
+if run_guard "$renamed"; then
+  fail "a renamed workflow should be REJECTED (exact name)"
+else
+  pass "a renamed workflow is rejected"
+fi
+
+# ── Case 15f: a lexically valid but non-existent channel is rejected ───────
+fakechan="${TMP}/fake-channel.yml"
+write_canonical "$fakechan"
+yq -i '.jobs.dependency-audit.uses = "petry-projects/.github/.github/workflows/dependency-audit-reusable.yml@dependency-audit/v999-ring999"' "$fakechan"
+if run_guard "$fakechan"; then
+  fail "a non-existent channel (v999-ring999) should be REJECTED"
+else
+  pass "a non-existent channel is rejected"
+fi
+
+# ── Case 15g: duplicate mapping keys are rejected ──────────────────────────
+dupkey="${TMP}/dup-key.yml"
+write_canonical "$dupkey"
+cat >> "$dupkey" <<'YAML'
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  merge_group:
+YAML
+if run_guard "$dupkey"; then
+  fail "a duplicated top-level 'on:' key should be REJECTED"
+else
+  pass "a duplicated top-level key is rejected"
+fi
+
 # ── Case 15: a missing workflow file fails cleanly ─────────────────────────
 if run_guard "${TMP}/does-not-exist.yml"; then
   fail "a missing workflow file should be REJECTED"

@@ -48,6 +48,49 @@ if ! yq '.' "$WORKFLOW" > /dev/null 2>&1; then
 fi
 echo "PASS: $WORKFLOW is valid YAML"
 
+# ── Check 2a: no duplicate mapping keys anywhere in the file ───────────────
+# `yq` silently keeps the LAST value of a duplicated key, so a file with two `on:`
+# or `jobs:` blocks would let every later assertion inspect only the final
+# (canonical-looking) block while GitHub rejects duplicate workflow keys outright
+# and the required audit never starts. Use a duplicate-aware loader (PyYAML).
+if ! command -v python3 &> /dev/null || ! python3 -c 'import yaml' &> /dev/null; then
+  echo "FAIL: python3 with PyYAML is required to detect duplicate YAML keys but was not found."
+  exit 1
+fi
+if ! python3 -I - "$WORKFLOW" <<'PY'
+import sys
+import yaml
+
+
+class UniqueKeyLoader(yaml.SafeLoader):
+    pass
+
+
+def construct_mapping(loader, node, deep=False):
+    seen = set()
+    for key_node, _ in node.value:
+        key = loader.construct_object(key_node, deep=deep)
+        if key in seen:
+            raise yaml.constructor.ConstructorError(
+                None, None, "duplicate mapping key %r" % (key,), key_node.start_mark
+            )
+        seen.add(key)
+    return yaml.SafeLoader.construct_mapping(loader, node, deep)
+
+
+UniqueKeyLoader.add_constructor(
+    yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, construct_mapping
+)
+
+with open(sys.argv[1], encoding="utf-8") as fh:
+    yaml.load(fh, Loader=UniqueKeyLoader)
+PY
+then
+  echo "FAIL: $WORKFLOW contains duplicate mapping keys (GitHub rejects the workflow; yq would mask them)"
+  exit 1
+fi
+echo "PASS: $WORKFLOW has no duplicate mapping keys"
+
 # ── Check 2b: the top-level mapping is EXACTLY the canonical key set ─────────
 # The canonical stub has only `name`, `on`, `permissions`, and `jobs` at the top
 # level. Any additional top-level key is drift — in particular a workflow-level
@@ -55,6 +98,8 @@ echo "PASS: $WORKFLOW is valid YAML"
 # `concurrency: { group: dependency-audit, cancel-in-progress: true }`) would let
 # a newer PR/push/merge-queue run cancel unrelated in-progress audits sharing that
 # constant group, leaving their required checks cancelled instead of successful.
+# The workflow `name` is also centrally owned (it is the identity shown in the
+# Actions UI), so assert its exact value as well as the key set.
 # Job-level exactness (Check 3b) and the per-mapping assertions on `permissions:`
 # and `on:` do not see top-level keys, so assert the whole top-level surface here.
 # Also rejects `defaults:`, `env:`, `run-name:`, and any other grafted-on key.
@@ -68,6 +113,18 @@ if [[ "$top_keys" != '["jobs","name","on","permissions"]' ]]; then
   PASS=false
 else
   echo "PASS: top-level mapping is exactly the canonical name/on/permissions/jobs"
+fi
+
+wf_name=""
+if ! wf_name=$(yq '.name' "$WORKFLOW" 2>/dev/null); then
+  echo "FAIL: yq failed to parse workflow name in $WORKFLOW"
+  PASS=false
+fi
+if [[ "$wf_name" != "Dependency audit" ]]; then
+  echo "FAIL: workflow 'name' must be exactly 'Dependency audit' (found: '$wf_name') in $WORKFLOW"
+  PASS=false
+else
+  echo "PASS: workflow name is exactly 'Dependency audit'"
 fi
 
 # ── Check 2c: the `jobs:` mapping contains EXACTLY the one caller job ────────
@@ -87,8 +144,9 @@ else
 fi
 
 # ── Check 3: job `uses` is the org reusable pinned to an approved channel tag ─
-# The ref must ride an approved moving channel (stable, next, vN-stable, or vN-ringN) —
-# never @main, a bare SHA, a frozen @vN, or an arbitrary/unknown channel tag.
+# The ref must be one of the explicitly supported moving channels below — never
+# @main, a bare SHA, a frozen @vN, or a lexically plausible but non-existent tag
+# (e.g. v999-ring999). Add a channel here only once it exists in the central repo.
 # The tier channel pin is the one part of this stub that may differ per repo.
 uses=""
 if ! uses=$(yq ".jobs[\"${JOB}\"].uses" "$WORKFLOW" 2>/dev/null); then
@@ -103,10 +161,23 @@ elif [[ "$uses" != "${REUSABLE_PREFIX}"* ]]; then
   PASS=false
 else
   channel_ref="${uses#"${REUSABLE_PREFIX}"}"
-  approved_pattern='^dependency-audit/(stable|next|v[0-9]+-stable|v[0-9]+-ring[0-9]+)$'
-  if [[ ! "$channel_ref" =~ $approved_pattern ]]; then
+  approved_channels=(
+    dependency-audit/stable
+    dependency-audit/next
+    dependency-audit/v2-stable
+    dependency-audit/v2-ring0
+    dependency-audit/v2-ring1
+    dependency-audit/v2-ring2
+  )
+  channel_ok=false
+  for approved in "${approved_channels[@]}"; do
+    if [[ "$channel_ref" == "$approved" ]]; then
+      channel_ok=true
+    fi
+  done
+  if [[ "$channel_ok" != "true" ]]; then
     echo "FAIL: job 'uses' channel '$channel_ref' is not a recognized approved channel in $WORKFLOW"
-    echo "      Approved: dependency-audit/(stable|next|v<N>-stable|v<N>-ring<N>) — not @main, a SHA, or an arbitrary tag."
+    echo "      Approved: ${approved_channels[*]} — not @main, a SHA, or an arbitrary tag."
     PASS=false
   else
     echo "PASS: job 'uses' rides the dependency-audit channel"
