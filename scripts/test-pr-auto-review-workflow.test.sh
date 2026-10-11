@@ -2,10 +2,11 @@
 # test-pr-auto-review-workflow.test.sh — portable tests for the pr-auto-review.yml
 # regression guard (scripts/test-pr-auto-review-workflow.sh). Verifies the guard
 # enforces the event-dependent concurrency contract of the thin caller stub
-# (#1126, #508): the check_suite / workflow_run groups must be keyed on BOTH the
-# PR number and the event head_sha (same-commit dedup + cross-commit isolation),
-# an event listing more than one PR or no PR must fall back to a run-unique group
-# (github.run_id), and cancel-in-progress must stay gated on those two events.
+# (#1126, #508): each of the check_suite / workflow_run group branches must be
+# keyed on its own event's PR number (the canonical PR-number-only policy, with
+# stricter head_sha / multi-PR forms also accepted), an event with no PR must fall
+# back to a run-unique group (github.run_id), and cancel-in-progress must stay
+# gated on those two events.
 # No bats dependency: the guard is driven as a subprocess against temporary
 # fixture workflows.
 # Run: bash scripts/test-pr-auto-review-workflow.test.sh
@@ -108,14 +109,13 @@ concurrency:
 YAML
 }
 
-# The pre-fix regression: groups keyed on PR number ONLY (no head_sha), so one
-# PR-wide group covers every commit — a completed check for an older commit can
-# cancel a newer commit's readiness evaluation (no cross-commit isolation).
+# The canonical org policy: groups keyed on PR number ONLY (no head_sha, no
+# multi-PR guard), mirroring the synced standards stub.
 
-# Append a regression concurrency block (PR-number-only, missing head_sha).
-append_concurrency_no_head_sha() {
+# Append the canonical PR-number-only concurrency block.
+append_concurrency_pr_number_only() {
   local file="$1"
-  # Append regression fixture: lacks commit-scoped keying, so old commits can cancel new ones.
+  # Append the canonical policy fixture: PR-number-only keying.
   cat >> "$file" <<'YAML'
 concurrency:
   group: >-
@@ -130,22 +130,21 @@ concurrency:
 YAML
 }
 
-# Commit-scoped but with NO multi-PR guard: selecting pull_requests[0] with no
-# pull_requests[1] check means distinct PRs listed on one event share the first
-# PR's cancelable group.
+# The check_suite branch lost its PR number while the workflow_run branch keeps
+# one: an unbounded match would still pass, so the guard must scope per branch.
 
-# Append a regression concurrency block (missing multi-PR guard).
-append_concurrency_no_multipr_guard() {
+# Append a regression concurrency block (check_suite branch not keyed on PR number).
+append_concurrency_check_suite_unkeyed() {
   local file="$1"
-  # Append regression fixture: lacks multi-PR guard, so distinct PRs can collide.
+  # Append regression fixture: only the workflow_run branch is keyed on a PR number.
   cat >> "$file" <<'YAML'
 concurrency:
   group: >-
     ${{
-    (github.event_name == 'check_suite' && github.event.check_suite.pull_requests[0].number && github.event.check_suite.head_sha)
-    && format('pr-auto-review-ready-check-pr-{0}-{1}', github.event.check_suite.pull_requests[0].number, github.event.check_suite.head_sha)
-    || (github.event_name == 'workflow_run' && github.event.workflow_run.pull_requests[0].number && github.event.workflow_run.head_sha)
-    && format('pr-auto-review-ready-check-pr-{0}-{1}', github.event.workflow_run.pull_requests[0].number, github.event.workflow_run.head_sha)
+    (github.event_name == 'check_suite' && github.event.check_suite.head_sha)
+    && format('pr-auto-review-ready-check-sha-{0}', github.event.check_suite.head_sha)
+    || (github.event_name == 'workflow_run' && github.event.workflow_run.pull_requests[0].number)
+    && format('pr-auto-review-ready-check-pr-{0}', github.event.workflow_run.pull_requests[0].number)
     || format('pr-auto-review-ready-check-unique-{0}', github.run_id)
     }}
   cancel-in-progress: ${{ github.event_name == 'check_suite' || github.event_name == 'workflow_run' }}
@@ -248,26 +247,26 @@ else
   fail "a valid commit-scoped concurrency block should be ACCEPTED"
 fi
 
-# ── Case 3: PR-number-only group (no head_sha) is rejected ─────────────────
-nosha="${TMP}/par-no-head-sha.yml"
+# ── Case 3: the canonical PR-number-only group is accepted ─────────────────
+nosha="${TMP}/par-pr-number-only.yml"
 write_header "$nosha"
-append_concurrency_no_head_sha "$nosha"
+append_concurrency_pr_number_only "$nosha"
 write_footer "$nosha"
 if run_guard "$nosha"; then
-  fail "a PR-number-only group (no head_sha, no cross-commit isolation) should be REJECTED"
+  pass "the canonical PR-number-only group is accepted"
 else
-  pass "a PR-number-only group (no head_sha) is rejected"
+  fail "the canonical PR-number-only group should be ACCEPTED"
 fi
 
-# ── Case 4: missing multi-PR fallback guard is rejected ────────────────────
-nomulti="${TMP}/par-no-multipr.yml"
+# ── Case 4: a check_suite branch not keyed on the PR number is rejected ────
+nomulti="${TMP}/par-check-suite-unkeyed.yml"
 write_header "$nomulti"
-append_concurrency_no_multipr_guard "$nomulti"
+append_concurrency_check_suite_unkeyed "$nomulti"
 write_footer "$nomulti"
 if run_guard "$nomulti"; then
-  fail "a group with no multi-PR (pull_requests[1]) fallback should be REJECTED"
+  fail "a check_suite branch not keyed on the PR number should be REJECTED"
 else
-  pass "a group with no multi-PR (pull_requests[1]) fallback is rejected"
+  pass "a check_suite branch not keyed on the PR number is rejected"
 fi
 
 # ── Case 5: missing run-unique (github.run_id) fallback is rejected ────────
